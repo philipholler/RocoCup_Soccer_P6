@@ -22,7 +22,7 @@ class Client:
         print(self.side)
         print(self.player_num)
 
-        sock.sendto("(move 10 10)", (ip, port))
+        sock.sendto("(move -10 -10)", (ip, port))
 
         while True:
             data, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
