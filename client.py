@@ -5,25 +5,42 @@ import re
 class Client:
 
     # default constructor
-    def __init__(self, team_name):
+    def __init__(self, team_name, port, ip):
         self.side = ""
         self.player_num = ""
         self.team_name = team_name
+        self.port = ""
+        self.server_ip = ""
+        self.sock = ""
+
+        self.connect_to_server(port, ip)
 
     def connect_to_server(self, port, ip):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto("(init " + self.team_name + ")", (ip, port))
-        player_info, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
-        print "Received message:", player_info
-        regex = re.compile("\\(init ([lr]) ([0-9]*)")
-        match = regex.match(player_info)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.port = port
+        self.server_ip = ip
+
+        self.send_message("(init " + self.team_name + ")")
+
+        player_info, addr = self.sock.recvfrom(1024)  # buffer size is 1024 bytes
+        # print("Received message:", player_info)
+        regex = re.compile("b'\\(init ([lr]) ([0-9]*)")
+        match = regex.match(player_info.__str__())
+        # print("Side: ", match.group(1))
+        # print("Player_num", match.group(2))
         self.side = match.group(1)
         self.player_num = match.group(2)
-        print(self.side)
-        print(self.player_num)
 
-        sock.sendto("(move -10 -10)", (ip, port))
+        print("New player, team_name: ", self.team_name, " player_num: ", self.player_num, "\n")
+
+        # Move to a position
+        self.send_message("(move -10 -10)")
 
         while True:
-            data, addr = sock.recvfrom(1024)  # buffer size is 1024 bytes
-            print "Received message:", data
+            data, addr = self.sock.recvfrom(1024)  # buffer size is 1024 bytes
+            self.send_message("(turn 15)")
+            # print("Received message:", data.__str__())
+
+    def send_message(self, msg):
+        bytes_to_send = str.encode(msg)
+        self.sock.sendto(bytes_to_send, (self.server_ip, self.port))
