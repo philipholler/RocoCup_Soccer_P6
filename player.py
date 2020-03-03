@@ -37,4 +37,4 @@ class Player:
     # Add main functionality of player
     def __main_loop(self):
         while True:
-            self.player_connection.request_action("(dash 60)")
+            self.player_connection.request_action(["(dash 50)", "(turn 20)"])

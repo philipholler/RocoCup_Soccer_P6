@@ -52,6 +52,5 @@ class PlayerConnection(threading.Thread):
         return
 
     def request_action(self, action_list: [str]):
-        print(action_list)
         for elem in action_list:
-            self.action_queue.put(action_list)
+            self.action_queue.put(elem)
