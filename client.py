@@ -15,7 +15,7 @@ class Client:
 
         self.connect_to_server(port, ip)
 
-    def connect_to_server(self, port, ip):
+    def connect_to_server(self, port: str, ip: str):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.port = port
         self.server_ip = ip
@@ -31,16 +31,18 @@ class Client:
         self.side = match.group(1)
         self.player_num = match.group(2)
 
-        print("New player, team_name: ", self.team_name, " player_num: ", self.player_num, "\n")
+        # print("New player, team_name: ", self.team_name, " player_num: ", self.player_num, "\n")
 
         # Move to a position
         self.send_message("(move -10 -10)")
 
         while True:
             data, addr = self.sock.recvfrom(1024)  # buffer size is 1024 bytes
-            self.send_message("(turn 15)")
+            self.send_message("(dash 20)")
+            if self.player_num == "1" and self.team_name == "Team1":
+                print("Received message:", data.__str__())
             # print("Received message:", data.__str__())
 
-    def send_message(self, msg):
+    def send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
         self.sock.sendto(bytes_to_send, (self.server_ip, self.port))
