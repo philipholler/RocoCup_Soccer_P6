@@ -22,3 +22,4 @@ for team in TEAM_NAMES:
         player_thread = threading.Thread(target=player.Player, args=(team, UDP_PORT, UDP_IP))
         player_threads.append(player_thread)
         player_thread.start()
+
