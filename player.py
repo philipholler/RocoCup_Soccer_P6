@@ -14,12 +14,12 @@ class Player:
         self.player_state.team_name = team
 
         # Action queue
-        action_queue = Queue()
+        self.action_queue = Queue()
 
         # Setup connection with soccer_sim
-        self.player_connection = player_connection.PlayerConnection(UDP_PORT, UDP_IP, self.player_state, self.action_queue)
+        self.player_connection = player_connection.PlayerConnection(UDP_PORT, UDP_IP, self.player_state)
         init_player_msg: str = "(init " + team + ")"
-        self.player_connection_thread = threading.Thread(target=self.player_connection.connect_to_server())
+        self.player_connection_thread = threading.Thread(target=lambda:self.player_connection.connect_to_server())
         self.player_connection_thread.start()
 
         # Start main reaction loop
@@ -38,4 +38,4 @@ class Player:
     # Add main functionality of player
     def main_loop(self):
         while True:
-            self.action_queue.put("(dash 50)")
+            self.player_connection.request_action("(dash 60)")

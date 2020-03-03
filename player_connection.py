@@ -1,6 +1,7 @@
 import socket
 import re
 import threading
+import time
 from queue import Queue
 
 import player_state
@@ -10,13 +11,13 @@ class PlayerConnection(threading.Thread):
     BUFFER_SIZE = 1024
 
     # default constructor
-    def __init__(self, port, ip, player_state: player_state.PlayerState, action_queue: Queue):
+    def __init__(self, port, ip, player_state: player_state.PlayerState):
         super().__init__()
         self.player_state = player_state
         self.port = port
         self.server_ip = ip
         self.client_socket = ""
-        self.action_queue: Queue = action_queue
+        self.action_queue: Queue = Queue()
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -35,9 +36,8 @@ class PlayerConnection(threading.Thread):
         while True:
             data = self.receive_message()  # buffer size is 1024 bytes
             self.update_state(data)
-            print(self.action_queue)
-            for msg in self.action_queue.get():
-                self.send_message(msg)
+            while not self.action_queue.empty():
+                self.send_message(self.action_queue.get())
 
     def send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
@@ -51,6 +51,7 @@ class PlayerConnection(threading.Thread):
         # TODO Update player state
         return
 
-    def request_action(self, msg: str):
-        print("Requested action: ", msg)
-        self.action_queue.put(msg)
+    def request_action(self, action_list: [str]):
+        print(action_list)
+        for elem in action_list:
+            self.action_queue.put(action_list)
