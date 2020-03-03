@@ -14,7 +14,7 @@ UDP_PORT = 6000
 
 soccer_sim = threading.Thread(target=lambda: os.system("rcsoccersim")).start()
 
-time.sleep(5)
+time.sleep(2)
 
 for team in TEAM_NAMES:
     for player in range(0, NUM_PLAYERS):

@@ -3,6 +3,7 @@ import re
 
 
 class Client:
+    BUFFER_SIZE = 1024
 
     # default constructor
     def __init__(self, team_name, port, ip):
@@ -11,23 +12,20 @@ class Client:
         self.team_name = team_name
         self.port = ""
         self.server_ip = ""
-        self.sock = ""
+        self.client_socket = ""
 
         self.connect_to_server(port, ip)
 
     def connect_to_server(self, port: str, ip: str):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.port = port
         self.server_ip = ip
 
         self.send_message("(init " + self.team_name + ")")
 
-        player_info, addr = self.sock.recvfrom(1024)  # buffer size is 1024 bytes
-        # print("Received message:", player_info)
-        regex = re.compile("b'\\(init ([lr]) ([0-9]*)")
+        player_info = self.receive_message()  # buffer size is 1024 bytes
+        regex = re.compile("\\(init ([lr]) ([0-9]*)")
         match = regex.match(player_info.__str__())
-        # print("Side: ", match.group(1))
-        # print("Player_num", match.group(2))
         self.side = match.group(1)
         self.player_num = match.group(2)
 
@@ -37,12 +35,16 @@ class Client:
         self.send_message("(move -10 -10)")
 
         while True:
-            data, addr = self.sock.recvfrom(1024)  # buffer size is 1024 bytes
-            self.send_message("(dash 20)")
+            data = self.receive_message()  # buffer size is 1024 bytes
             if self.player_num == "1" and self.team_name == "Team1":
+                self.send_message("(dash -5)")
                 print("Received message:", data.__str__())
-            # print("Received message:", data.__str__())
 
     def send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
-        self.sock.sendto(bytes_to_send, (self.server_ip, self.port))
+        self.client_socket.sendto(bytes_to_send, (self.server_ip, self.port))
+
+    def receive_message(self):
+        player_info = self.client_socket.recv(self.BUFFER_SIZE).decode()
+        return player_info
+
