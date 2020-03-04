@@ -45,6 +45,7 @@ class PlayerConnection(threading.Thread):
 
     def __receive_message(self):
         player_info = self.client_socket.recv(self.BUFFER_SIZE).decode()
+        print(player_info)
         return player_info  # Temporary, should be done through player_state
 
     def __update_state(self, msg: str):
