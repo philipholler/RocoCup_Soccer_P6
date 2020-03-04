@@ -45,10 +45,27 @@ class Player:
     def pass_ball_to_player(self, kick_power, player_angle):
         self.player_conn.send_message("(kick " + kick_power + " " + player_angle + ")")
 
+    def turn(self, moment):
+        self.player_conn.send_message("(turn " + moment + " )")
+
+    def catch_ball(self, direction):
+        self.player_conn.send_message("(catch " + direction + " )")
+
     # def tackle_opponent(self, opponent):
 
-    # def turn(self, angle):
-        # turns whole body
+    # def change_view(self, width, quality):
+
+    # def say(self, message):
+        # says message to others who can hear
+
+    # def sense_body(self):
+        # returns a lot of info about player
+
+    # def score(self):
+        # returns score
+
+    # def turn_neck(self, angle):
+        # turns neck separate from body
 
     # Add main functionality of player
     def __main_loop(self):
