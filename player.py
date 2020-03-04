@@ -22,30 +22,33 @@ class Player:
     """
 
     def move_on_home_ground(self, x_coord, y_coord):
-        self.player_connection.__send_message("(move -" + x_coord + " -" + y_coord + ")")
+        self.player_conn.send_message("(move -" + x_coord + " -" + y_coord + ")")
 
     def move_on_opponent_side(self, x_coord, y_coord):
-        self.player_connection.__send_message("(move " + x_coord + " " + y_coord + ")")
+        self.player_conn.send_message("(move " + x_coord + " " + y_coord + ")")
 
     def dash_to(self, end_coord, dash_power):
         # TODO find way to get coord of player
         while self.player_state.coord != end_coord:
             # TODO turn towards coord, "20" just placeholder
             turn_power = "20"
-            self.player_connection.__send_message("(turn " + turn_power + ")")
-            self.player_connection.__send_message("(dash " + dash_power + ")")
+            self.player_conn.send_message("(turn " + turn_power + ")")
+            self.player_conn.send_message("(dash " + dash_power + ")")
 
     def dash_towards_ball(self, ball_coord, dash_power):
         self.dash_to(ball_coord, dash_power)
 
     def dash_and_kick(self, ball_coord, dash_power, kick_power, kick_angle):
         self.dash_towards_ball(ball_coord, dash_power)
-        self.player_connection.__send_message("(kick " + kick_power + " " + kick_angle + ")")
+        self.player_conn.send_message("(kick " + kick_power + " " + kick_angle + ")")
 
     def pass_ball_to_player(self, kick_power, player_angle):
-        self.player_connection.__send_message("(kick " + kick_power + " " + player_angle + ")")
+        self.player_conn.send_message("(kick " + kick_power + " " + player_angle + ")")
 
     # def tackle_opponent(self, opponent):
+
+    # def turn(self, angle):
+        # turns whole body
 
     # Add main functionality of player
     def __main_loop(self):
