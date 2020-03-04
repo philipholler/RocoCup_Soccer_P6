@@ -31,7 +31,7 @@ class PlayerConnection(threading.Thread):
         self.player_state.player_num = match.group(2)
 
         # Move to a position
-        self.__send_message("(move -10 -10)")
+        self.__send_message("(move -" + self.player_state.player_num + "0 -" + self.player_state.player_num + "0)")
 
         while True:
             data = self.__receive_message()  # buffer size is 1024 bytes
