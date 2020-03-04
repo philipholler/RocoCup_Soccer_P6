@@ -1,57 +1,28 @@
-import socket
 import re
-import threading
-import time
-from queue import Queue
-
-import player_state
+import socket
 
 
-class PlayerConnection(threading.Thread):
-    BUFFER_SIZE = 1024
+class PlayerConnection:
 
-    # default constructor
-    def __init__(self, port, ip, player_state: player_state.PlayerState):
-        super().__init__()
-        self.player_state = player_state
-        self.port = port
-        self.server_ip = ip
-        self.client_socket = ""
-        self.action_queue: Queue = Queue()
+    def __init__(self, UDP_IP, UDP_PORT) -> None:
+        self.addr = (UDP_IP, UDP_PORT)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    def connect_to_server(self):
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    def connect_to_server(self, player_state):
+        self.send_message("(init " + player_state.team_name + ")")
 
-        self.__send_message("(init " + self.player_state.team_name + ")")
-
-        player_info = self.__receive_message()  # buffer size is 1024 bytes
+        msg_received = self.receive_message()  # buffer size is 1024 bytes
         regex = re.compile("\\(init ([lr]) ([0-9]*)")
-        match = regex.match(player_info.__str__())
-        self.player_state.side = match.group(1)
-        self.player_state.player_num = match.group(2)
+        match = regex.match(msg_received.__str__())
+        player_state.side = match.group(1)
+        player_state.player_num = match.group(2)
 
-        # Move to a position
-        self.__send_message("(move -10 -10)")
+        self.send_message("(move -10 -10)")
 
-        while True:
-            data = self.__receive_message()  # buffer size is 1024 bytes
-            self.__update_state(data)
-            while not self.action_queue.empty():
-                self.__send_message(self.action_queue.get())
-
-    def __send_message(self, msg: str):
+    def send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
-        self.client_socket.sendto(bytes_to_send, (self.server_ip, self.port))
+        self.sock.sendto(bytes_to_send, self.addr)
 
-    def __receive_message(self):
-        player_info = self.client_socket.recv(self.BUFFER_SIZE).decode()
-        print(player_info)
-        return player_info  # Temporary, should be done through player_state
-
-    def __update_state(self, msg: str):
-        # TODO Update player state
-        return
-
-    def request_action(self, action_list: [str]):
-        for elem in action_list:
-            self.action_queue.put(elem)
+    def receive_message(self):
+        player_info = self.sock.recv(1024).decode()
+        return player_info
