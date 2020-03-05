@@ -17,8 +17,6 @@ class PlayerConnection:
         player_state.side = match.group(1)
         player_state.player_num = match.group(2)
 
-        self.send_message("(move -10 -10)")
-
     def send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
         self.sock.sendto(bytes_to_send, self.addr)
