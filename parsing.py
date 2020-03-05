@@ -2,7 +2,7 @@ import re
 
 REAL_NUM_REGEX = "[0-9]*.?[0-9]*"
 INT_REGEX = "[0-9]*"
-STRING_REGEX = "[\w]*"
+STRING_REGEX = ".*"
 
 
 # Three different modes
@@ -10,7 +10,7 @@ STRING_REGEX = "[\w]*"
 # example: (hear 0 self *msg*)
 # Pattern: (hear *time* *degrees* *msg*)
 def parse_hear(text):
-    # TODO fail safe, if cannot parse message. Maybe already fixed with [\w]??
+    # TODO fail safe, if cannot parse message.
     if str(text).__contains__("referee"):
         regex_string = "\\(hear ({0}) referee ({1})\\)".format(INT_REGEX, STRING_REGEX)
 
@@ -35,12 +35,12 @@ def parse_hear(text):
 
 
 # TODO makes tests
-''' Philips test shit
+# Philips test shit
 text = "(hear 0 referee kick_off_l)"
 match_text = parse_hear(text)
-text = "(hear 10 47 hejsæü)"
+text = "(hear 10 47 hejsæü#€%&/=?)"
 match_text2 = parse_hear(text)
-'''
+
 
 
 # example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
