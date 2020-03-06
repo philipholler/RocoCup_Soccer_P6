@@ -12,9 +12,14 @@ class Player:
         self.player_state: player_state.PlayerState = player_state.PlayerState()
         self.player_state.team_name = team
 
+        # Establish connection with server. Use self.player_conn for all communication with the server.
         self.player_conn = player_connection.PlayerConnection(UDP_PORT=UDP_PORT, UDP_IP=UDP_IP)
         self.player_conn.connect_to_server(self.player_state)
 
+        # Position player
+        self.player_conn.send_message("(move -10 -10)")
+
+        # Start main logic loop for player
         self.__main_loop()
 
     """
@@ -70,11 +75,16 @@ class Player:
     # Add main functionality of player
     def __main_loop(self):
         while True:
+            time.sleep(0.1)  # Server tick rate 10 / second
             msg = self.player_conn.receive_message()
             if msg is not None:
                 self.__update_state(msg)
                 if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
+                    self.player_conn.send_message("(turn 5)")
+                    time.sleep(0.1)
                     self.player_conn.send_message("(dash 50)")
+                    self.player_conn.send_message("(say faggot)")
+                if self.player_state.player_num == "2" and self.player_state.team_name == "Team1":
                     print(msg)
 
     def __update_state(self, msg: str):

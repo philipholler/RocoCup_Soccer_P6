@@ -1,9 +1,90 @@
 import math
 import re
+import player_state
 from math import sqrt, atan2, degrees
 
 REAL_NUM_REGEX = "[0-9]*.?[0-9]*"
-INT_REGEX = "[0-9]*"
+SIGNED_INT_REGEX = "[-0-9]*"
+ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
+
+
+def parse_message_update_state(msg: str, ps: player_state):
+    if msg.startswith("(hear"):
+        parse_hear(msg, ps)
+    elif msg.startswith("(sense_body"):
+        parse_body_sense(msg, ps)
+
+
+# Three different modes
+# example: (hear 0 referee kick_off_l)
+# example: (hear 0 self *msg*)
+# Pattern: (hear *time* *degrees* *msg*)
+def parse_hear(text: str, ps: player_state):
+    split_by_whitespaces = re.split('\\s+', text)
+    time = split_by_whitespaces[1]
+    ps.sim_time = time  # Update players understanding of time
+
+    sender = split_by_whitespaces[2]
+    if sender == "referee":
+        regex_string = "\\(hear ({0}) referee ({1})\\)".format(SIGNED_INT_REGEX, ROBOCUP_MSG_REGEX)
+
+        regular_expression = re.compile(regex_string)
+        matched = regular_expression.match(text)
+
+        ps.game_state = matched.group(2)
+
+        return
+    elif sender == "self":
+        return
+    else:
+        regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(SIGNED_INT_REGEX, ROBOCUP_MSG_REGEX)
+
+        regular_expression = re.compile(regex_string)
+        matched = regular_expression.match(text)
+
+        return
+
+# example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
+# Group [1] = time, [2] = stamina, [3] = effort, [4] = speed, [5] = kick count, [6] = dash, [7] = turn
+def parse_body_sense(text: str, ps: player_state):
+    # Will view_mode ever change from "high normal"?
+    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0})\\).*speed ({0})\\).*kick ({0})\\)"
+    regex_string += ".*dash ({0})\\).*turn ({1})\\)"
+    regex_string = regex_string.format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
+
+    print(regex_string)
+    regular_expression = re.compile(regex_string)
+    matched = regular_expression.match(text)
+
+    return matched
+
+
+# Example : (see 0 ((flag r b) 48.9 29) ((flag g r b) 42.5 -4) ((goal r) 43.8 -13) ((flag g r t) 45.6 -21)
+#           ((flag p r b) 27.9 21) ((flag p r c) 27.9 -21 0 0) ((Player) 1 -179) ((player Team2 2) 1 0 0 0)
+#           ((Player) 0.5 151) ((player Team2 4) 0.5 -28 0 0) ((line r) 42.5 90))
+def parse_flags(text):
+    flag_regex = "\\(flag [^)]*\\) {0} {0}".format(REAL_NUM_REGEX)
+    return re.findall(flag_regex, text)
+
+
+def parse_players(text):
+    flag_regex = " [^)]*".format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
+    return re.findall(flag_regex, text)
+
+
+def match(regex_string, text):
+    regular_expression = re.compile(regex_string)
+    regex_match = regular_expression.match(text)
+    return regex_match
+
+
+def flag_position(pos_x, pos_y):
+    return None
+
+
+# for m in reg_str.groups():
+#    print(m)
+
 
 FLAG_COORDS = {
     # perimiter flags
