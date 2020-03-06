@@ -4,6 +4,8 @@ class PlayerState:
         self.side = ""
         self.team_name = ""
         self.player_num = ""
+        self.game_state = ""
+        self.sim_time = 0
         super().__init__()
 
     def __str__(self) -> str:
