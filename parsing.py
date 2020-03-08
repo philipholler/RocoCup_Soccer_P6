@@ -1,7 +1,10 @@
 import math
 import re
 import player_state
+
 from math import sqrt, atan2, degrees
+
+from world import Coordinate
 
 REAL_NUM_REGEX = "[0-9]*.?[0-9]*"
 SIGNED_INT_REGEX = "[-0-9]*"
@@ -43,6 +46,7 @@ def parse_hear(text: str, ps: player_state):
         matched = regular_expression.match(text)
 
         return
+
 
 # example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
 # Group [1] = time, [2] = stamina, [3] = effort, [4] = speed, [5] = kick count, [6] = dash, [7] = turn
@@ -222,7 +226,7 @@ def extract_flag_distances(flags):
 def extract_flag_coordinates(flag_ids):
     coords = []
     for flag_id in flag_ids:
-        coords.append(FLAG_COORDS.get(flag_id))
+        coords.append(Coordinate(FLAG_COORDS.get(flag_id)))
     return coords
 
 
@@ -232,41 +236,47 @@ def zip_flag_coords_distance(flags):
     flag_coords = extract_flag_coordinates(flag_ids)
     flag_distances = extract_flag_distances(flags)
 
-    for i in range(0, flag_ids.__len__()):
-        coords_zipped_distance.append((flag_coords.__getitem__(i), flag_distances.__getitem__(i)))
+    for i in range(0, len(flag_ids)):
+        coords_zipped_distance.append((flag_coords[i], flag_distances[i]))
 
     return coords_zipped_distance
 
 
 def calculate_distance(coord1, coord2):
-    x_dist = abs(coord1[0] - coord2[0])
-    y_dist = abs(coord1[1] - coord2[1])
+    x_dist = abs(coord1.pos_x - coord2.pos_x)
+    y_dist = abs(coord1.pos_y - coord2.pos_y)
     return sqrt(pow(float(x_dist), 2) + pow(float(y_dist), 2))
 
 
+# Calculates position as two possible offsets from flag_one
 def trilaterate_offset(flag_one, flag_two):
     coord1 = flag_one[0]
     coord2 = flag_two[0]
     distance_between_flags = calculate_distance(coord1, coord2)
     distance_to_flag1 = float(flag_one[1])
     distance_to_flag2 = float(flag_two[1])
-    x = ((pow(distance_to_flag1, 2.0) - pow(distance_to_flag2, 2.0)) + pow(distance_between_flags, 2)) / (2.0 * distance_between_flags)
+
+    x = (((distance_to_flag1 ** 2) - (distance_to_flag2 ** 2)) + (distance_between_flags ** 2)) \
+        / (2.0 * distance_between_flags)
+
+    # Not sure if this is a correct solution
     if abs(distance_to_flag1) > abs(x):
-        y = sqrt(pow(distance_to_flag1, 2.0) - pow(x, 2.0))
+        y = sqrt((distance_to_flag1 ** 2) - (x ** 2))
     else:
         y = sqrt(pow(x, 2.0) - pow(distance_to_flag1, 2.0))
 
-    return x, y
+    # This calculation provides two possible offset solutions (x, y) and (x, -y)
+    return Coordinate(x, y), Coordinate(x, -y)
 
-
+# Calculates angle between two points (from origin (0, 0))
 def calculate_angle_between(coordinate1, coordinate2):
-    return atan2(coordinate1[0] - coordinate2[0], coordinate1[1] - coordinate2[1])
+    return atan2(coordinate1.pos_y - coordinate2.pos_y, coordinate1.pos_x - coordinate2.pos_x)
 
 
 def rotate_coordinate(coord, radians_to_rotate):
-    new_x = math.cos(radians_to_rotate)*coord[0] - math.sin(radians_to_rotate)*coord[1]
-    new_y = math.sin(radians_to_rotate)*coord[0] + math.cos(radians_to_rotate)*coord[1]
-    return new_x, new_y
+    new_x = math.cos(radians_to_rotate) * coord.pos_x - math.sin(radians_to_rotate) * coord.pos_y
+    new_y = math.sin(radians_to_rotate) * coord.pos_x + math.cos(radians_to_rotate) * coord.pos_y
+    return Coordinate(new_x, new_y)
 
 
 def approximate_position(coords_and_distance):
@@ -275,19 +285,16 @@ def approximate_position(coords_and_distance):
         for flag_two in coords_and_distance:
             if flag_one == flag_two:
                 continue
-            i += 1
-            unrotated_offset_from_flag_one_1 = trilaterate_offset(flag_one, flag_two)
-            unrotated_offset_from_flag_one_2 = (
-            unrotated_offset_from_flag_one_1[0], -unrotated_offset_from_flag_one_1[1])
 
+            # The trilateration algorithm assumes horizontally aligned flags
+            (possible_offset_1, possible_offset_2) = trilaterate_offset(flag_one, flag_two)
             radians_to_rotate = calculate_angle_between(flag_one[0], flag_two[0])
+            # To accommodate this, the offsets are rotated
+            corrected_offset_from_flag_one_1 = rotate_coordinate(possible_offset_1, radians_to_rotate)
+            corrected_offset_from_flag_one_2 = rotate_coordinate(possible_offset_2, radians_to_rotate)
 
-            corrected_offset_from_flag_one_1 = rotate_coordinate(unrotated_offset_from_flag_one_1, radians_to_rotate)
-            corrected_offset_from_flag_one_2 = rotate_coordinate(unrotated_offset_from_flag_one_2, radians_to_rotate)
-
-            if i == 1:
-                print(i, (flag_one[0][0] + corrected_offset_from_flag_one_1[0]), (flag_one[0][1] + corrected_offset_from_flag_one_1[1]))
-                print(i, (flag_one[0][0] + corrected_offset_from_flag_one_2[0]), (flag_one[0][1] + corrected_offset_from_flag_one_2[1]))
+            print(i, flag_one[0] - corrected_offset_from_flag_one_1)
+            print(i, flag_one[0] - corrected_offset_from_flag_one_2)
 
 
 def approx_position(txt: str):
@@ -298,8 +305,7 @@ def approx_position(txt: str):
     # print(txt)
 
 
-
-flag_two = ((0, 0), 4.242640687)
+'''flag_two = ((0, 0), 4.242640687)
 flag_one = ((9, 4), 6.08276253)
 unrotated_offset_from_flag_one_1 = trilaterate_offset(flag_one, flag_two)
 unrotated_offset_from_flag_one_2 = (unrotated_offset_from_flag_one_1[0], -unrotated_offset_from_flag_one_1[1])
@@ -310,3 +316,4 @@ corrected_offset_from_flag_one_2 = rotate_coordinate(unrotated_offset_from_flag_
 
 print((flag_one[0][0] - corrected_offset_from_flag_one_1[0]), (flag_one[0][1] - corrected_offset_from_flag_one_1[1]))
 print((flag_one[0][0] - corrected_offset_from_flag_one_2[0]), (flag_one[0][1] - corrected_offset_from_flag_one_2[1]))
+'''
