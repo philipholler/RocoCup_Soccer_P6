@@ -6,7 +6,7 @@ from math import sqrt, atan2, degrees
 
 from world import Coordinate
 
-REAL_NUM_REGEX = "[0-9]*.?[0-9]*"
+REAL_NUM_REGEX = "[0-9]*\\.?[0-9]*"
 SIGNED_INT_REGEX = "[-0-9]*"
 ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
 
@@ -215,18 +215,19 @@ def extract_flag_identifiers(flags):
 
 
 def extract_flag_distances(flags):
-    flag_distance_regex = ".*\\(flag [^\\)]*\\) ({0})".format(REAL_NUM_REGEX)
-    flag_identifiers = []
+    flag_distance_regex = ".*\\(flag [^\\)]*\\) ({0}) ".format(REAL_NUM_REGEX)
+    flag_distances = []
     for flag in flags:
         m = match(flag_distance_regex, flag)
-        flag_identifiers.append(m.group(1).replace(" ", ""))
-    return flag_identifiers
+        flag_distances.append(m.group(1).replace(" ", ""))
+    return flag_distances
 
 
 def extract_flag_coordinates(flag_ids):
     coords = []
     for flag_id in flag_ids:
-        coords.append(Coordinate(FLAG_COORDS.get(flag_id)))
+        coordpair = FLAG_COORDS.get(flag_id)
+        coords.append(Coordinate(coordpair[0], coordpair[1]))
     return coords
 
 
@@ -294,11 +295,9 @@ def solve_trilateration(flag_1, flag_2):
 
 def approximate_position(coords_and_distance):
     i = 0
-    for flag_2 in coords_and_distance:
-        for flag_1 in coords_and_distance:
-            if flag_2 == flag_1:
-                continue
-            print(solve_trilateration(flag_2, flag_1))
+    flag_1 = coords_and_distance[0]
+    flag_2 = coords_and_distance[1]
+    print(solve_trilateration(flag_1, flag_2))
 
 
 def approx_position(txt: str):
