@@ -268,7 +268,8 @@ def trilaterate_offset(flag_one, flag_two):
     # This calculation provides two possible offset solutions (x, y) and (x, -y)
     return Coordinate(x, y), Coordinate(x, -y)
 
-# Calculates angle between two points (from origin (0, 0))
+
+# Calculates angle between two points (relative to the origin (0, 0))
 def calculate_angle_between(coordinate1, coordinate2):
     return atan2(coordinate1.pos_y - coordinate2.pos_y, coordinate1.pos_x - coordinate2.pos_x)
 
@@ -279,22 +280,25 @@ def rotate_coordinate(coord, radians_to_rotate):
     return Coordinate(new_x, new_y)
 
 
+def solve_trilateration(flag_1, flag_2):
+    (possible_offset_1, possible_offset_2) = trilaterate_offset(flag_1, flag_2)
+    # The trilateration algorithm assumes horizontally aligned flags
+    # To resolve this, the solution is calculated as if the flags were horizontally aligned
+    # and is then rotated to match the actual angle
+    radians_to_rotate = calculate_angle_between(flag_1[0], flag_2[0])
+    corrected_offset_from_flag_one_1 = rotate_coordinate(possible_offset_1, radians_to_rotate)
+    corrected_offset_from_flag_one_2 = rotate_coordinate(possible_offset_2, radians_to_rotate)
+
+    return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
+
+
 def approximate_position(coords_and_distance):
     i = 0
-    for flag_one in coords_and_distance:
-        for flag_two in coords_and_distance:
-            if flag_one == flag_two:
+    for flag_2 in coords_and_distance:
+        for flag_1 in coords_and_distance:
+            if flag_2 == flag_1:
                 continue
-
-            # The trilateration algorithm assumes horizontally aligned flags
-            (possible_offset_1, possible_offset_2) = trilaterate_offset(flag_one, flag_two)
-            radians_to_rotate = calculate_angle_between(flag_one[0], flag_two[0])
-            # To accommodate this, the offsets are rotated
-            corrected_offset_from_flag_one_1 = rotate_coordinate(possible_offset_1, radians_to_rotate)
-            corrected_offset_from_flag_one_2 = rotate_coordinate(possible_offset_2, radians_to_rotate)
-
-            print(i, flag_one[0] - corrected_offset_from_flag_one_1)
-            print(i, flag_one[0] - corrected_offset_from_flag_one_2)
+            print(solve_trilateration(flag_2, flag_1))
 
 
 def approx_position(txt: str):
