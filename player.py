@@ -1,5 +1,6 @@
 import time
 
+import parsing
 import player_state
 import player_connection
 
@@ -17,7 +18,7 @@ class Player:
         self.player_conn.connect_to_server(self.player_state)
 
         # Position player
-        self.player_conn.send_message("(move -10 -10)")
+        self.player_conn.send_message("(move -10 0)")
 
         # Start main logic loop for player
         self.__main_loop()
@@ -80,12 +81,12 @@ class Player:
             if msg is not None:
                 self.__update_state(msg)
                 if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
-                    self.player_conn.send_message("(turn 5)")
-                    time.sleep(0.1)
+                    #self.player_conn.send_message("(turn 5)")
+                    #time.sleep(0.1)
                     self.player_conn.send_message("(dash 50)")
                     self.player_conn.send_message("(say faggot)")
-                if self.player_state.player_num == "2" and self.player_state.team_name == "Team1":
-                    print(msg)
+                if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
+                    parsing.approx_position(msg)
 
     def __update_state(self, msg: str):
         a = self.player_state  # YADA YADA
