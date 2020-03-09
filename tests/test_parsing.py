@@ -63,3 +63,5 @@ class Test(TestCase):
 def is_same_coordinate(c1, c2, precision=0.1):
     difference = c1 - c2
     return abs(difference.pos_y) <= precision and abs(difference.pos_x) < precision
+
+
