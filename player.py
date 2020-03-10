@@ -2,6 +2,7 @@ import time
 
 import player_state
 import player_connection
+import parsing
 
 
 class Player:
@@ -74,19 +75,21 @@ class Player:
 
     # Add main functionality of player
     def __main_loop(self):
+        my_bool = True
         while True:
-            time.sleep(0.1)  # Server tick rate 10 / second
             msg = self.player_conn.receive_message()
-            if msg is not None:
-                self.__update_state(msg)
+            if my_bool:
+                self.player_conn.send_message("(dash 50)")
+                my_bool = False
+            else:
+                self.player_conn.send_message("(turn 20)")
+                my_bool = True
+            '''if msg is not None:
+                parsing.parse_message_update_state(msg, self.player_state)
                 if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
                     self.player_conn.send_message("(turn 5)")
                     time.sleep(0.1)
                     self.player_conn.send_message("(dash 50)")
                     self.player_conn.send_message("(say faggot)")
                 if self.player_state.player_num == "2" and self.player_state.team_name == "Team1":
-                    print(msg)
-
-    def __update_state(self, msg: str):
-        a = self.player_state  # YADA YADA
-        return msg
+                    print(msg)'''

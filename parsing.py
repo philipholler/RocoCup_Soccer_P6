@@ -4,7 +4,6 @@ import player_state
 REAL_NUM_REGEX = "[0-9]*.?[0-9]*"
 SIGNED_INT_REGEX = "[-0-9]*"
 ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
-ASCII_STRING_REGEX = "[a-z]"
 
 
 def parse_message_update_state(msg: str, ps: player_state):
