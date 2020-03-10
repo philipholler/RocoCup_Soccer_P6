@@ -60,7 +60,6 @@ def __parse_body_sense(text: str, ps: player_state):
     regex_string += ".*dash ({0})\\).*turn ({1})\\)"
     regex_string = regex_string.format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
 
-    print(regex_string)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
@@ -174,10 +173,9 @@ FLAG_COORDS = {
 def parse_body_sense(text):
     # Will view_mode ever change from "high normal"?
     regex_string = ".*sense_body ({1}).*stamina ({0}) ({0})\\).*speed ({0})\\).*kick ({0})\\)"
-    regex_string += ".*dash ({0})\\).*turn ({1})\\)".format(REAL_NUM_REGEX, INT_REGEX)
-    regex_string = regex_string.format(REAL_NUM_REGEX, INT_REGEX)
+    regex_string += ".*dash ({0})\\).*turn ({1})\\)".format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
+    regex_string = regex_string.format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
 
-    print(regex_string)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
@@ -199,7 +197,7 @@ def parse_goal(text):
 
 
 def parse_players(text):
-    flag_regex = "\\(\\(".format(REAL_NUM_REGEX, INT_REGEX)
+    flag_regex = "\\(\\(".format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
     return re.findall(flag_regex, text)
 
 
@@ -242,7 +240,6 @@ def zip_flag_coords_distance(flags):
 
     for i in range(0, flag_ids.__len__()):
         coords_zipped_distance.append((flag_coords.__getitem__(i), flag_distances.__getitem__(i)))
-        print(coords_zipped_distance.__getitem__(i))
 
     return coords_zipped_distance
 
@@ -280,8 +277,6 @@ def approximate_position(coords_and_distance):
     unrotated_offset_from_flag_one = trilaterate_offset(flag_one, flag_two)
     radians_to_rotate = calculate_angle_between((1, 0), flag_two[0])
     corrected_offset_from_flag_one = rotate_coordinate(unrotated_offset_from_flag_one, radians_to_rotate)
-    print(unrotated_offset_from_flag_one)
-    print(corrected_offset_from_flag_one)
 
 parsed_flags = parse_flags(
     "(see 0 ((flag r b) 48.9 29) ((flag g r b) 42.5 -4) ((goal r) 43.8 -13) ((flag g r t) 45.6 -21) ("

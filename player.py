@@ -28,8 +28,6 @@ class Player(threading.Thread):
 
     def run(self) -> None:
         super().run()
-        while True:
-            continue
 
 
 

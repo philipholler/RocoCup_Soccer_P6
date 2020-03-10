@@ -6,7 +6,7 @@ import time
 import player
 
 TEAM_NAMES = ["Team1", "Team2"]
-NUM_PLAYERS = 1
+NUM_PLAYERS = 11
 
 player_threads = []
 

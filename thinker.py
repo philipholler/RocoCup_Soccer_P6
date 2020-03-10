@@ -28,6 +28,7 @@ class Thinker(threading.Thread):
             self.think()
 
     def think(self):
+        time.sleep(0.1)
         my_string: str = ""
         while not self.input_queue.empty():
             char = self.input_queue.get()
