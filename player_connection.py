@@ -1,26 +1,47 @@
 import re
+import select
 import socket
+import player_state
+import threading
+import thinker
+import queue
 
 
-class PlayerConnection:
+class PlayerConnection(threading.Thread):
 
-    def __init__(self, UDP_IP, UDP_PORT) -> None:
+    def __init__(self, UDP_IP, UDP_PORT, think: thinker.Thinker):
+        super().__init__()
         self.addr = (UDP_IP, UDP_PORT)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setblocking(False)
+        self.think = think
+        self.player_conn = None
+        self.connected = False
+        self.action_queue = queue.Queue()
 
-    def connect_to_server(self, player_state):
-        self.send_message("(init " + player_state.team_name + ")")
+    def start(self):
+        super().start()
 
-        msg_received = self.receive_message()  # buffer size is 1024 bytes
-        regex = re.compile("\\(init ([lr]) ([0-9]*)")
-        match = regex.match(msg_received.__str__())
-        player_state.side = match.group(1)
-        player_state.player_num = match.group(2)
+    def run(self):
+        super().run()
+        while True:
+            while True:
+                msg = self.receive_message()
+                if msg is None:
+                    break
+                self.think.input_queue.put(msg)
+
+            while self.action_queue.not_empty:
+                for msg in self.action_queue.get():
+                    self.send_message(msg)
 
     def send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
         self.sock.sendto(bytes_to_send, self.addr)
 
     def receive_message(self):
-        player_info = self.sock.recv(1024).decode()
-        return player_info
+        ready = select.select([self.sock], [], [], 0.02)
+        if ready[0]:
+            player_info = self.sock.recv(1024)
+            return player_info.decode()
+        return None

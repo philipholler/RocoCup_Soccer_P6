@@ -11,7 +11,15 @@ def parse_message_update_state(msg: str, ps: player_state):
         parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
         parse_body_sense(msg, ps)
+    elif msg.startswith("(init"):
+        parse_init(msg, ps)
 
+
+def parse_init(msg, ps: player_state.PlayerState):
+    regex = re.compile("\\(init ([lr]) ([0-9]*)")
+    matched = regex.match(msg.__str__())
+    ps.side = matched.group(1)
+    ps.player_num = matched.group(2)
 
 # Three different modes
 # example: (hear 0 referee kick_off_l)
