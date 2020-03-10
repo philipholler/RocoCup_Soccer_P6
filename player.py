@@ -87,14 +87,14 @@ class Player:
             if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
                 # self.player_conn.send_message("(turn 5)")
                 # time.sleep(0.1)
-                if keyboard.is_pressed('w'):
+                '''if keyboard.is_pressed('w'):
                     self.player_conn.send_message("(dash 50)")
                 if keyboard.is_pressed('s'):
                     self.player_conn.send_message("(dash -50)")
                 if keyboard.is_pressed('a'):
                     self.player_conn.send_message("(turn -20)")
                 if keyboard.is_pressed('d'):
-                    self.player_conn.send_message("(turn 20)")
+                    self.player_conn.send_message("(turn 20)")'''
             '''
             if msg is not None:
                 self.__update_state(msg)

@@ -1,7 +1,6 @@
 import math
 import re
 import player_state
-
 from math import sqrt, atan2, degrees
 
 from world import Coordinate
@@ -293,11 +292,23 @@ def solve_trilateration(flag_1, flag_2):
     return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
 
 
+def get_all_combinations(original_list):
+    combinations = []
+
+    for i in range(0, len(original_list) - 1):
+        for j in range(i + 1, len(original_list)):
+            combinations.append((original_list[i], original_list[j]))
+
+    return combinations
+
+
 def approximate_position(coords_and_distance):
-    i = 0
-    flag_1 = coords_and_distance[0]
-    flag_2 = coords_and_distance[1]
-    print(solve_trilateration(flag_1, flag_2))
+    solutions = []
+    flag_combinations = get_all_combinations(coords_and_distance)
+    for combination in flag_combinations:
+        possible_solutions = solve_trilateration(combination[0], combination[1])
+        solutions.append(possible_solutions[0])
+        solutions.append(possible_solutions[1])
 
 
 def approx_position(txt: str):
@@ -308,17 +319,3 @@ def approx_position(txt: str):
         return
     approximate_position(zip_flag_coords_distance(parsed_flags))
     # print(txt)
-
-
-'''flag_two = ((0, 0), 4.242640687)
-flag_one = ((9, 4), 6.08276253)
-unrotated_offset_from_flag_one_1 = trilaterate_offset(flag_one, flag_two)
-unrotated_offset_from_flag_one_2 = (unrotated_offset_from_flag_one_1[0], -unrotated_offset_from_flag_one_1[1])
-radians_to_rotate = calculate_angle_between(flag_one[0], flag_two[0])
-print(degrees(radians_to_rotate))
-corrected_offset_from_flag_one_1 = rotate_coordinate(unrotated_offset_from_flag_one_1, radians_to_rotate)
-corrected_offset_from_flag_one_2 = rotate_coordinate(unrotated_offset_from_flag_one_2, radians_to_rotate)
-
-print((flag_one[0][0] - corrected_offset_from_flag_one_1[0]), (flag_one[0][1] - corrected_offset_from_flag_one_1[1]))
-print((flag_one[0][0] - corrected_offset_from_flag_one_2[0]), (flag_one[0][1] - corrected_offset_from_flag_one_2[1]))
-'''
