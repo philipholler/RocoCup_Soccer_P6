@@ -29,11 +29,11 @@ class Thinker(threading.Thread):
 
     def think(self):
         my_string: str = ""
-        while self.input_queue.not_empty:
+        while not self.input_queue.empty():
             char = self.input_queue.get()
             my_string = my_string + str(char)
         if my_string != "":
             parsing.parse_message_update_state(my_string, self.player_state)
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
-            print("Hej")
+            self.player_conn.action_queue.put("(dash 50)")
         return

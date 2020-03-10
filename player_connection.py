@@ -31,7 +31,7 @@ class PlayerConnection(threading.Thread):
                     break
                 self.think.input_queue.put(msg)
 
-            while self.action_queue.not_empty:
+            while not self.action_queue.empty():
                 my_string: str = ""
                 char = self.action_queue.get()
                 my_string = my_string + str(char)
