@@ -64,7 +64,6 @@ def __parse_body_sense(text: str, ps: player_state):
     regex_string += ".*dash ({0})\\).*turn ({1})\\)"
     regex_string = regex_string.format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
 
-    print(regex_string)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
@@ -181,7 +180,6 @@ def parse_body_sense(text):
     regex_string += ".*dash ({0})\\).*turn ({1})\\)".format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
     regex_string = regex_string.format(REAL_NUM_REGEX, SIGNED_INT_REGEX)
 
-    print(regex_string)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
@@ -302,10 +300,11 @@ def solve_trilateration(flag_1, flag_2):
 
 
 def approximate_position(coords_and_distance):
-    i = 0
-    flag_1 = coords_and_distance[0]
-    flag_2 = coords_and_distance[1]
-    print(solve_trilateration(flag_1, flag_2))
+    flag_one = coords_and_distance.__getitem__(0)
+    flag_two = coords_and_distance.__getitem__(1)
+    unrotated_offset_from_flag_one = trilaterate_offset(flag_one, flag_two)
+    radians_to_rotate = calculate_angle_between((1, 0), flag_two[0])
+    corrected_offset_from_flag_one = rotate_coordinate(unrotated_offset_from_flag_one, radians_to_rotate)
 
 
 def approx_position(txt: str):

@@ -46,6 +46,5 @@ class PlayerConnection(threading.Thread):
         ready = select.select([self.sock], [], [], 0.02)
         if ready[0]:
             player_info = self.sock.recv(1024)
-            print("Received msg: " + player_info.decode())
             return player_info.decode()
         return None
