@@ -18,7 +18,9 @@ class Thinker(threading.Thread):
 
     def start(self) -> None:
         super().start()
-        self.player_conn.action_queue.put("(init " + self.player_state.team_name + ")")
+        init_string = "(init " + self.player_state.team_name + ")"
+        self.player_conn.action_queue.put(init_string)
+        self.player_conn.action_queue.put("(move -10 -10)")
 
     def run(self) -> None:
         super().run()
@@ -26,8 +28,12 @@ class Thinker(threading.Thread):
             self.think()
 
     def think(self):
-        for msg in self.input_queue.get():
-            parsing.parse_message_update_state(msg, self.player_state)
-            if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
-                print("Msg: ", msg)
+        my_string: str = ""
+        while self.input_queue.not_empty:
+            char = self.input_queue.get()
+            my_string = my_string + str(char)
+        if my_string != "":
+            parsing.parse_message_update_state(my_string, self.player_state)
+        if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
+            print("Hej")
         return

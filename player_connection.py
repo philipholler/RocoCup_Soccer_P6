@@ -32,8 +32,11 @@ class PlayerConnection(threading.Thread):
                 self.think.input_queue.put(msg)
 
             while self.action_queue.not_empty:
-                for msg in self.action_queue.get():
-                    self.__send_message(msg)
+                my_string: str = ""
+                char = self.action_queue.get()
+                my_string = my_string + str(char)
+                if my_string != "":
+                    self.__send_message(my_string)
 
     def __send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
@@ -43,5 +46,6 @@ class PlayerConnection(threading.Thread):
         ready = select.select([self.sock], [], [], 0.02)
         if ready[0]:
             player_info = self.sock.recv(1024)
+            print("Received msg: " + player_info.decode())
             return player_info.decode()
         return None
