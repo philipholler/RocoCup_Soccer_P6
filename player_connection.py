@@ -1,4 +1,5 @@
 import re
+import select
 import socket
 
 
@@ -7,6 +8,7 @@ class PlayerConnection:
     def __init__(self, UDP_IP, UDP_PORT) -> None:
         self.addr = (UDP_IP, UDP_PORT)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setblocking(False)
 
     def connect_to_server(self, player_state):
         self.send_message("(init " + player_state.team_name + ")")
@@ -22,5 +24,9 @@ class PlayerConnection:
         self.sock.sendto(bytes_to_send, self.addr)
 
     def receive_message(self):
-        player_info = self.sock.recv(1024).decode()
-        return player_info
+        ready = select.select([self.sock], [], [], 0.02)
+        if ready[0]:
+            player_info = self.sock.recv(1024)
+            return player_info.decode()
+
+        return None

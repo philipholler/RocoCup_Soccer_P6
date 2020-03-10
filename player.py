@@ -3,10 +3,10 @@ import time
 import parsing
 import player_state
 import player_connection
+import keyboard
 
 
 class Player:
-
     # Start up the player
     def __init__(self, team: str, UDP_PORT, UDP_IP) -> None:
         # Initialise state
@@ -76,18 +76,46 @@ class Player:
     # Add main functionality of player
     def __main_loop(self):
         while True:
-            time.sleep(0.1)  # Server tick rate 10 / second
             msg = self.player_conn.receive_message()
+            while True:
+                msg = self.player_conn.receive_message()
+                if msg is None:
+                    break
+                self.__update_state(msg)
+
+            time.sleep(0.05)  # Server tick rate 10 / second
+            if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
+                # self.player_conn.send_message("(turn 5)")
+                # time.sleep(0.1)
+                if keyboard.is_pressed('w'):
+                    self.player_conn.send_message("(dash 50)")
+                if keyboard.is_pressed('s'):
+                    self.player_conn.send_message("(dash -50)")
+                if keyboard.is_pressed('a'):
+                    self.player_conn.send_message("(turn -20)")
+                if keyboard.is_pressed('d'):
+                    self.player_conn.send_message("(turn 20)")
+            '''
             if msg is not None:
                 self.__update_state(msg)
                 if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
                     #self.player_conn.send_message("(turn 5)")
                     #time.sleep(0.1)
-                    self.player_conn.send_message("(dash 50)")
-                    self.player_conn.send_message("(say faggot)")
+                    if keyboard.is_pressed('w'):
+                        self.player_conn.send_message("(dash 50)")
+                        print("dashing")
+                    if keyboard.is_pressed('s'):
+                        self.player_conn.send_message("(dash -50)")
+                    if keyboard.is_pressed('a'):
+                        self.player_conn.send_message("(turn -20)")
+                    if keyboard.is_pressed('d'):
+                        self.player_conn.send_message("(turn 20)")
                 if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
                     parsing.approx_position(msg)
+            '''
 
     def __update_state(self, msg: str):
         a = self.player_state  # YADA YADA
+        if self.player_state.player_num == "1" and self.player_state.team_name == "Team1":
+            parsing.approx_position(msg)
         return msg

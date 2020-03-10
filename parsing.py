@@ -304,6 +304,8 @@ def approx_position(txt: str):
     if not txt.startswith("(see"):
         return
     parsed_flags = parse_flags(txt)
+    if len(parsed_flags) < 2:
+        return
     approximate_position(zip_flag_coords_distance(parsed_flags))
     # print(txt)
 
