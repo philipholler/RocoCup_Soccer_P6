@@ -18,9 +18,7 @@ class Thinker(threading.Thread):
 
     def start(self) -> None:
         super().start()
-        self.player_conn.send_message("(init " + self.player_state.team_name + ")")
-        msg = self.player_conn.receive_message()
-        parsing.parse_message_update_state(msg, self.player_state)
+        self.player_conn.action_queue.put("(init " + self.player_state.team_name + ")")
 
     def run(self) -> None:
         super().run()
@@ -29,6 +27,7 @@ class Thinker(threading.Thread):
 
     def think(self):
         for msg in self.input_queue.get():
+            parsing.parse_message_update_state(msg, self.player_state)
             if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
                 print("Msg: ", msg)
         return

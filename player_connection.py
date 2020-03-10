@@ -26,20 +26,20 @@ class PlayerConnection(threading.Thread):
         super().run()
         while True:
             while True:
-                msg = self.receive_message()
+                msg = self.__receive_message()
                 if msg is None:
                     break
                 self.think.input_queue.put(msg)
 
             while self.action_queue.not_empty:
                 for msg in self.action_queue.get():
-                    self.send_message(msg)
+                    self.__send_message(msg)
 
-    def send_message(self, msg: str):
+    def __send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
         self.sock.sendto(bytes_to_send, self.addr)
 
-    def receive_message(self):
+    def __receive_message(self):
         ready = select.select([self.sock], [], [], 0.02)
         if ready[0]:
             player_info = self.sock.recv(1024)
