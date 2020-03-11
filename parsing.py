@@ -299,6 +299,26 @@ def solve_trilateration(flag_1, flag_2):
     return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
 
 
+# Trilateration function from 101computing.net
+def solve_trilateration(flag_1, flag_2, flag_3):
+    r1 = flag_1[1]
+    r2 = flag_2[1]
+    r3 = flag_3[1]
+    c1 = flag_1[0]
+    c2 = flag_2[0]
+    c3 = flag_3[0]
+
+    A = 2 * c2.pos_x - 2 * c1.pos_x
+    B = 2 * c2.pos_y - 2 * c1.pos_y
+    C = r1 ** 2 - r2 ** 2 - c1.pos_x ** 2 + c2.pos_x ** 2 - c1.pos_x ** 2 + c2.pos_y ** 2
+    D = 2 * c3.pos_x - 2 * c2.pos_x
+    E = 2 * c3.pos_y - 2 * c2.pos_y
+    F = r2 ** 2 - r3 ** 2 - c2.pos_x ** 2 + c3.pos_x ** 2 - c2.pos_y ** 2 + c3.pos_y ** 2
+    x = (C * E - F * B) / (E * A - B * D)
+    y = (C * D - A * F) / (B * D - A * E)
+    return Coordinate(x, y)
+
+
 def approximate_position(coords_and_distance):
     flag_one = coords_and_distance.__getitem__(0)
     flag_two = coords_and_distance.__getitem__(1)
@@ -310,10 +330,12 @@ def approximate_position(coords_and_distance):
 def approx_position(txt: str):
     if not txt.startswith("(see"):
         return
+
     parsed_flags = parse_flags(txt)
-    if len(parsed_flags) < 2:
-        return
-    approximate_position(zip_flag_coords_distance(parsed_flags))
+    if len(parsed_flags) >= 3:
+        print(solve_trilateration(parsed_flags[0],parsed_flags[1],parsed_flags[2]))
+
+    #approximate_position(zip_flag_coords_distance(parsed_flags))
     # print(txt)
 
 
