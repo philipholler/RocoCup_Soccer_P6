@@ -31,6 +31,7 @@ class PlayerConnection(threading.Thread):
                     break
                 self.think.input_queue.put(msg)
 
+            # Todo should not take single chars
             while not self.action_queue.empty():
                 my_string: str = ""
                 char = self.action_queue.get()

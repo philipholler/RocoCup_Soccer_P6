@@ -20,7 +20,6 @@ class Thinker(threading.Thread):
         super().start()
         init_string = "(init " + self.player_state.team_name + ")"
         self.player_conn.action_queue.put(init_string)
-        self.player_conn.action_queue.put("(move -10 -10)")
 
     def run(self) -> None:
         super().run()
@@ -30,6 +29,7 @@ class Thinker(threading.Thread):
     def think(self):
         time.sleep(0.1)
         my_string: str = ""
+        # todo should not take single chars
         while not self.input_queue.empty():
             char = self.input_queue.get()
             my_string = my_string + str(char)
@@ -38,3 +38,6 @@ class Thinker(threading.Thread):
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
             self.player_conn.action_queue.put("(dash 50)")
         return
+
+    def position_player(self):
+        self.player_conn.action_queue.put("(move -10 -10)")
