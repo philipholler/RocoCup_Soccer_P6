@@ -1,3 +1,4 @@
+from math import sqrt
 
 
 class Coordinate:
@@ -13,3 +14,6 @@ class Coordinate:
 
     def __sub__(self, other):
         return Coordinate(self.pos_x - other.pos_x, self.pos_y - other.pos_y)
+
+    def euclidean_distance_from(self, other):
+        return sqrt((self.pos_x - other.pos_x) ** 2 + (self.pos_y - other.pos_y) ** 2)

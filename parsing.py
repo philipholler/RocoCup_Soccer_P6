@@ -25,6 +25,7 @@ def __parse_init(msg, ps: player_state.PlayerState):
     ps.side = matched.group(1)
     ps.player_num = matched.group(2)
 
+
 # Three different modes
 # example: (hear 0 referee kick_off_l)
 # example: (hear 0 self *msg*)
@@ -298,24 +299,29 @@ def solve_trilateration(flag_1, flag_2):
     return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
 
 
-# Trilateration function from 101computing.net
-def solve_trilateration(flag_1, flag_2, flag_3):
-    r1 = flag_1[1]
-    r2 = flag_2[1]
-    r3 = flag_3[1]
+# Trilateration function from 101computing.net (DOES NOT WORK WHEN FLAGS ARE PERFECTLY ALIGNED!)
+'''def solve_trilateration(flag_1, flag_2, flag_3):
+    r1 = float(flag_1[1])
+    r2 = float(flag_2[1])
+    r3 = float(flag_3[1])
     c1 = flag_1[0]
     c2 = flag_2[0]
     c3 = flag_3[0]
 
+    print(str(c1) + str(r1) + " - " + str(c2) + str(r2) + " - " + str(c3) + str(r3))
+
     A = 2 * c2.pos_x - 2 * c1.pos_x
     B = 2 * c2.pos_y - 2 * c1.pos_y
-    C = r1 ** 2 - r2 ** 2 - c1.pos_x ** 2 + c2.pos_x ** 2 - c1.pos_x ** 2 + c2.pos_y ** 2
+    C = r1 ** 2 - r2 ** 2 - c1.pos_x ** 2 + c2.pos_x ** 2 - c1.pos_y ** 2 + c2.pos_y ** 2
     D = 2 * c3.pos_x - 2 * c2.pos_x
     E = 2 * c3.pos_y - 2 * c2.pos_y
     F = r2 ** 2 - r3 ** 2 - c2.pos_x ** 2 + c3.pos_x ** 2 - c2.pos_y ** 2 + c3.pos_y ** 2
+
+
     x = (C * E - F * B) / (E * A - B * D)
     y = (C * D - A * F) / (B * D - A * E)
-    return Coordinate(x, y)
+
+    return Coordinate(x, y)'''
 
 
 def get_all_combinations(original_list):
@@ -328,27 +334,61 @@ def get_all_combinations(original_list):
     return combinations
 
 
-def approximate_position(coords_and_distance):
-    flag_one = coords_and_distance.__getitem__(0)
-    flag_two = coords_and_distance.__getitem__(1)
-    unrotated_offset_from_flag_one = trilaterate_offset(flag_one, flag_two)
-    radians_to_rotate = calculate_angle_between((1, 0), flag_two[0])
-    corrected_offset_from_flag_one = rotate_coordinate(unrotated_offset_from_flag_one, radians_to_rotate)
+def find_all_solutions(coords_and_distance):
     solutions = []
     flag_combinations = get_all_combinations(coords_and_distance)
     for combination in flag_combinations:
         possible_solutions = solve_trilateration(combination[0], combination[1])
         solutions.append(possible_solutions[0])
         solutions.append(possible_solutions[1])
+    return solutions
 
+
+def average_point(cluster):
+    amount_of_clusters = len(cluster)
+    total_x = 0
+    total_y = 0
+
+    for point in cluster:
+        total_x += point.pos_x
+        total_y += point.pos_y
+
+    return Coordinate(total_x / amount_of_clusters, total_y / amount_of_clusters)
+
+
+def find_mean_solution(all_solutions):
+    amount_of_correct_solutions = len(all_solutions) * (len(all_solutions) - 1)
+    acceptable_distance = 3.0
+    cluster_size_best_solution = 0
+    best_cluster = []
+
+    for solution1 in all_solutions:
+        cluster = []
+        for solution2 in all_solutions:
+            if solution1 == solution2:
+                continue
+
+            if solution1.euclidean_distance_from(solution2) < acceptable_distance:
+                cluster.append(solution2)
+
+            if len(cluster) >= amount_of_correct_solutions:
+                return average_point(cluster)
+
+        if len(cluster) > cluster_size_best_solution:
+            cluster_size_best_solution = len(cluster)
+            best_cluster = cluster
+
+    return average_point(best_cluster)
 
 def approx_position(txt: str):
     if not txt.startswith("(see"):
         return
 
-    parsed_flags = parse_flags(txt)
-    if len(parsed_flags) >= 3:
-        print(solve_trilateration(parsed_flags[0],parsed_flags[1],parsed_flags[2]))
+    parsed_flags = zip_flag_coords_distance(parse_flags(txt))
+    print(len(parsed_flags))
+    if len(parsed_flags) < 2:
+        return  # TODO : maybe return none or return last known position
 
-    #approximate_position(zip_flag_coords_distance(parsed_flags))
+    all_solutions = find_all_solutions(parsed_flags)
+    print(find_mean_solution(all_solutions))
     # print(txt)

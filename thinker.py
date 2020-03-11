@@ -31,7 +31,10 @@ class Thinker(threading.Thread):
     def think(self):
         time.sleep(0.1)
         while not self.input_queue.empty():
-            parsing.parse_message_update_state(self.input_queue.get(), self.player_state)
+            msg = self.input_queue.get()
+            parsing.parse_message_update_state(msg, self.player_state)
+            if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
+                parsing.approx_position(msg)
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
             self.player_conn.action_queue.put("(dash 50)")
         return
