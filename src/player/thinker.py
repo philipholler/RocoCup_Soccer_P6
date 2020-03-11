@@ -19,7 +19,7 @@ class Thinker(threading.Thread):
         # Non processed inputs from server
         self.input_queue = queue.Queue()
 
-        self.strategy = strategy.Strategy()
+        self.strategy = strategy.Strategy(self.player_state)
 
     def start(self) -> None:
         super().start()
@@ -36,7 +36,10 @@ class Thinker(threading.Thread):
         time.sleep(0.1)
         while not self.input_queue.empty():
             # Parse message and update player state / world view
-            parsing.parse_message_update_state(self.input_queue.get(), self.player_state)
+            msg = self.input_queue.get()
+            parsing.parse_message_update_state(msg, self.player_state)
+            if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
+                print("Input msg: ", msg)
             # Give the strategy a new state
             self.strategy.player_state = self.player_state
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":

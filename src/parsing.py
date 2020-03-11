@@ -23,6 +23,7 @@ def __parse_init(msg, ps: player_state.PlayerState):
     ps.side = matched.group(1)
     ps.player_num = matched.group(2)
 
+
 # Three different modes
 # example: (hear 0 referee kick_off_l)
 # example: (hear 0 self *msg*)
@@ -51,6 +52,7 @@ def __parse_hear(text: str, ps: player_state):
         matched = regular_expression.match(text)
 
         return
+
 
 # example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
 # Group [1] = time, [2] = stamina, [3] = effort, [4] = speed, [5] = kick count, [6] = dash, [7] = turn
@@ -266,8 +268,8 @@ def calculate_angle_between(coordinate1, coordinate2):
 
 
 def rotate_coordinate(coord, radians_to_rotate):
-    new_x = math.cos(radians_to_rotate)*coord[0] - math.sin(radians_to_rotate)*coord[1]
-    new_y = math.sin(radians_to_rotate)*coord[0] + math.cos(radians_to_rotate)*coord[1]
+    new_x = math.cos(radians_to_rotate) * coord[0] - math.sin(radians_to_rotate) * coord[1]
+    new_y = math.sin(radians_to_rotate) * coord[0] + math.cos(radians_to_rotate) * coord[1]
     return new_x, new_y
 
 
@@ -278,6 +280,8 @@ def approximate_position(coords_and_distance):
     radians_to_rotate = calculate_angle_between((1, 0), flag_two[0])
     corrected_offset_from_flag_one = rotate_coordinate(unrotated_offset_from_flag_one, radians_to_rotate)
 
+
+
 parsed_flags = parse_flags(
     "(see 0 ((flag r b) 48.9 29) ((flag g r b) 42.5 -4) ((goal r) 43.8 -13) ((flag g r t) 45.6 -21) ("
     "(flag p r b) 27.9 21) ((flag p r c) 27.9 -21 0 0) ((Player) 1 -179) ((player Team2 2) 1 0 0 0) ("
@@ -285,6 +289,19 @@ parsed_flags = parse_flags(
 approximate_position(zip_flag_coords_distance(parsed_flags))
 
 
+'''
+- Returns the position of an object.
+object_rel_angle is the relative angle to the observer (-180 to 180)
+distance is the distance from the observer to the object
+my_x, my_y are the coordinates of the observer
+my_angle is the global angle of the observer
 
-# for m in reg_str.groups():
-#    print(m)
+example: 
+My pos: x: -19,  y: -16 my_angle 0
+(player Team1 9) 14.9 -7 0 0) = x:-4, y:-17,5
+'''
+def get_object_position(object_rel_angle, distance, my_x, my_y, my_angle):
+    actual_angle = my_angle + object_rel_angle
+    x = distance * math.cos(math.radians(actual_angle)) + my_x
+    y = distance * math.sin(math.radians(actual_angle)) + my_y
+    return x, y
