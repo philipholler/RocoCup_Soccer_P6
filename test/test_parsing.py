@@ -1,6 +1,6 @@
 from unittest import TestCase
 import parsing
-import player_state
+from player import player_state
 
 
 class Test(TestCase):

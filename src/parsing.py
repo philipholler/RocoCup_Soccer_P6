@@ -1,7 +1,7 @@
 import math
 import re
-import player_state
-from math import sqrt, atan2, degrees
+from player import player_state
+from math import sqrt, atan2
 
 REAL_NUM_REGEX = "[0-9]*.?[0-9]*"
 SIGNED_INT_REGEX = "[-0-9]*"

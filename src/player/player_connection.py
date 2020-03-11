@@ -1,13 +1,13 @@
 import select
 import socket
 import threading
-import thinker
+import player.thinker as thinker
 import queue
 
 
 class PlayerConnection(threading.Thread):
 
-    def __init__(self, UDP_IP, UDP_PORT, think: thinker.Thinker):
+    def __init__(self, UDP_IP, UDP_PORT, think):
         super().__init__()
         self.addr = (UDP_IP, UDP_PORT)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
