@@ -10,7 +10,7 @@ import threading
 class Player(threading.Thread):
 
     # Start up the player
-    def __init__(self, team: str, UDP_PORT, UDP_IP):
+    def __init__(self, team: str, UDP_PORT, UDP_IP) -> None:
         # Init thinker thread
         super().__init__()
         self.think = thinker.Thinker(team)

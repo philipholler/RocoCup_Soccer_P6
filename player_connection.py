@@ -1,7 +1,5 @@
-import re
 import select
 import socket
-import player_state
 import threading
 import thinker
 import queue
@@ -30,13 +28,8 @@ class PlayerConnection(threading.Thread):
                 if msg is None:
                     break
                 self.think.input_queue.put(msg)
-
             while not self.action_queue.empty():
-                my_string: str = ""
-                char = self.action_queue.get()
-                my_string = my_string + str(char)
-                if my_string != "":
-                    self.__send_message(my_string)
+                self.__send_message(self.action_queue.get())
 
     def __send_message(self, msg: str):
         bytes_to_send = str.encode(msg)

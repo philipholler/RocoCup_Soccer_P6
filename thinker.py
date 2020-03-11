@@ -5,6 +5,7 @@ import player_connection
 import time
 import re
 import parsing
+import random as r
 
 
 class Thinker(threading.Thread):
@@ -20,7 +21,7 @@ class Thinker(threading.Thread):
         super().start()
         init_string = "(init " + self.player_state.team_name + ")"
         self.player_conn.action_queue.put(init_string)
-        self.player_conn.action_queue.put("(move -10 -10)")
+        self.position_player()
 
     def run(self) -> None:
         super().run()
@@ -29,12 +30,14 @@ class Thinker(threading.Thread):
 
     def think(self):
         time.sleep(0.1)
-        my_string: str = ""
         while not self.input_queue.empty():
-            char = self.input_queue.get()
-            my_string = my_string + str(char)
-        if my_string != "":
-            parsing.parse_message_update_state(my_string, self.player_state)
+            parsing.parse_message_update_state(self.input_queue.get(), self.player_state)
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
             self.player_conn.action_queue.put("(dash 50)")
         return
+
+    def position_player(self):
+        x = r.randint(-20, 20)
+        y = r.randint(-20, 20)
+        move_action = "(move " + str(x) + " " + str(y) + ")"
+        self.player_conn.action_queue.put(move_action)
