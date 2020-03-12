@@ -296,6 +296,10 @@ distance is the distance from the observer to the object
 my_x, my_y are the coordinates of the observer
 my_angle is the global angle of the observer
 
+Formular:
+X= distance*cos(angle) +x0
+Y= distance*sin(angle) +y0
+
 example: 
 My pos: x: -19,  y: -16 my_angle 0
 (player Team1 9) 14.9 -7 0 0) = x:-4, y:-17,5
