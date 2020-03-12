@@ -10,6 +10,80 @@ SIGNED_INT_REGEX = "[-0-9]*"
 ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
 
 
+FLAG_COORDS = {
+    # perimiter flags
+    "tl50": (-50, 39),
+    "tl40": (-40, 39),
+    "tl30": (-30, 39),
+    "tl20": (-20, 39),
+    "tl10": (-10, 39),
+    "t0": (0, 40),
+    "tr10": (10, 39),
+    "tr20": (20, 39),
+    "tr30": (30, 39),
+    "tr40": (40, 39),
+    "tr50": (50, 39),
+
+    "rt30": (57.5, 30),
+    "rt20": (57.5, 20),
+    "rt10": (57.5, 10),
+    "r0": (57.5, 0),
+    "rb10": (57.5, -10),
+    "rb20": (57.5, -20),
+    "rb30": (57.5, -30),
+
+    "bl50": (-50, -39),
+    "bl40": (-40, -39),
+    "bl30": (-30, -39),
+    "bl20": (-20, -39),
+    "bl10": (-10, -39),
+    "b0": (0, -40),
+    "br10": (10, -39),
+    "br20": (20, -39),
+    "br30": (30, -39),
+    "br40": (40, -39),
+    "br50": (50, -39),
+
+    "lt30": (-57.5, 30),
+    "lt20": (-57.5, 20),
+    "lt10": (-57.5, 10),
+    "l0": (-57.5, 0),
+    "lb10": (-57.5, -10),
+    "lb20": (-57.5, -20),
+    "lb30": (-57.5, -30),
+
+    # goal flags ('t' and 'b' flags can change based on server parameter
+    # 'goal_width', but we leave their coords as the default values.
+    "glt": (-52.5, 7.01),
+    "gl": (-52.5, 0),
+    "glb": (-52.5, -7.01),
+
+    "grt": (52.5, 7.01),
+    "gr": (52.5, 0),
+    "grb": (52.5, -7.01),
+
+    # penalty flags
+    "plt": (-35, 20),
+    "plc": (-35, 0),
+    "plb": (-32, -20),
+
+    "prt": (35, 20),
+    "prc": (35, 0),
+    "prb": (32, -20),
+
+    # field boundary flags (on boundary lines)
+    "lt": (-52.5, 34),
+    "ct": (0, 34),
+    "rt": (52.5, 34),
+
+    "lb": (-52.5, -34),
+    "cb": (0, -34),
+    "rb": (52.5, -34),
+
+    # center flag
+    "c": (0, 0)
+}
+
 def parse_message_update_state(msg: str, ps: player_state):
     if msg.startswith("(hear"):
         __parse_hear(msg, ps)
@@ -97,79 +171,6 @@ def __flag_position(pos_x, pos_y):
 #    print(m)
 
 
-FLAG_COORDS = {
-    # perimiter flags
-    "tl50": (-50, 39),
-    "tl40": (-40, 39),
-    "tl30": (-30, 39),
-    "tl20": (-20, 39),
-    "tl10": (-10, 39),
-    "t0": (0, 40),
-    "tr10": (10, 39),
-    "tr20": (20, 39),
-    "tr30": (30, 39),
-    "tr40": (40, 39),
-    "tr50": (50, 39),
-
-    "rt30": (57.5, 30),
-    "rt20": (57.5, 20),
-    "rt10": (57.5, 10),
-    "r0": (57.5, 0),
-    "rb10": (57.5, -10),
-    "rb20": (57.5, -20),
-    "rb30": (57.5, -30),
-
-    "bl50": (-50, -39),
-    "bl40": (-40, -39),
-    "bl30": (-30, -39),
-    "bl20": (-20, -39),
-    "bl10": (-10, -39),
-    "b0": (0, -40),
-    "br10": (10, -39),
-    "br20": (20, -39),
-    "br30": (30, -39),
-    "br40": (40, -39),
-    "br50": (50, -39),
-
-    "lt30": (-57.5, 30),
-    "lt20": (-57.5, 20),
-    "lt10": (-57.5, 10),
-    "l0": (-57.5, 0),
-    "lb10": (-57.5, -10),
-    "lb20": (-57.5, -20),
-    "lb30": (-57.5, -30),
-
-    # goal flags ('t' and 'b' flags can change based on server parameter
-    # 'goal_width', but we leave their coords as the default values.
-    "glt": (-52.5, 7.01),
-    "gl": (-52.5, 0),
-    "glb": (-52.5, -7.01),
-
-    "grt": (52.5, 7.01),
-    "gr": (52.5, 0),
-    "grb": (52.5, -7.01),
-
-    # penalty flags
-    "plt": (-35, 20),
-    "plc": (-35, 0),
-    "plb": (-32, -20),
-
-    "prt": (35, 20),
-    "prc": (35, 0),
-    "prb": (32, -20),
-
-    # field boundary flags (on boundary lines)
-    "lt": (-52.5, 34),
-    "ct": (0, 34),
-    "rt": (52.5, 34),
-
-    "lb": (-52.5, -34),
-    "cb": (0, -34),
-    "rb": (52.5, -34),
-
-    # center flag
-    "c": (0, 0)
-}
 
 
 # example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
@@ -299,31 +300,6 @@ def solve_trilateration(flag_1, flag_2):
     return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
 
 
-# Trilateration function from 101computing.net (DOES NOT WORK WHEN FLAGS ARE PERFECTLY ALIGNED!)
-'''def solve_trilateration(flag_1, flag_2, flag_3):
-    r1 = float(flag_1[1])
-    r2 = float(flag_2[1])
-    r3 = float(flag_3[1])
-    c1 = flag_1[0]
-    c2 = flag_2[0]
-    c3 = flag_3[0]
-
-    print(str(c1) + str(r1) + " - " + str(c2) + str(r2) + " - " + str(c3) + str(r3))
-
-    A = 2 * c2.pos_x - 2 * c1.pos_x
-    B = 2 * c2.pos_y - 2 * c1.pos_y
-    C = r1 ** 2 - r2 ** 2 - c1.pos_x ** 2 + c2.pos_x ** 2 - c1.pos_y ** 2 + c2.pos_y ** 2
-    D = 2 * c3.pos_x - 2 * c2.pos_x
-    E = 2 * c3.pos_y - 2 * c2.pos_y
-    F = r2 ** 2 - r3 ** 2 - c2.pos_x ** 2 + c3.pos_x ** 2 - c2.pos_y ** 2 + c3.pos_y ** 2
-
-
-    x = (C * E - F * B) / (E * A - B * D)
-    y = (C * D - A * F) / (B * D - A * E)
-
-    return Coordinate(x, y)'''
-
-
 def get_all_combinations(original_list):
     combinations = []
 
@@ -357,13 +333,13 @@ def average_point(cluster):
 
 
 def find_mean_solution(all_solutions):
-    amount_of_correct_solutions = len(all_solutions) * (len(all_solutions) - 1)
+    amount_of_correct_solutions = (len(all_solutions) * (len(all_solutions) - 1)) / 2
     acceptable_distance = 3.0
     cluster_size_best_solution = 0
     best_cluster = []
 
     for solution1 in all_solutions:
-        cluster = []
+        cluster = [solution1]
         for solution2 in all_solutions:
             if solution1 == solution2:
                 continue
@@ -377,8 +353,8 @@ def find_mean_solution(all_solutions):
         if len(cluster) > cluster_size_best_solution:
             cluster_size_best_solution = len(cluster)
             best_cluster = cluster
-
     return average_point(best_cluster)
+
 
 def approx_position(txt: str):
     if not txt.startswith("(see"):
@@ -386,11 +362,16 @@ def approx_position(txt: str):
 
     parsed_flags = zip_flag_coords_distance(parse_flags(txt))
     if len(parsed_flags) < 2:
+        print("No flag can be seen - Position unknown")
         return  # TODO : maybe return none or return last known position
 
     all_solutions = find_all_solutions(parsed_flags)
-    print(find_mean_solution(all_solutions))
-    # print(txt)
+    if len(all_solutions) == 2:
+        print("two ambiguous solutions" + str(all_solutions[0]) + " - " + str(all_solutions[1]))
+        # estimate based on previous position
+    else:
+        # handle case where this return an uncertain result
+        print(find_mean_solution(all_solutions))
 
 
 '''
@@ -408,8 +389,11 @@ example:
 My pos: x: -19,  y: -16 my_angle 0
 (player Team1 9) 14.9 -7 0 0) = x:-4, y:-17,5
 '''
+
+
 def get_object_position(object_rel_angle, distance, my_x, my_y, my_angle):
     actual_angle = my_angle + object_rel_angle
     x = distance * math.cos(math.radians(actual_angle)) + my_x
     y = distance * math.sin(math.radians(actual_angle)) + my_y
     return x, y
+
