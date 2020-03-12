@@ -18,4 +18,3 @@ time.sleep(3)
 for team in TEAM_NAMES:
     for player_num in range(0, NUM_PLAYERS):
         player.Player(team, UDP_PORT, UDP_IP).start()
-

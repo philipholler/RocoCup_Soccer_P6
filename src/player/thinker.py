@@ -21,6 +21,8 @@ class Thinker(threading.Thread):
 
         self.strategy = strategy.Strategy(self.player_state)
 
+        self.my_bool = True
+
     def start(self) -> None:
         super().start()
         init_string = "(init " + self.player_state.team_name + ")"
@@ -38,12 +40,15 @@ class Thinker(threading.Thread):
             # Parse message and update player state / world view
             msg = self.input_queue.get()
             parsing.parse_message_update_state(msg, self.player_state)
-            if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
-                parsing.approx_position(msg)
             # Give the strategy a new state
             self.strategy.player_state = self.player_state
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
-            self.player_conn.action_queue.put("(dash 50)")
+            if self.my_bool:
+                self.player_conn.action_queue.put("(dash 100)")
+                self.my_bool = False
+            else:
+                self.player_conn.action_queue.put("(turn 20)")
+                self.my_bool = True
         return
 
     def position_player(self):
