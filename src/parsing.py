@@ -385,7 +385,6 @@ def approx_position(txt: str):
         return
 
     parsed_flags = zip_flag_coords_distance(parse_flags(txt))
-    print(len(parsed_flags))
     if len(parsed_flags) < 2:
         return  # TODO : maybe return none or return last known position
 

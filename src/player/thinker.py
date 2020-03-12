@@ -39,7 +39,7 @@ class Thinker(threading.Thread):
             msg = self.input_queue.get()
             parsing.parse_message_update_state(msg, self.player_state)
             if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
-                print("Input msg: ", msg)
+                parsing.approx_position(msg)
             # Give the strategy a new state
             self.strategy.player_state = self.player_state
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":

@@ -1,7 +1,6 @@
 import select
 import socket
 import threading
-import player.thinker as thinker
 import queue
 
 
