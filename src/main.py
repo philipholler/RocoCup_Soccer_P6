@@ -1,9 +1,7 @@
-import socket
-import player_connection
 import threading
 import os
 import time
-import player
+import player.player as player
 
 TEAM_NAMES = ["Team1", "Team2"]
 NUM_PLAYERS = 11

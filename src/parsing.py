@@ -1,7 +1,7 @@
 import math
 import re
-import player_state
-from math import sqrt, atan2, degrees
+from player import player_state
+from math import sqrt, atan2
 
 from world import Coordinate
 
@@ -392,3 +392,25 @@ def approx_position(txt: str):
     all_solutions = find_all_solutions(parsed_flags)
     print(find_mean_solution(all_solutions))
     # print(txt)
+
+
+'''
+- Returns the position of an object.
+object_rel_angle is the relative angle to the observer (-180 to 180)
+distance is the distance from the observer to the object
+my_x, my_y are the coordinates of the observer
+my_angle is the global angle of the observer
+
+Formular:
+X= distance*cos(angle) +x0
+Y= distance*sin(angle) +y0
+
+example: 
+My pos: x: -19,  y: -16 my_angle 0
+(player Team1 9) 14.9 -7 0 0) = x:-4, y:-17,5
+'''
+def get_object_position(object_rel_angle, distance, my_x, my_y, my_angle):
+    actual_angle = my_angle + object_rel_angle
+    x = distance * math.cos(math.radians(actual_angle)) + my_x
+    y = distance * math.sin(math.radians(actual_angle)) + my_y
+    return x, y

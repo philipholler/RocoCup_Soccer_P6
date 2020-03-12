@@ -1,9 +1,4 @@
-import time
-
-import player_state
-import player_connection
-import parsing
-import thinker
+from player import thinker, player_connection
 import threading
 
 

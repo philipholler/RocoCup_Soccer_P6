@@ -1,11 +1,10 @@
-import player_state
 import threading
 import queue
-import player_connection
+from player import player_connection, player_state
 import time
-import re
 import parsing
 import random as r
+import player.strategy as strategy
 
 
 class Thinker(threading.Thread):
@@ -13,9 +12,14 @@ class Thinker(threading.Thread):
         super().__init__()
         self.player_state = player_state.PlayerState()
         self.player_state.team_name = team_name
+        # Connection with the server
         self.player_conn: player_connection.PlayerConnection = None
+        # Queue for actions to be send
         self.action_queue = queue.Queue()
+        # Non processed inputs from server
         self.input_queue = queue.Queue()
+
+        self.strategy = strategy.Strategy(self.player_state)
 
     def start(self) -> None:
         super().start()
@@ -31,10 +35,13 @@ class Thinker(threading.Thread):
     def think(self):
         time.sleep(0.1)
         while not self.input_queue.empty():
+            # Parse message and update player state / world view
             msg = self.input_queue.get()
             parsing.parse_message_update_state(msg, self.player_state)
             if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
-                parsing.approx_position(msg)
+                print("Input msg: ", msg)
+            # Give the strategy a new state
+            self.strategy.player_state = self.player_state
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
             self.player_conn.action_queue.put("(dash 50)")
         return
