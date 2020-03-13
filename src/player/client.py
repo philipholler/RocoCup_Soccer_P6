@@ -2,7 +2,7 @@ from player import thinker, player_connection
 import threading
 
 
-class Player(threading.Thread):
+class Client(threading.Thread):
 
     # Start up the player
     def __init__(self, team: str, UDP_PORT, UDP_IP) -> None:

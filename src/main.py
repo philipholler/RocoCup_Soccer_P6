@@ -1,7 +1,7 @@
 import threading
 import os
 import time
-import player.player as player
+import player.client as player
 
 TEAM_NAMES = ["Team1", "Team2"]
 NUM_PLAYERS = 11
@@ -17,4 +17,4 @@ time.sleep(3)
 
 for team in TEAM_NAMES:
     for player_num in range(0, NUM_PLAYERS):
-        player.Player(team, UDP_PORT, UDP_IP).start()
+        player.Client(team, UDP_PORT, UDP_IP).start()
