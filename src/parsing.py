@@ -355,11 +355,8 @@ def __find_mean_solution(all_solutions):
     return __average_point(best_cluster)
 
 
-def __approx_position(txt: str):
-    if not txt.startswith("(see"):
-        return
-
-    parsed_flags = __zip_flag_coords_distance(__parse_flags(txt))
+def __approx_position(msg: str):
+    parsed_flags = __zip_flag_coords_distance(__parse_flags(msg))
     if len(parsed_flags) < 2:
         print("No flag can be seen - Position unknown")
         return  # TODO : maybe return none or return last known position

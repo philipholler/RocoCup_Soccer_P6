@@ -25,7 +25,7 @@ class PrecariousData:
         self.last_updated_time = initial_time
 
     @classmethod
-    def create_unknown_data(cls):
+    def unknown(cls):
         return cls(None, 0)
 
     def set_value(self, new_value, current_time):
