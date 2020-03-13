@@ -1,12 +1,13 @@
 import math
 import re
-from player import player_state
+from player import player_state, world
 from math import sqrt, atan2
 
+from player.player_state import PlayerState
 from player.world import Coordinate
 
 __REAL_NUM_REGEX = "[0-9]*\\.?[0-9]*"
-__SIGNED_INT_REGEX = "[-0-9]*"
+__SIGNED_INT_REGEX = "[-0-9]+"
 __ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
 __SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
 
@@ -85,7 +86,14 @@ __FLAG_COORDS = {
 }
 
 
+def _update_time(msg, state: PlayerState):
+    comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
+    state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
+
+
 def parse_message_update_state(msg: str, ps: player_state):
+    _update_time(msg, ps)
+
     if msg.startswith("(hear"):
         __parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -116,15 +124,17 @@ def __parse_see(msg, ps: player_state.PlayerState):
     players = []
     goals = []
     lines = []
-    for msg in matches:
-        if str(msg).startswith("((flag"):
-            flags.append(msg)
-        elif str(msg).startswith("((goal"):
-            goals.append(msg)
-        elif str(msg).startswith("((player"):
-            players.append(msg)
-        elif str(msg).startswith("((line"):
-            lines.append(msg)
+    for match in matches:
+        if str(match).startswith("((flag"):
+            flags.append(match)
+        elif str(match).startswith("((goal"):
+            goals.append(match)
+        elif str(match).startswith("((player"):
+            players.append(match)
+        elif str(match).startswith("((line"):
+            lines.append(match)
+
+    __approx_position(msg, ps)
 
 
 def __parse_init(msg, ps: player_state.PlayerState):
@@ -355,19 +365,52 @@ def __find_mean_solution(all_solutions):
     return __average_point(best_cluster)
 
 
-def __approx_position(msg: str):
+def is_possible_position(new_position: Coordinate, state: PlayerState):
+    if not world.is_inside_field_bounds(new_position):
+        return False
+
+    # If no information on previous state exists, then all positions inside the field are possible positions
+    if not state.position.is_value_known():
+        return True
+
+    ticks_since_update = state.world_view.sim_time - state.position.last_updated_time
+    possible_travel_distance = player_state.MAX_MOVE_DISTANCE_PER_TICK * ticks_since_update
+    return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
+
+
+def __approx_position(msg: str, state):
+    #if int(state.player_num) != 1 or str(state.team_name) != "Team1":
+    #    return
     parsed_flags = __zip_flag_coords_distance(__parse_flags(msg))
     if len(parsed_flags) < 2:
-        print("No flag can be seen - Position unknown")
-        return  # TODO : maybe return none or return last known position
+        # print("No flag can be seen - Position unknown")
+        return
 
     all_solutions = __find_all_solutions(parsed_flags)
     if len(all_solutions) == 2:
-        print("two ambiguous solutions" + str(all_solutions[0]) + " - " + str(all_solutions[1]))
-        # estimate based on previous position
+        # print("only two flags visible")
+        solution_1_plausible = is_possible_position(all_solutions[0], state)
+        solution_2_plausible = is_possible_position(all_solutions[1], state)
+
+        if solution_1_plausible and solution_2_plausible:
+            # print("both solutions match")
+            return
+
+        if solution_1_plausible:
+            state.position.set_value(all_solutions[0], state.world_view.sim_time)
+            # print(all_solutions[0])
+            return
+        if solution_2_plausible:
+            state.position.set_value(all_solutions[1], state.world_view.sim_time)
+            # print(all_solutions[1])
+            return
+
+        # print("no position trilaterations match previous positions")
     else:
         # handle case where this return an uncertain result
-        print(__find_mean_solution(all_solutions))
+        solution = __find_mean_solution(all_solutions)
+        state.position.set_value(solution, state.world_view.sim_time)
+        # print(solution)
 
 
 '''

@@ -47,7 +47,7 @@ class Thinker(threading.Thread):
                 self.player_conn.action_queue.put("(dash 100)")
                 self.my_bool = False
             else:
-                self.player_conn.action_queue.put("(turn 20)")
+                self.player_conn.action_queue.put("(turn 1)")
                 self.my_bool = True
         return
 
