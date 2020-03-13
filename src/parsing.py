@@ -232,8 +232,8 @@ def __extract_flag_distances(flags):
 def __extract_flag_coordinates(flag_ids):
     coords = []
     for flag_id in flag_ids:
-        coordpair = __FLAG_COORDS.get(flag_id)
-        coords.append(Coordinate(coordpair[0], coordpair[1]))
+        coord_pair = __FLAG_COORDS.get(flag_id)
+        coords.append(Coordinate(coord_pair[0], coord_pair[1]))
     return coords
 
 

@@ -17,3 +17,27 @@ class Coordinate:
 
     def euclidean_distance_from(self, other):
         return sqrt((self.pos_x - other.pos_x) ** 2 + (self.pos_y - other.pos_y) ** 2)
+
+
+class PrecariousData:
+    def __init__(self, initial_value, initial_time):
+        self._value = initial_value
+        self.last_updated_time = initial_time
+
+    @classmethod
+    def create_unknown_data(cls):
+        return cls(None, 0)
+
+    def set_value(self, new_value, current_time):
+        self._value = new_value
+        self.last_updated_time = current_time
+
+    def get_value(self):
+        return self._value
+
+    def is_value_known(self):
+        return self._value is not None
+
+    def set_value_unknown(self):
+        self._value = None
+
