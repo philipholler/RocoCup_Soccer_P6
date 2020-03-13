@@ -5,7 +5,6 @@ class World:
 
     def __init__(self) -> None:
         super().__init__()
-        self.other_players = [Player]
 
 
 class Coordinate:

@@ -1,4 +1,4 @@
-from player.world import PrecariousData, World
+from player.world import PrecariousData, World, Player
 
 MAX_MOVE_DISTANCE_PER_TICK = 2.5 # todo random guess. Look up max_speed in manual
 
@@ -21,3 +21,4 @@ class PlayerState:
 class WorldView:
     def __init__(self, sim_time):
         self.sim_time = sim_time
+        self.other_players = [Player]

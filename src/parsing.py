@@ -8,7 +8,7 @@ from player.world import Coordinate
 from player.world import Player
 
 __REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
-__SIGNED_INT_REGEX = "[-0-9]*"
+__SIGNED_INT_REGEX = "[-0-9]+"
 __ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
 __SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
 __TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
@@ -136,7 +136,7 @@ def __parse_see(msg, ps: player_state.PlayerState):
         elif str(msg).startswith("((line"):
             lines.append(msg)
 
-    __approx_position(msg)
+    __approx_position(msg, ps)
     __parse_players(players, ps)
 
 
