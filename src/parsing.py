@@ -1,8 +1,9 @@
 import math
 import re
-from player import player_state
+from player import player_state, world
 from math import sqrt, atan2
 
+from player.player_state import PlayerState
 from player.world import Coordinate
 from player.world import Player
 
@@ -87,7 +88,14 @@ __FLAG_COORDS = {
 }
 
 
+def _update_time(msg, state: PlayerState):
+    comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
+    state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
+
+
 def parse_message_update_state(msg: str, ps: player_state):
+    _update_time(msg, ps)
+
     if msg.startswith("(hear"):
         __parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -418,19 +426,52 @@ def __find_mean_solution(all_solutions):
     return __average_point(best_cluster)
 
 
-def __approx_position(msg: str):
+def is_possible_position(new_position: Coordinate, state: PlayerState):
+    if not world.is_inside_field_bounds(new_position):
+        return False
+
+    # If no information on previous state exists, then all positions inside the field are possible positions
+    if not state.position.is_value_known():
+        return True
+
+    ticks_since_update = state.world_view.sim_time - state.position.last_updated_time
+    possible_travel_distance = player_state.MAX_MOVE_DISTANCE_PER_TICK * ticks_since_update
+    return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
+
+
+def __approx_position(msg: str, state):
+    #if int(state.player_num) != 1 or str(state.team_name) != "Team1":
+    #    return
     parsed_flags = __zip_flag_coords_distance(__parse_flags(msg))
     if len(parsed_flags) < 2:
-        print("No flag can be seen - Position unknown")
-        return  # TODO : maybe return none or return last known position
+        # print("No flag can be seen - Position unknown")
+        return
 
     all_solutions = __find_all_solutions(parsed_flags)
     if len(all_solutions) == 2:
-        print("two ambiguous solutions" + str(all_solutions[0]) + " - " + str(all_solutions[1]))
-        # estimate based on previous position
+        # print("only two flags visible")
+        solution_1_plausible = is_possible_position(all_solutions[0], state)
+        solution_2_plausible = is_possible_position(all_solutions[1], state)
+
+        if solution_1_plausible and solution_2_plausible:
+            # print("both solutions match")
+            return
+
+        if solution_1_plausible:
+            state.position.set_value(all_solutions[0], state.world_view.sim_time)
+            # print(all_solutions[0])
+            return
+        if solution_2_plausible:
+            state.position.set_value(all_solutions[1], state.world_view.sim_time)
+            # print(all_solutions[1])
+            return
+
+        # print("no position trilaterations match previous positions")
     else:
         # handle case where this return an uncertain result
-        print(__find_mean_solution(all_solutions))
+        solution = __find_mean_solution(all_solutions)
+        state.position.set_value(solution, state.world_view.sim_time)
+        # print(solution)
 
 
 '''
@@ -455,14 +496,3 @@ def __get_object_position(object_rel_angle, distance, my_x, my_y, my_angle):
     x = distance * math.cos(math.radians(actual_angle)) + my_x
     y = distance * math.sin(math.radians(actual_angle)) + my_y
     return x, y
-
-
-ps = player_state.PlayerState()
-input = "(see 0 ((flag c) 50.4 -25) ((flag c b) 47 14) ((flag r t) 113.3 -29) ((flag r b) 98.5 7) ((flag g r b) " \
-        "99.5 -8) ((goal r) 100.5 -12) ((flag g r t) 102.5 -16) ((flag p r b) 81.5 -1) ((flag p r c) 84.8 -15) ((" \
-        "flag p r t) 91.8 -27) ((flag p l b) 9.7 -10 0 0) ((ball) 49.4 -25) ((player) 44.7 -24) ((player Team1 5) " \
-        "30 -41 0 0) ((player Team1) 33.1 -5) ((player Team1) 44.7 -28) ((player Team1) 44.7 -24) ((player Team1) " \
-        "40.4 -2) ((player) 60.3 7) ((player) 60.3 -16) ((player) 66.7 -20) ((player) 60.3 -31) ((player) 90 -39) (" \
-        "(player) 99.5 -9) ((player) 66.7 -10) ((player) 66.7 -21) ((player) 99.5 -19) ((player) 90 6) ((player) " \
-        "60.3 -27) ((line r) 98.5 90))"
-parse_message_update_state(input, ps)

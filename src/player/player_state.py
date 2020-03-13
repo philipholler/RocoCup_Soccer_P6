@@ -1,5 +1,7 @@
 from player.world import PrecariousData, World
 
+MAX_MOVE_DISTANCE_PER_TICK = 2.5 # todo random guess. Look up max_speed in manual
+
 
 class PlayerState:
 
@@ -9,7 +11,7 @@ class PlayerState:
         self.player_num = ""
         self.game_state = ""
         self.position = PrecariousData.unknown()
-        self.world_view = World()
+        self.world_view = WorldView(0)
         super().__init__()
 
     def __str__(self) -> str:

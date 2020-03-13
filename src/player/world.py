@@ -22,6 +22,18 @@ class Coordinate:
     def __sub__(self, other):
         return Coordinate(self.pos_x - other.pos_x, self.pos_y - other.pos_y)
 
+    def __le__(self, other):
+        return self.pos_x <= other.pos_x and self.pos_y <= other.pos_y
+
+    def __lt__(self, other):
+        return self.pos_x < other.pos_x and self.pos_y < other.pos_y
+
+    def __ge__(self, other):
+        return self.pos_x >= other.pos_x and self.pos_y >= other.pos_y
+
+    def __gt__(self, other):
+        return self.pos_x > other.pos_x and self.pos_y > other.pos_y
+
     def euclidean_distance_from(self, other):
         return sqrt((self.pos_x - other.pos_x) ** 2 + (self.pos_y - other.pos_y) ** 2)
 
@@ -68,3 +80,12 @@ class Player:
                + str(self.direction) + ", dist_chng=" + str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) \
                + ", body_dir=" + str(self.body_dir) + ", head_dir=" + str(self.head_dir) + ", coord=" + str(self.coord) \
                + ")"
+
+LOWER_FIELD_BOUND = Coordinate(-60, -40)
+UPPER_FIELD_BOUND = Coordinate(60, 40)
+
+
+def is_inside_field_bounds(coordinate: Coordinate):
+    below_upper_bounds = coordinate <= UPPER_FIELD_BOUND
+    above_lower_bounds = coordinate >= LOWER_FIELD_BOUND
+    return below_upper_bounds and above_lower_bounds

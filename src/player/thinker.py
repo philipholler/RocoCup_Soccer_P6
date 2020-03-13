@@ -63,5 +63,5 @@ class Thinker(threading.Thread):
     def position_player(self):
         x = r.randint(-20, 20)
         y = r.randint(-20, 20)
-        move_action = "(move " + str(-10) + " " + str(-10) + ")"
+        move_action = "(move " + str(x) + " " + str(y) + ")"
         self.player_conn.action_queue.put(move_action)
