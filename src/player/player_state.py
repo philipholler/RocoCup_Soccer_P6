@@ -1,4 +1,4 @@
-from player.world import PrecariousData
+from player.world import PrecariousData, World
 
 
 class PlayerState:
@@ -9,6 +9,7 @@ class PlayerState:
         self.player_num = ""
         self.game_state = ""
         self.position = PrecariousData.unknown()
+        self.world_view = World()
         super().__init__()
 
     def __str__(self) -> str:

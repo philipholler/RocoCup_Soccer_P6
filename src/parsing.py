@@ -4,11 +4,13 @@ from player import player_state
 from math import sqrt, atan2
 
 from player.world import Coordinate
+from player.world import Player
 
-__REAL_NUM_REGEX = "[0-9]*\\.?[0-9]*"
+__REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 __SIGNED_INT_REGEX = "[-0-9]*"
 __ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
 __SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
+__TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
 
 __FLAG_COORDS = {
     # perimiter flags
@@ -126,10 +128,76 @@ def __parse_see(msg, ps: player_state.PlayerState):
         elif str(msg).startswith("((line"):
             lines.append(msg)
 
+    __approx_position(msg)
+    __parse_players(players, ps)
+
+
+# ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
+# ((player Team1 5) 30 -41 0 0)
+# "\\(\\(player({0})?({1})?\\) ({2}) ({2}) ({2})? ({2})? ({2})? ({2})?\\)"
+def __parse_players(players: [], ps: player_state.PlayerState):
+    for player in players:
+        # Remove ) from the items
+        player = str(player).replace(")", "")
+        player = str(player).replace("(", "")
+
+        split_by_whitespaces = []
+        split_by_whitespaces = re.split('\\s+', player)
+
+        # We now have a list of elements like this:
+        # ['player', 'Team1', '5', '30', '-41', '0', '0' ]
+
+        # Default values
+        team = None
+        num = None
+        distance = None
+        direction = None
+        dist_chng = None
+        dir_chng = None
+        body_dir = None
+        head_dir = None
+
+        # If only distance and direction
+        if len(split_by_whitespaces) <= 3:
+            distance = split_by_whitespaces[1]
+            direction = split_by_whitespaces[2]
+        # If team, distance and direction
+        elif len(split_by_whitespaces) <= 4:
+            team = split_by_whitespaces[1]
+            distance = split_by_whitespaces[2]
+            direction = split_by_whitespaces[3]
+
+        # If team, num, distance, direction, dir_chng, dist_chng
+        # ['player', 'Team1', '5', '30', '-41', '0', '0']
+        elif len(split_by_whitespaces) <= 7:
+            team = split_by_whitespaces[1]
+            num = split_by_whitespaces[2]
+            distance = split_by_whitespaces[3]
+            direction = split_by_whitespaces[4]
+            dir_chng = split_by_whitespaces[5]
+            dist_chng = split_by_whitespaces[6]
+
+        # If team, num, distance, direction, dir_chng, dist_chng, body_dir, head_dir
+        # ['player', 'Team1', '5', '30', '-41', '0', '0', '0', '0']
+        elif len(split_by_whitespaces) > 7:
+            team = split_by_whitespaces[1]
+            num = split_by_whitespaces[2]
+            distance = split_by_whitespaces[3]
+            direction = split_by_whitespaces[4]
+            dir_chng = split_by_whitespaces[5]
+            dist_chng = split_by_whitespaces[6]
+            body_dir = split_by_whitespaces[7]
+            head_dir = split_by_whitespaces[8]
+
+        new_player = Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
+                            , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, coord=None)
+
+        ps.world_view.other_players.append(new_player)
+
 
 def __parse_init(msg, ps: player_state.PlayerState):
     regex = re.compile("\\(init ([lr]) ([0-9]*)")
-    matched = regex.match(msg.__str__())
+    matched = regex.match(msg)
     ps.side = matched.group(1)
     ps.player_num = matched.group(2)
 
@@ -183,11 +251,6 @@ def __parse_body_sense(text: str, ps: player_state):
 #           ((Player) 0.5 151) ((player Team2 4) 0.5 -28 0 0) ((line r) 42.5 90))
 def __parse_flags(text):
     flag_regex = "\\(flag [^)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
-    return re.findall(flag_regex, text)
-
-
-def __parse_players(text):
-    flag_regex = " [^)]*".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     return re.findall(flag_regex, text)
 
 
@@ -392,3 +455,14 @@ def __get_object_position(object_rel_angle, distance, my_x, my_y, my_angle):
     x = distance * math.cos(math.radians(actual_angle)) + my_x
     y = distance * math.sin(math.radians(actual_angle)) + my_y
     return x, y
+
+
+ps = player_state.PlayerState()
+input = "(see 0 ((flag c) 50.4 -25) ((flag c b) 47 14) ((flag r t) 113.3 -29) ((flag r b) 98.5 7) ((flag g r b) " \
+        "99.5 -8) ((goal r) 100.5 -12) ((flag g r t) 102.5 -16) ((flag p r b) 81.5 -1) ((flag p r c) 84.8 -15) ((" \
+        "flag p r t) 91.8 -27) ((flag p l b) 9.7 -10 0 0) ((ball) 49.4 -25) ((player) 44.7 -24) ((player Team1 5) " \
+        "30 -41 0 0) ((player Team1) 33.1 -5) ((player Team1) 44.7 -28) ((player Team1) 44.7 -24) ((player Team1) " \
+        "40.4 -2) ((player) 60.3 7) ((player) 60.3 -16) ((player) 66.7 -20) ((player) 60.3 -31) ((player) 90 -39) (" \
+        "(player) 99.5 -9) ((player) 66.7 -10) ((player) 66.7 -21) ((player) 99.5 -19) ((player) 90 6) ((player) " \
+        "60.3 -27) ((line r) 98.5 90))"
+parse_message_update_state(input, ps)

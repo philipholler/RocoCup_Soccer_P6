@@ -1,6 +1,13 @@
 from math import sqrt
 
 
+class World:
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.other_players = [Player]
+
+
 class Coordinate:
     def __init__(self, pos_x, pos_y):
         self.pos_x = pos_x
@@ -41,3 +48,23 @@ class PrecariousData:
     def set_value_unknown(self):
         self._value = None
 
+
+# ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
+class Player:
+    def __init__(self, team, num, distance, direction, dist_chng, dir_chng, body_dir, head_dir, coord) -> None:
+        super().__init__()
+        self.team = team
+        self.num = num
+        self.distance = distance
+        self.direction = direction
+        self.dist_chng = dist_chng
+        self.dir_chng = dir_chng
+        self.body_dir = body_dir
+        self.head_dir = head_dir
+        self.coord = coord
+
+    def __repr__(self) -> str:
+        return "(team=" + str(self.team) + ", num=" + str(self.num) + ", distance=" + str(self.distance) + ", direction=" \
+               + str(self.direction) + ", dist_chng=" + str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) \
+               + ", body_dir=" + str(self.body_dir) + ", head_dir=" + str(self.head_dir) + ", coord=" + str(self.coord) \
+               + ")"
