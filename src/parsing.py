@@ -126,15 +126,15 @@ def __parse_see(msg, ps: player_state.PlayerState):
     players = []
     goals = []
     lines = []
-    for msg in matches:
-        if str(msg).startswith("((flag"):
-            flags.append(msg)
-        elif str(msg).startswith("((goal"):
-            goals.append(msg)
-        elif str(msg).startswith("((player"):
-            players.append(msg)
-        elif str(msg).startswith("((line"):
-            lines.append(msg)
+    for match in matches:
+        if str(match).startswith("((flag"):
+            flags.append(match)
+        elif str(match).startswith("((goal"):
+            goals.append(match)
+        elif str(match).startswith("((player"):
+            players.append(match)
+        elif str(match).startswith("((line"):
+            lines.append(match)
 
     __approx_position(msg, ps)
     __parse_players(players, ps)
