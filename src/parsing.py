@@ -6,6 +6,7 @@ from math import sqrt, atan2
 from player.player_state import PlayerState
 from player.world import Coordinate
 from player.world import Player
+from player.world import Ball
 
 __REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 __SIGNED_INT_REGEX = "[-0-9]+"
@@ -121,7 +122,6 @@ Example:
 def __parse_see(msg, ps: player_state.PlayerState):
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
-    print("Received: ", msg)
 
     flags = []
     players = []
@@ -149,20 +149,45 @@ def __parse_see(msg, ps: player_state.PlayerState):
     # todo Parse line...
 
 
+# Input ((ball) 13.5 -31 0 0)
+# or ((ball) 44.7 -20)
+# distance, direction, dist_change, dir_change
 def __parse_ball(ball: str, ps: player_state.PlayerState):
-    regex_string = ".*\\(\\(ball\\) ({0}) ({1})\\)".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
-    regular_expression = re.compile(regex_string)
-    matched = regular_expression.match(ball)
+    # Remove ) from the items
+    ball = str(ball).replace(")", "")
+    ball = str(ball).replace("(", "")
 
-    distance = matched.group(1)
-    angle = matched.group(2)
+    split_by_whitespaces = []
+    split_by_whitespaces = re.split('\\s+', ball)
 
+    # We now have a list of elements like this:
+    # ['ball', '13.5', '-31', '2', '-5']
+
+    # These are always included
+    distance = split_by_whitespaces[1]
+    direction = split_by_whitespaces[2]
+    # These might be included depending on the distance and view of the player
+    distance_chng = None
+    dir_chng = None
+
+    # If we also know dist_change and dir_change
+    if len(split_by_whitespaces) > 3:
+        distance_chng = split_by_whitespaces[3]
+        dir_chng = split_by_whitespaces[4]
+
+    # print("Pretty: Distance ({0}), Direction ({1}), distance_chng ({2}), dir_chng ({3})".format(distance, direction,
+    #                                                                                            distance_chng,
+    #                                                                                            dir_chng))
+
+    # todo add players actual position
     if ps.position.is_value_known():
-        print("Position x: ", ps.position.get_value()[0])
-        print("Position y: ", ps.position.get_value()[1])
-        # x, y = __get_object_position(angle, distance, ps.position.)
-    # object_rel_angle, distance, my_x, my_y, my_angle
+        print("Position known")
 
+    ball_coord = __get_object_position(object_rel_angle=float(direction), distance=float(distance), my_x=0, my_y=0, my_angle=0)
+    new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
+                          coord=ball_coord)
+
+    ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
 
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
@@ -466,7 +491,7 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
 
 
 def __approx_position(msg: str, state):
-    #if int(state.player_num) != 1 or str(state.team_name) != "Team1":
+    # if int(state.player_num) != 1 or str(state.team_name) != "Team1":
     #    return
     parsed_flags = __zip_flag_coords_distance(__parse_flags(msg))
     if len(parsed_flags) < 2:
@@ -517,11 +542,12 @@ My pos: x: -19,  y: -16 my_angle 0
 '''
 
 
-def __get_object_position(object_rel_angle, distance, my_x, my_y, my_angle):
+def __get_object_position(object_rel_angle: float, distance: float, my_x: float, my_y: float, my_angle: float):
     actual_angle = my_angle + object_rel_angle
     x = distance * math.cos(math.radians(actual_angle)) + my_x
     y = distance * math.sin(math.radians(actual_angle)) + my_y
-    return x, y
+    return world.Coordinate(x, y)
+
 
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) 99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 -2) ((player) 60.3 -44) ((player Team1) 44.7 -11) ((player Team1 10) 20.1 -37 0 0) ((player) 66.7 -13) ((player) 66.7 -36) ((player) 66.7 -16) ((player) 49.4 6) ((player) 73.7 -39) ((player) 60.3 -33) ((player) 60.3 -8) ((player) 66.7 -4) ((player) 90 6) ((player) 99.5 -21) ((player) 66.7 -20) ((line r) 97.5 -80))"
 

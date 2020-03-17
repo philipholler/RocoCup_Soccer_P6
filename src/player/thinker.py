@@ -53,9 +53,9 @@ class Thinker(threading.Thread):
                 self.player_conn.action_queue.put("(turn_neck 20)")
                 self.my_bool = True
         else:
-            dash_rate = r.randint(-50, 50)
+            dash_rate = r.randint(0, 50)
             self.player_conn.action_queue.put("(dash " + str(dash_rate) + ")")
-            turn_rate = r.randint(-5, 5)
+            turn_rate = r.randint(0, 5)
             self.player_conn.action_queue.put("(turn_neck " + str(turn_rate) + ")")
         return
 

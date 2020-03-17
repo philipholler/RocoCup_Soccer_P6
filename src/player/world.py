@@ -75,13 +75,29 @@ class Player:
         self.coord = coord
 
     def __repr__(self) -> str:
-        return "(team=" + str(self.team) + ", num=" + str(self.num) + ", distance=" + str(self.distance) + ", direction=" \
+        return "(team=" + str(self.team) + ", num=" + str(self.num) + ", distance=" + str(
+            self.distance) + ", direction=" \
                + str(self.direction) + ", dist_chng=" + str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) \
                + ", body_dir=" + str(self.body_dir) + ", head_dir=" + str(self.head_dir) + ", coord=" + str(self.coord) \
                + ")"
 
+
 LOWER_FIELD_BOUND = Coordinate(-60, -40)
 UPPER_FIELD_BOUND = Coordinate(60, 40)
+
+
+class Ball:
+    def __init__(self, distance, direction, dist_chng, dir_chng, coord) -> None:
+        super().__init__()
+        self.distance = distance
+        self.direction = direction
+        self.dist_chng = dist_chng
+        self.dir_chng = dir_chng
+        self.coord = coord
+
+    def __repr__(self) -> str:
+        return "(distance=" + str(self.distance) + ", direction=" + str(self.direction) + ", dist_chng=" + \
+               str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) + ")"
 
 
 def is_inside_field_bounds(coordinate: Coordinate):
