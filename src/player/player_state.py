@@ -22,3 +22,4 @@ class WorldView:
     def __init__(self, sim_time):
         self.sim_time = sim_time
         self.other_players = [Player]
+        self.ball_coord = None

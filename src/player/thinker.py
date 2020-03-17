@@ -44,7 +44,6 @@ class Thinker(threading.Thread):
             self.strategy.player_state = self.player_state
 
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
-            print("Received msg: ", msg)
             if self.my_bool:
                 self.player_conn.action_queue.put("(dash 100)")
                 self.player_conn.action_queue.put("(turn -20)")

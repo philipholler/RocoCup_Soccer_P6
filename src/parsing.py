@@ -121,11 +121,13 @@ Example:
 def __parse_see(msg, ps: player_state.PlayerState):
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
+    print("Received: ", msg)
 
     flags = []
     players = []
     goals = []
     lines = []
+    ball = None
     for msg in matches:
         if str(msg).startswith("((flag"):
             flags.append(msg)
@@ -135,9 +137,32 @@ def __parse_see(msg, ps: player_state.PlayerState):
             players.append(msg)
         elif str(msg).startswith("((line"):
             lines.append(msg)
+        elif str(msg).startswith("((ball"):
+            ball = msg
 
     __approx_position(msg, ps)
     __parse_players(players, ps)
+    if ball is not None:
+        __parse_ball(ball, ps)
+    # todo Parse flags...
+    # todo Parse goals...
+    # todo Parse line...
+
+
+def __parse_ball(ball: str, ps: player_state.PlayerState):
+    regex_string = ".*\\(\\(ball\\) ({0}) ({1})\\)".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+    regular_expression = re.compile(regex_string)
+    matched = regular_expression.match(ball)
+
+    distance = matched.group(1)
+    angle = matched.group(2)
+
+    if ps.position.is_value_known():
+        print("Position x: ", ps.position.get_value()[0])
+        print("Position y: ", ps.position.get_value()[1])
+        # x, y = __get_object_position(angle, distance, ps.position.)
+    # object_rel_angle, distance, my_x, my_y, my_angle
+
 
 
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
@@ -197,6 +222,7 @@ def __parse_players(players: [], ps: player_state.PlayerState):
             body_dir = split_by_whitespaces[7]
             head_dir = split_by_whitespaces[8]
 
+        # Todo Add correct coord
         new_player = Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
                             , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, coord=None)
 
@@ -496,3 +522,7 @@ def __get_object_position(object_rel_angle, distance, my_x, my_y, my_angle):
     x = distance * math.cos(math.radians(actual_angle)) + my_x
     y = distance * math.sin(math.radians(actual_angle)) + my_y
     return x, y
+
+my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) 99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 -2) ((player) 60.3 -44) ((player Team1) 44.7 -11) ((player Team1 10) 20.1 -37 0 0) ((player) 66.7 -13) ((player) 66.7 -36) ((player) 66.7 -16) ((player) 49.4 6) ((player) 73.7 -39) ((player) 60.3 -33) ((player) 60.3 -8) ((player) 66.7 -4) ((player) 90 6) ((player) 99.5 -21) ((player) 66.7 -20) ((line r) 97.5 -80))"
+
+parse_message_update_state(my_str, player_state.PlayerState())
