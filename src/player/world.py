@@ -93,7 +93,9 @@ class Ball:
         self.direction = direction
         self.dist_chng = dist_chng
         self.dir_chng = dir_chng
-        self.coord = coord
+        self.coord = None
+        if coord is not None:
+            self.coord = coord
 
     def __repr__(self) -> str:
         return "(distance=" + str(self.distance) + ", direction=" + str(self.direction) + ", dist_chng=" + \

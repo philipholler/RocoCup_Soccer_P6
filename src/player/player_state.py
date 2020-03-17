@@ -10,7 +10,7 @@ class PlayerState:
         self.team_name = ""
         self.player_num = ""
         self.game_state = ""
-        self.position = PrecariousData.unknown()
+        self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
         super().__init__()
 
@@ -22,4 +22,4 @@ class WorldView:
     def __init__(self, sim_time):
         self.sim_time = sim_time
         self.other_players = [Player]
-        self.ball = PrecariousData.unknown()
+        self.ball: PrecariousData = PrecariousData.unknown()

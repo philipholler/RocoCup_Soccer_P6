@@ -128,17 +128,17 @@ def __parse_see(msg, ps: player_state.PlayerState):
     goals = []
     lines = []
     ball = None
-    for msg in matches:
-        if str(msg).startswith("((flag"):
-            flags.append(msg)
-        elif str(msg).startswith("((goal"):
-            goals.append(msg)
-        elif str(msg).startswith("((player"):
-            players.append(msg)
-        elif str(msg).startswith("((line"):
-            lines.append(msg)
-        elif str(msg).startswith("((ball"):
-            ball = msg
+    for element in matches:
+        if str(element).startswith("((flag"):
+            flags.append(element)
+        elif str(element).startswith("((goal"):
+            goals.append(element)
+        elif str(element).startswith("((player"):
+            players.append(element)
+        elif str(element).startswith("((line"):
+            lines.append(element)
+        elif str(element).startswith("((ball"):
+            ball = element
 
     __approx_position(msg, ps)
     __parse_players(players, ps)
@@ -178,12 +178,14 @@ def __parse_ball(ball: str, ps: player_state.PlayerState):
     # print("Pretty: Distance ({0}), Direction ({1}), distance_chng ({2}), dir_chng ({3})".format(distance, direction,
     #                                                                                            distance_chng,
     #                                                                                            dir_chng))
-
-    # todo add players actual position
+    ball_coord = None
     if ps.position.is_value_known():
-        print("Position known")
+        pos: Coordinate = ps.position.get_value()
+        # todo add players actual global angle
+        ball_coord = __get_object_position(object_rel_angle=float(direction), distance=float(distance), my_x=pos.pos_x,
+                                           my_y=pos.pos_y,
+                                           my_angle=0)
 
-    ball_coord = __get_object_position(object_rel_angle=float(direction), distance=float(distance), my_x=0, my_y=0, my_angle=0)
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
 
