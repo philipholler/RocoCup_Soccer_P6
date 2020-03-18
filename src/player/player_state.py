@@ -24,6 +24,3 @@ class WorldView:
         self.other_players = [Player]
         self.ball: PrecariousData = PrecariousData.unknown()
         self.goals = []
-
-        for x in range(len(self.goals)):
-            print(self.goals[x])
