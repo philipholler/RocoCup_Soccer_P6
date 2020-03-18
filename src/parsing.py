@@ -337,11 +337,12 @@ def __parse_goal(text: str, ps: player_state):
     goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     regular_expression = re.compile(goal_regex)
     matched = regular_expression.match(text)
+
     goal_side = matched.group(1)
     goal_distance = matched.group(2)
     goal_relative_angle = matched.group(3)
-    print(matched.groups())
 
+    # Add information to WorldView
     new_goal = world.Goal(goal_side=goal_side, distance=goal_distance, relative_angle=goal_relative_angle)
     ps.world_view.goals.append(new_goal)
     return matched
