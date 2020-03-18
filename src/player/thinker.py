@@ -1,3 +1,4 @@
+import enum
 import threading
 import queue
 from player import player_connection, player_state
@@ -43,13 +44,13 @@ class Thinker(threading.Thread):
             # Give the strategy a new state
             self.strategy.player_state = self.player_state
 
-        if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
+        if self.player_state.team_name == "Team1" and self.player_state.player_num == 1:
             if self.my_bool:
                 self.player_conn.action_queue.put("(dash 10)")
-                self.player_conn.action_queue.put("(turn 2)")
+                self.player_conn.action_queue.put("(turn 0)")
                 self.my_bool = False
             else:
-                self.player_conn.action_queue.put("(turn 2)")
+                self.player_conn.action_queue.put("(turn 0)")
                 # self.player_conn.action_queue.put("(turn_neck 20)")
                 self.my_bool = True
         else:
@@ -64,3 +65,12 @@ class Thinker(threading.Thread):
         y = r.randint(-20, 20)
         move_action = "(move " + str(x) + " " + str(y) + ")"
         self.player_conn.action_queue.put(move_action)
+
+
+class Objective:
+
+    def __init__(self, fulfillment_criteria) -> None:
+        self.fulfillment_criteria = fulfillment_criteria
+
+    def is_achieved(self, player_state):
+        return self.fulfillment_criteria(player_state)

@@ -8,7 +8,7 @@ class PlayerState:
     def __init__(self):
         self.side = ""
         self.team_name = ""
-        self.player_num = ""
+        self.player_num = -1
         self.game_state = ""
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)

@@ -155,6 +155,14 @@ def _parse_see(msg, ps: player_state.PlayerState):
 
 
 def _approx_glob_angle(flags, ps):
+    if not ps.position.is_value_known():
+        return
+
+    # angle between c2 and c3 with vertex c1
+    def angle_between(c1, c2, c3):
+        angle = atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
+        return angle
+
     if len(flags) != 0:
         # Find closest flag
         closest_flag = _find_closest_flag(flags, ps)
@@ -164,11 +172,14 @@ def _approx_glob_angle(flags, ps):
         closest_flag_coords = _extract_flag_coordinates([closest_flag_id])[0]
         flag_coord: Coordinate = Coordinate(closest_flag_coords.pos_x, closest_flag_coords.pos_y)
         player_coord: Coordinate = ps.position.get_value()
-        global_angle_between_play_flag = _calculate_angle_between(flag_coord, player_coord)
+        global_angle_between_play_flag = angle_between(player_coord, Coordinate(0, 50), flag_coord)
 
         # Find flag relative angle
         flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
         player_angle = float(global_angle_between_play_flag) + math.radians(float(flag_relative_direction))
+        if ps.player_num == 1 and ps.team_name == "Team1":
+            print(str(math.degrees(player_angle)))
+
         '''
         print("Flags: ", flags)
         print("Closest flag: ", closest_flag)
@@ -183,11 +194,11 @@ def _approx_glob_angle(flags, ps):
 
 # ((flag g r b) 99.5 -5)
 def _extract_flag_directions(flags, ps):
-    flag_direction_regex = ".*\\(flag [^\\)]*\\).* ({0})".format(__REAL_NUM_REGEX)
+    flag_direction_regex = ".*\\(flag [^\\)]*\\).* ({0}) ({0})".format(__REAL_NUM_REGEX)
     flag_directions = []
     for flag in flags:
         m = _match(flag_direction_regex, flag)
-        flag_directions.append(m.group(1).replace(" ", ""))
+        flag_directions.append(float(m.group(2)))
     return flag_directions
 
 
@@ -316,7 +327,7 @@ def _parse_init(msg, ps: player_state.PlayerState):
     regex = re.compile("\\(init ([lr]) ([0-9]*)")
     matched = regex.match(msg)
     ps.side = matched.group(1)
-    ps.player_num = matched.group(2)
+    ps.player_num = int(matched.group(2))
 
 
 # Three different modes
