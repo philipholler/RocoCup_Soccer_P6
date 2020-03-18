@@ -102,6 +102,18 @@ class Ball:
                str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) + ")"
 
 
+class Goal:
+    def __init__(self, goal_side, x_coord, y_coord) -> None:
+        super().__init__()
+        self.goal_side = goal_side
+        self.x_coord = x_coord
+        self.y_coord = y_coord
+
+    def __repr__(self) -> str:
+        return "(coordinates=" + str(self.x_coord) + ", " + str(self.y_coord) + \
+               ", goal_side=" + str(self.goal_side) + ")"
+
+
 def is_inside_field_bounds(coordinate: Coordinate):
     below_upper_bounds = coordinate <= UPPER_FIELD_BOUND
     above_lower_bounds = coordinate >= LOWER_FIELD_BOUND

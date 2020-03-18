@@ -142,8 +142,12 @@ def __parse_see(msg, ps: player_state.PlayerState):
 
     __approx_position(flags, ps)
     __parse_players(players, ps)
+    if goals:
+        for x in range(len(goals)):
+            __parse_goal(goals[x], ps)
     if ball is not None:
         __parse_ball(ball, ps)
+
     # todo Parse flags...
     # todo Parse goals...
     # todo Parse line...
@@ -329,10 +333,18 @@ def __flag_position(pos_x, pos_y):
 #    print(m)
 
 
-def __parse_goal(text):
-    # todo
-    flag_regex = "\\(flag [^\\)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
-    return re.findall(flag_regex, text)
+def __parse_goal(text: str, ps: player_state):
+    goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({0})".format(__REAL_NUM_REGEX)
+    regular_expression = re.compile(goal_regex)
+    matched = regular_expression.match(text)
+    goal_side = matched.group(1)
+    goal_x_coord = matched.group(2)
+    goal_y_coord = matched.group(3)
+    print(matched.groups())
+
+    new_goal = world.Goal(goal_side=goal_side, x_coord=goal_x_coord, y_coord=goal_y_coord)
+    ps.world_view.goals.append(new_goal)
+    return matched
 
 
 def __extract_flag_identifiers(flags):
