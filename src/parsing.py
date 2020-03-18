@@ -140,7 +140,7 @@ def __parse_see(msg, ps: player_state.PlayerState):
         elif str(element).startswith("((ball"):
             ball = element
 
-    __approx_position(msg, ps)
+    __approx_position(flags, ps)
     __parse_players(players, ps)
     if ball is not None:
         __parse_ball(ball, ps)
@@ -492,10 +492,8 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
     return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
 
 
-def __approx_position(msg: str, state):
-    # if int(state.player_num) != 1 or str(state.team_name) != "Team1":
-    #    return
-    parsed_flags = __zip_flag_coords_distance(__parse_flags(msg))
+def __approx_position(flags, state):
+    parsed_flags = __zip_flag_coords_distance(flags)
     if len(parsed_flags) < 2:
         # print("No flag can be seen - Position unknown")
         return
@@ -549,8 +547,3 @@ def __get_object_position(object_rel_angle: float, distance: float, my_x: float,
     x = distance * math.cos(math.radians(actual_angle)) + my_x
     y = distance * math.sin(math.radians(actual_angle)) + my_y
     return world.Coordinate(x, y)
-
-
-my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) 99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 -2) ((player) 60.3 -44) ((player Team1) 44.7 -11) ((player Team1 10) 20.1 -37 0 0) ((player) 66.7 -13) ((player) 66.7 -36) ((player) 66.7 -16) ((player) 49.4 6) ((player) 73.7 -39) ((player) 60.3 -33) ((player) 60.3 -8) ((player) 66.7 -4) ((player) 90 6) ((player) 99.5 -21) ((player) 66.7 -20) ((line r) 97.5 -80))"
-
-parse_message_update_state(my_str, player_state.PlayerState())
