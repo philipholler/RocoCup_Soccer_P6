@@ -181,6 +181,8 @@ def _approx_glob_angle(flags, ps):
             print(str(math.degrees(player_angle)))
 
         '''
+        
+        '''
         print("Flags: ", flags)
         print("Closest flag: ", closest_flag)
         print("Closest flag id: ", closest_flag_id)
@@ -189,16 +191,29 @@ def _approx_glob_angle(flags, ps):
         print("Global Angle: ", global_angle_between_play_flag)
         print("Flag direction: ", flag_relative_direction)
         print("Player angle: ", math.degrees(player_angle))
-        '''
 
 
 # ((flag g r b) 99.5 -5)
+# ((flag p l c) 27.1 10 -0 0)
+# # distance, direction, dist_change, dir_change
 def _extract_flag_directions(flags, ps):
-    flag_direction_regex = ".*\\(flag [^\\)]*\\).* ({0}) ({0})".format(__REAL_NUM_REGEX)
     flag_directions = []
     for flag in flags:
-        m = _match(flag_direction_regex, flag)
-        flag_directions.append(float(m.group(2)))
+        # Remove the first part of the string *((flag p l c)*
+        removed_flag_name = flag.split(') ', 1)[1]
+        # Remove ) from the items
+        cur_flag = str(removed_flag_name).replace(")", "")
+        cur_flag = str(cur_flag).replace("(", "")
+
+        split_by_whitespaces = []
+        split_by_whitespaces = re.split('\\s+', cur_flag)
+
+        # We now have a list of elements like this:
+        # ['13.5', '-31', '2', '-5']
+
+        direction = split_by_whitespaces[1]
+        flag_directions.append(direction)
+
     return flag_directions
 
 
@@ -627,7 +642,7 @@ def __get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: flo
 
 '''
 PHILIPS - DO NOT REMOVE
-
+'''
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
          "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
          "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
@@ -643,5 +658,4 @@ my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18
 my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
           "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
 parse_message_update_state(my_str3, player_state.PlayerState())
-'''
 
