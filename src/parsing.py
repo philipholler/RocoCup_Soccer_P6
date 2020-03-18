@@ -161,6 +161,8 @@ def _approx_glob_angle(flags, ps):
     # angle between c2 and c3 with vertex c1
     def angle_between(c1, c2, c3):
         angle = atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
+        if angle < 0:
+            return math.radians(360) + angle
         return angle
 
     if len(flags) != 0:
@@ -172,7 +174,8 @@ def _approx_glob_angle(flags, ps):
         closest_flag_coords = _extract_flag_coordinates([closest_flag_id])[0]
         flag_coord: Coordinate = Coordinate(closest_flag_coords.pos_x, closest_flag_coords.pos_y)
         player_coord: Coordinate = ps.position.get_value()
-        global_angle_between_play_flag = angle_between(player_coord, Coordinate(0, 50), flag_coord)
+        global_angle_between_play_flag = angle_between(player_coord, flag_coord, Coordinate(player_coord.pos_x + 20,
+                                                                                player_coord.pos_y))
 
         # Find flag relative angle
         flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
@@ -190,7 +193,6 @@ def _approx_glob_angle(flags, ps):
         print("Flag direction: ", float(flag_relative_direction))
         print("Player angle: ", math.degrees(player_angle))
         '''
-
 
 
 # ((flag g r b) 99.5 -5)
@@ -640,6 +642,7 @@ def __get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: flo
     y = dist_to_obj * math.sin(math.radians(actual_angle)) + my_y
     return world.Coordinate(x, y)
 
+
 '''
 PHILIPS - DO NOT REMOVE
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
@@ -658,5 +661,3 @@ my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 1
           "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
 parse_message_update_state(my_str, player_state.PlayerState())
 '''
-
-
