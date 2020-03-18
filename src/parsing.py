@@ -141,7 +141,6 @@ def _parse_see(msg, ps: player_state.PlayerState):
             ball = element
 
     _approx_position(flags, ps)
-    # if ps.team_name == "Team1" and ps.player_num == "1":
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
@@ -169,14 +168,15 @@ def _parse_goal(text: str, ps: player_state):
     ps.world_view.goals.append(new_goal)
     return matched
 
+
 def _approx_glob_angle(flags, ps):
     if not ps.position.is_value_known():
         return
 
-    # angle between c2 and c3 with vertex c1
+    # angle between c1 and c2, with c3 offsetting to make 0 degrees in some direction
+    # For this purpose x+ = east, -x = west etc.
     def angle_between(c1, c2, c3):
-        angle = atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
-        return angle
+        return atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
 
     if len(flags) != 0:
         # Find closest flag
@@ -185,10 +185,10 @@ def _approx_glob_angle(flags, ps):
 
         # Calculate global angle to flag
         closest_flag_coords = _extract_flag_coordinates([closest_flag_id])[0]
-        flag_coord: Coordinate = Coordinate(closest_flag_coords.pos_x, closest_flag_coords.pos_y)
         player_coord: Coordinate = ps.position.get_value()
-        global_angle_between_play_flag = angle_between(player_coord, flag_coord, Coordinate(player_coord.pos_x + 20,
-                                                                                player_coord.pos_y))
+        global_angle_between_play_flag = angle_between(player_coord, closest_flag_coords,
+                                                       Coordinate(player_coord.pos_x + 20
+                                                                  , player_coord.pos_y))
 
         # Find flag relative angle
         flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
@@ -196,7 +196,9 @@ def _approx_glob_angle(flags, ps):
         player_angle_degrees = math.degrees(player_angle) % 360
         if ps.player_num == 1 and ps.team_name == "Team1":
             print(str(player_angle_degrees))
+            print("Closest flag: ", closest_flag_id, " Player position: ", ps.position.get_value())
 
+        ps.player_angle = player_angle_degrees
         '''
         print("Flags: ", flags)
         print("Closest flag: ", closest_flag)
@@ -207,14 +209,6 @@ def _approx_glob_angle(flags, ps):
         print("Flag direction: ", float(flag_relative_direction))
         print("Player angle: ", math.degrees(player_angle))
         '''
-        print("Flags: ", flags)
-        print("Closest flag: ", closest_flag)
-        print("Closest flag id: ", closest_flag_id)
-        print("Closest flag coords: ", closest_flag_coords)
-        print("Player coord: ", player_coord)
-        print("Global Angle: ", math.degrees(global_angle_between_play_flag))
-        print("Flag direction: ", float(flag_relative_direction))
-        print("Player angle: ", player_angle_degrees)
 
 
 
@@ -656,8 +650,6 @@ def __get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: flo
 
 '''
 PHILIPS - DO NOT REMOVE
-
-'''
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
          "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
          "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
@@ -672,4 +664,7 @@ my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18
 
 my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
           "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
-parse_message_update_state(my_str2, player_state.PlayerState())
+parse_message_update_state(my_str3, player_state.PlayerState())
+
+'''
+
