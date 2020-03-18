@@ -103,15 +103,15 @@ class Ball:
 
 
 class Goal:
-    def __init__(self, goal_side, x_coord, y_coord) -> None:
+    def __init__(self, goal_side, distance, relative_angle) -> None:
         super().__init__()
         self.goal_side = goal_side
-        self.x_coord = x_coord
-        self.y_coord = y_coord
+        self.distance = distance
+        self.relative_angle = relative_angle
 
     def __repr__(self) -> str:
-        return "(coordinates=" + str(self.x_coord) + ", " + str(self.y_coord) + \
-               ", goal_side=" + str(self.goal_side) + ")"
+        return "(goal_side=" + str(self.goal_side) + ", coordinates=" + \
+               str(self.distance) + ", " + str(self.relative_angle) + ")"
 
 
 def is_inside_field_bounds(coordinate: Coordinate):

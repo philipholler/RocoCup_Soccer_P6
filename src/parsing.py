@@ -334,15 +334,15 @@ def __flag_position(pos_x, pos_y):
 
 
 def __parse_goal(text: str, ps: player_state):
-    goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({0})".format(__REAL_NUM_REGEX)
+    goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     regular_expression = re.compile(goal_regex)
     matched = regular_expression.match(text)
     goal_side = matched.group(1)
-    goal_x_coord = matched.group(2)
-    goal_y_coord = matched.group(3)
+    goal_distance = matched.group(2)
+    goal_relative_angle = matched.group(3)
     print(matched.groups())
 
-    new_goal = world.Goal(goal_side=goal_side, x_coord=goal_x_coord, y_coord=goal_y_coord)
+    new_goal = world.Goal(goal_side=goal_side, distance=goal_distance, relative_angle=goal_relative_angle)
     ps.world_view.goals.append(new_goal)
     return matched
 
