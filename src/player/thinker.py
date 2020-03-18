@@ -45,18 +45,18 @@ class Thinker(threading.Thread):
 
         if self.player_state.team_name == "Team1" and self.player_state.player_num == "1":
             if self.my_bool:
-                self.player_conn.action_queue.put("(dash 100)")
-                self.player_conn.action_queue.put("(turn -20)")
+                self.player_conn.action_queue.put("(dash 10)")
+                self.player_conn.action_queue.put("(turn 2)")
                 self.my_bool = False
             else:
-                self.player_conn.action_queue.put("(turn 20)")
-                self.player_conn.action_queue.put("(turn_neck 20)")
+                self.player_conn.action_queue.put("(turn 2)")
+                # self.player_conn.action_queue.put("(turn_neck 20)")
                 self.my_bool = True
         else:
             dash_rate = r.randint(0, 50)
             self.player_conn.action_queue.put("(dash " + str(dash_rate) + ")")
             turn_rate = r.randint(0, 5)
-            self.player_conn.action_queue.put("(turn_neck " + str(turn_rate) + ")")
+            # self.player_conn.action_queue.put("(turn_neck " + str(turn_rate) + ")")
         return
 
     def position_player(self):

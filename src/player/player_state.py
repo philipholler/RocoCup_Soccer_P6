@@ -12,6 +12,7 @@ class PlayerState:
         self.game_state = ""
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
+        self.player_angle: PrecariousData = PrecariousData.unknown()
         super().__init__()
 
     def __str__(self) -> str:

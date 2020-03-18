@@ -6,7 +6,7 @@ from math import sqrt, atan2
 from player.player_state import PlayerState
 from player.world import Coordinate
 from player.world import Player
-from player.world import Ball
+from player.world import PrecariousData
 
 __REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 __SIGNED_INT_REGEX = "[-0-9]+"
@@ -98,13 +98,13 @@ def parse_message_update_state(msg: str, ps: player_state):
     _update_time(msg, ps)
 
     if msg.startswith("(hear"):
-        __parse_hear(msg, ps)
+        _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
-        __parse_body_sense(msg, ps)
+        _parse_body_sense(msg, ps)
     elif msg.startswith("(init"):
-        __parse_init(msg, ps)
+        _parse_init(msg, ps)
     elif msg.startswith("(see "):
-        __parse_see(msg, ps)
+        _parse_see(msg, ps)
 
 
 '''
@@ -119,7 +119,7 @@ Example:
 '''
 
 
-def __parse_see(msg, ps: player_state.PlayerState):
+def _parse_see(msg, ps: player_state.PlayerState):
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
@@ -140,19 +140,70 @@ def __parse_see(msg, ps: player_state.PlayerState):
         elif str(element).startswith("((ball"):
             ball = element
 
-    __approx_position(flags, ps)
-    __parse_players(players, ps)
+    _approx_position(flags, ps)
+    # if ps.team_name == "Team1" and ps.player_num == "1":
+    _approx_glob_angle(flags, ps)
+    _parse_players(players, ps)
     if ball is not None:
-        __parse_ball(ball, ps)
+        _parse_ball(ball, ps)
     # todo Parse flags...
     # todo Parse goals...
     # todo Parse line...
 
 
+def _approx_glob_angle(flags, ps):
+    if len(flags) != 0:
+        # Find closest flag
+        closest_flag = _find_closest_flag(flags, ps)
+        closest_flag_id = _extract_flag_identifiers([closest_flag])[0]
+
+        # Calculate global angle to flag
+        closest_flag_coords = _extract_flag_coordinates([closest_flag_id])[0]
+        flag_coord: Coordinate = Coordinate(closest_flag_coords.pos_x, closest_flag_coords.pos_y)
+        player_coord: Coordinate = ps.position.get_value()
+        global_angle_between_play_flag = _calculate_angle_between(flag_coord, player_coord)
+
+        # Find flag relative angle
+        flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
+        player_angle = float(global_angle_between_play_flag) + math.radians(float(flag_relative_direction))
+        '''
+        print("Flags: ", flags)
+        print("Closest flag: ", closest_flag)
+        print("Closest flag id: ", closest_flag_id)
+        print("Closest flag coords: ", closest_flag_coords)
+        print("Player coord: ", player_coord)
+        print("Global Angle: ", global_angle_between_play_flag)
+        print("Flag direction: ", flag_relative_direction)
+        print("Player angle: ", math.degrees(player_angle))
+        '''
+
+
+# ((flag g r b) 99.5 -5)
+def _extract_flag_directions(flags, ps):
+    flag_direction_regex = ".*\\(flag [^\\)]*\\).* ({0})".format(__REAL_NUM_REGEX)
+    flag_directions = []
+    for flag in flags:
+        m = _match(flag_direction_regex, flag)
+        flag_directions.append(m.group(1).replace(" ", ""))
+    return flag_directions
+
+
+def _find_closest_flag(flags, ps):
+    closest_distance_flag: str = flags[0]
+    closest_distance: float = float(__extract_flag_distances([flags[0]])[0])
+    for flag in flags:
+        flag_distance = __extract_flag_distances([flag])[0]
+        if closest_distance == -1 or closest_distance > float(flag_distance):
+            closest_distance_flag = flag
+            closest_distance = float(flag_distance)
+
+    return closest_distance_flag
+
+
 # Input ((ball) 13.5 -31 0 0)
 # or ((ball) 44.7 -20)
 # distance, direction, dist_change, dir_change
-def __parse_ball(ball: str, ps: player_state.PlayerState):
+def _parse_ball(ball: str, ps: player_state.PlayerState):
     # Remove ) from the items
     ball = str(ball).replace(")", "")
     ball = str(ball).replace("(", "")
@@ -179,12 +230,14 @@ def __parse_ball(ball: str, ps: player_state.PlayerState):
     #                                                                                            distance_chng,
     #                                                                                            dir_chng))
     ball_coord = None
+    # The position of the ball can only be calculated, if the position of the player is known
     if ps.position.is_value_known():
         pos: Coordinate = ps.position.get_value()
         # todo add players actual global angle
-        ball_coord = __get_object_position(object_rel_angle=float(direction), distance=float(distance), my_x=pos.pos_x,
+        ball_coord = __get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
+                                           my_x=pos.pos_x,
                                            my_y=pos.pos_y,
-                                           my_angle=0)
+                                           my_global_angle=0)
 
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
@@ -195,7 +248,7 @@ def __parse_ball(ball: str, ps: player_state.PlayerState):
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
 # ((player Team1 5) 30 -41 0 0)
 # "\\(\\(player({0})?({1})?\\) ({2}) ({2}) ({2})? ({2})? ({2})? ({2})?\\)"
-def __parse_players(players: [], ps: player_state.PlayerState):
+def _parse_players(players: [], ps: player_state.PlayerState):
     for player in players:
         # Remove ) from the items
         player = str(player).replace(")", "")
@@ -256,7 +309,7 @@ def __parse_players(players: [], ps: player_state.PlayerState):
         ps.world_view.other_players.append(new_player)
 
 
-def __parse_init(msg, ps: player_state.PlayerState):
+def _parse_init(msg, ps: player_state.PlayerState):
     regex = re.compile("\\(init ([lr]) ([0-9]*)")
     matched = regex.match(msg)
     ps.side = matched.group(1)
@@ -267,7 +320,7 @@ def __parse_init(msg, ps: player_state.PlayerState):
 # example: (hear 0 referee kick_off_l)
 # example: (hear 0 self *msg*)
 # Pattern: (hear *time* *degrees* *msg*)
-def __parse_hear(text: str, ps: player_state):
+def _parse_hear(text: str, ps: player_state):
     split_by_whitespaces = re.split('\\s+', text)
     time = split_by_whitespaces[1]
     ps.sim_time = time  # Update players understanding of time
@@ -295,7 +348,7 @@ def __parse_hear(text: str, ps: player_state):
 
 # example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
 # Group [1] = time, [2] = stamina, [3] = effort, [4] = speed, [5] = kick count, [6] = dash, [7] = turn
-def __parse_body_sense(text: str, ps: player_state):
+def _parse_body_sense(text: str, ps: player_state):
     # Will view_mode ever change from "high normal"?
     regex_string = ".*sense_body ({1}).*stamina ({0}) ({0})\\).*speed ({0})\\).*kick ({0})\\)"
     regex_string += ".*dash ({0})\\).*turn ({1})\\)"
@@ -310,18 +363,18 @@ def __parse_body_sense(text: str, ps: player_state):
 # Example : (see 0 ((flag r b) 48.9 29) ((flag g r b) 42.5 -4) ((goal r) 43.8 -13) ((flag g r t) 45.6 -21)
 #           ((flag p r b) 27.9 21) ((flag p r c) 27.9 -21 0 0) ((Player) 1 -179) ((player Team2 2) 1 0 0 0)
 #           ((Player) 0.5 151) ((player Team2 4) 0.5 -28 0 0) ((line r) 42.5 90))
-def __parse_flags(text):
+def _parse_flags(text):
     flag_regex = "\\(flag [^)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
     return re.findall(flag_regex, text)
 
 
-def __match(regex_string, text):
+def _match(regex_string, text):
     regular_expression = re.compile(regex_string)
     regex_match = regular_expression.match(text)
     return regex_match
 
 
-def __flag_position(pos_x, pos_y):
+def _flag_position(pos_x, pos_y):
     return None
 
 
@@ -335,11 +388,11 @@ def __parse_goal(text):
     return re.findall(flag_regex, text)
 
 
-def __extract_flag_identifiers(flags):
+def _extract_flag_identifiers(flags):
     flag_identifiers_regex = ".*\\(flag ([^\\)]*)\\)"
     flag_identifiers = []
     for flag in flags:
-        m = __match(flag_identifiers_regex, flag)
+        m = _match(flag_identifiers_regex, flag)
         flag_identifiers.append(m.group(1).replace(" ", ""))
     return flag_identifiers
 
@@ -348,12 +401,12 @@ def __extract_flag_distances(flags):
     flag_distance_regex = ".*\\(flag [^\\)]*\\) ({0}) ".format(__REAL_NUM_REGEX)
     flag_distances = []
     for flag in flags:
-        m = __match(flag_distance_regex, flag)
+        m = _match(flag_distance_regex, flag)
         flag_distances.append(m.group(1).replace(" ", ""))
     return flag_distances
 
 
-def __extract_flag_coordinates(flag_ids):
+def _extract_flag_coordinates(flag_ids):
     coords = []
     for flag_id in flag_ids:
         coord_pair = __FLAG_COORDS.get(flag_id)
@@ -363,8 +416,8 @@ def __extract_flag_coordinates(flag_ids):
 
 def __zip_flag_coords_distance(flags):
     coords_zipped_distance = []
-    flag_ids = __extract_flag_identifiers(flags)
-    flag_coords = __extract_flag_coordinates(flag_ids)
+    flag_ids = _extract_flag_identifiers(flags)
+    flag_coords = _extract_flag_coordinates(flag_ids)
     flag_distances = __extract_flag_distances(flags)
 
     for i in range(0, len(flag_ids)):
@@ -373,7 +426,7 @@ def __zip_flag_coords_distance(flags):
     return coords_zipped_distance
 
 
-def __calculate_distance(coord1, coord2):
+def _calculate_distance(coord1, coord2):
     x_dist = abs(coord1.pos_x - coord2.pos_x)
     y_dist = abs(coord1.pos_y - coord2.pos_y)
     return sqrt(pow(float(x_dist), 2) + pow(float(y_dist), 2))
@@ -383,7 +436,7 @@ def __calculate_distance(coord1, coord2):
 def __trilaterate_offset(flag_one, flag_two):
     coord1 = flag_one[0]
     coord2 = flag_two[0]
-    distance_between_flags = __calculate_distance(coord1, coord2)
+    distance_between_flags = _calculate_distance(coord1, coord2)
     distance_to_flag1 = float(flag_one[1])
     distance_to_flag2 = float(flag_two[1])
 
@@ -401,11 +454,11 @@ def __trilaterate_offset(flag_one, flag_two):
 
 
 # Calculates angle between two points (relative to the origin (0, 0))
-def __calculate_angle_between(coordinate1, coordinate2):
+def _calculate_angle_between(coordinate1, coordinate2):
     return atan2(coordinate1.pos_y - coordinate2.pos_y, coordinate1.pos_x - coordinate2.pos_x)
 
 
-def __rotate_coordinate(coord, radians_to_rotate):
+def _rotate_coordinate(coord, radians_to_rotate):
     new_x = math.cos(radians_to_rotate) * coord.pos_x - math.sin(radians_to_rotate) * coord.pos_y
     new_y = math.sin(radians_to_rotate) * coord.pos_x + math.cos(radians_to_rotate) * coord.pos_y
     return Coordinate(new_x, new_y)
@@ -416,9 +469,9 @@ def __solve_trilateration(flag_1, flag_2):
     # The trilateration algorithm assumes horizontally aligned flags
     # To resolve this, the solution is calculated as if the flags were horizontally aligned
     # and is then rotated to match the actual angle
-    radians_to_rotate = __calculate_angle_between(flag_1[0], flag_2[0])
-    corrected_offset_from_flag_one_1 = __rotate_coordinate(possible_offset_1, radians_to_rotate)
-    corrected_offset_from_flag_one_2 = __rotate_coordinate(possible_offset_2, radians_to_rotate)
+    radians_to_rotate = _calculate_angle_between(flag_1[0], flag_2[0])
+    corrected_offset_from_flag_one_1 = _rotate_coordinate(possible_offset_1, radians_to_rotate)
+    corrected_offset_from_flag_one_2 = _rotate_coordinate(possible_offset_2, radians_to_rotate)
 
     return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
 
@@ -492,7 +545,7 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
     return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
 
 
-def __approx_position(flags, state):
+def _approx_position(flags, state):
     parsed_flags = __zip_flag_coords_distance(flags)
     if len(parsed_flags) < 2:
         # print("No flag can be seen - Position unknown")
@@ -542,8 +595,30 @@ My pos: x: -19,  y: -16 my_angle 0
 '''
 
 
-def __get_object_position(object_rel_angle: float, distance: float, my_x: float, my_y: float, my_angle: float):
-    actual_angle = my_angle + object_rel_angle
-    x = distance * math.cos(math.radians(actual_angle)) + my_x
-    y = distance * math.sin(math.radians(actual_angle)) + my_y
+def __get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float, my_y: float,
+                          my_global_angle: float):
+    actual_angle = my_global_angle + object_rel_angle
+    x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
+    y = dist_to_obj * math.sin(math.radians(actual_angle)) + my_y
     return world.Coordinate(x, y)
+
+'''
+PHILIPS - DO NOT REMOVE
+
+my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
+         "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
+         "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
+         "-2) ((player) 60.3 -44) ((player Team1) 44.7 -11) ((player Team1 10) 20.1 -37 0 0) ((player) 66.7 -13) ((" \
+         "player) 66.7 -36) ((player) 66.7 -16) ((player) 49.4 6) ((player) 73.7 -39) ((player) 60.3 -33) ((player) " \
+         "60.3 -8) ((player) 66.7 -4) ((player) 90 6) ((player) 99.5 -21) ((player) 66.7 -20) ((line r) 97.5 -80)) "
+
+my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18) ((goal r) 67.4 12) ((flag g r t) 66 " \
+          "6) ((flag p r b) 60.3 35) ((flag p r c) 51.4 17) ((flag p r t) 49.4 -6) ((player Team1 3) 8.2 0 0 0) ((" \
+          "player Team1 7) 2 0 0 0) ((player Team2) 33.1 32) ((player) 49.4 38) ((player Team2) 40.4 36) ((player " \
+          "Team2) 40.4 37) ((player) 66.7 21) ((player Team2) 27.1 39) ((line r) 65.4 90))"
+
+my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
+          "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
+parse_message_update_state(my_str3, player_state.PlayerState())
+'''
+
