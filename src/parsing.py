@@ -176,21 +176,21 @@ def _approx_glob_angle(flags, ps):
 
         # Find flag relative angle
         flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
-        player_angle = float(global_angle_between_play_flag) + math.radians(float(flag_relative_direction))
+        player_angle = float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))
         if ps.player_num == 1 and ps.team_name == "Team1":
             print(str(math.degrees(player_angle)))
 
         '''
-        
-        '''
-        print("Flags: ", flags)
+                print("Flags: ", flags)
         print("Closest flag: ", closest_flag)
         print("Closest flag id: ", closest_flag_id)
         print("Closest flag coords: ", closest_flag_coords)
         print("Player coord: ", player_coord)
-        print("Global Angle: ", global_angle_between_play_flag)
-        print("Flag direction: ", flag_relative_direction)
+        print("Global Angle: ", math.degrees(global_angle_between_play_flag))
+        print("Flag direction: ", float(flag_relative_direction))
         print("Player angle: ", math.degrees(player_angle))
+        '''
+
 
 
 # ((flag g r b) 99.5 -5)
@@ -642,7 +642,6 @@ def __get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: flo
 
 '''
 PHILIPS - DO NOT REMOVE
-'''
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
          "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
          "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
@@ -657,5 +656,7 @@ my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18
 
 my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
           "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
-parse_message_update_state(my_str3, player_state.PlayerState())
+parse_message_update_state(my_str, player_state.PlayerState())
+'''
+
 

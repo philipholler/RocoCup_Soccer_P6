@@ -47,10 +47,10 @@ class Thinker(threading.Thread):
         if self.player_state.team_name == "Team1" and self.player_state.player_num == 1:
             if self.my_bool:
                 self.player_conn.action_queue.put("(dash 10)")
-                self.player_conn.action_queue.put("(turn 0)")
+                self.player_conn.action_queue.put("(turn 2)")
                 self.my_bool = False
             else:
-                self.player_conn.action_queue.put("(turn 0)")
+                self.player_conn.action_queue.put("(turn 2)")
                 # self.player_conn.action_queue.put("(turn_neck 20)")
                 self.my_bool = True
         else:
