@@ -1,21 +1,36 @@
-from player.thinker import Thinker, Objective
+from player import actions
 from player.world import Coordinate
+
 
 _conga_positions = [Coordinate(-40, -15), Coordinate(40, -15), Coordinate(40, 15), Coordinate(-40, 15)]
 
 
+class Objective:
+
+    def __init__(self, action_to_perform, achievement_criteria) -> None:
+        self.achievement_criteria = achievement_criteria
+        self.perform_action = action_to_perform
+
+    def is_achieved(self):
+        return self.achievement_criteria()
+
+    def perform_action(self):
+        self.perform_action()
+
+
 class Strategy:
-    def __init__(self, player_state, thinker: Thinker) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.current_goal = "attack"
-        self.player_state = player_state
         self.conga_count = 0
 
-    def determine_objective(self, player_state, thinker: Thinker):
-        current_objective = thinker.current_objective
+    def determine_objective(self, player_state, current_objective: Objective):
         if current_objective is None or current_objective.is_achieved():
-            new_objective = Objective(lambda: thinker.jog_towards(_conga_positions[self.conga_count]),
-                                      lambda: thinker.is_near(_conga_positions[self.conga_count]))
+            new_objective = Objective(lambda: actions.jog_towards(player_state, _conga_positions[self.conga_count]),
+                                      lambda: player_state.is_near(_conga_positions[self.conga_count]))
             self.conga_count += 1
+            self.conga_count %= 4
             return new_objective
         return current_objective
+
+
+

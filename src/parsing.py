@@ -178,10 +178,7 @@ def _approx_glob_angle(flags, ps):
                        math.radians(360)
 
         # Update player state angle value
-        ps.player_angle.set_value(player_angle)
-
-        if ps.player_num == 1 and ps.team_name == "Team1":
-            print(str(math.degrees(player_angle)) + " : " + closest_flag_id + " : " + str(ps.position.get_value()))
+        ps.player_angle.set_value(player_angle, ps.world_view.sim_time)
 
         '''
                 print("Flags: ", flags)
