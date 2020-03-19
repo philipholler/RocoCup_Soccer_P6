@@ -12,7 +12,7 @@ def jog_towards(player_state, target_position: Coordinate):
     if not player_state.facing(target_position, math.radians(5)):
         rotation = calculate_origin_angle_between(player_state.position.get_value(), target_position)
         rotation -= player_state.player_angle.get_value()
-        return "(turn " + str(rotation) + ")"
+        return "(turn " + str(4) + ")"
     else:
         return "(dash 65)"
 

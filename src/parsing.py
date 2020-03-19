@@ -1,7 +1,7 @@
 import math
 import re
 
-from geometry import angle_between, calculate_origin_angle_between, _rotate_coordinate
+from geometry import angle_between, calculate_origin_angle_between, rotate_coordinate, get_object_position
 from player import player, world
 from math import sqrt, atan2
 
@@ -202,6 +202,8 @@ def _approx_glob_angle(flags, ps):
 
         # Set player global angle
         ps.player_angle.set_value(player_angle_degrees, ps.world_view.sim_time)
+        # if ps.player_num == 1 and ps.team_name == "Team1":
+        #    print("My angle: ", ps.player_angle.get_value())
 
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
@@ -274,7 +276,7 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     # The position of the ball can only be calculated, if the position of the player is known
     if ps.position.is_value_known():
         pos: Coordinate = ps.position.get_value()
-        ball_coord = __get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
+        ball_coord: Coordinate = get_object_position(object_rel_angle=int(direction), dist_to_obj=float(distance),
                                            my_x=pos.pos_x,
                                            my_y=pos.pos_y,
                                            my_global_angle=ps.player_angle.get_value())
@@ -282,7 +284,7 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
     if ps.team_name == "Team1" and ps.player_num == 1:
-        print("Ball coord: ", ball_coord)
+        print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
 
     ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
@@ -345,7 +347,7 @@ def _parse_players(players: [], ps: player.PlayerState):
             head_dir = split_by_whitespaces[8]
 
         my_pos: Coordinate = ps.position.get_value()
-        other_player_coord = __get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
+        other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
                                                    my_x=my_pos.pos_x, my_y=my_pos.pos_y,
                                                    my_global_angle=float(ps.player_angle.get_value()))
 
@@ -514,8 +516,8 @@ def __solve_trilateration(flag_1, flag_2):
     # To resolve this, the solution is calculated as if the flags were horizontally aligned
     # and is then rotated to match the actual angle
     radians_to_rotate = calculate_origin_angle_between(flag_1[0], flag_2[0])
-    corrected_offset_from_flag_one_1 = _rotate_coordinate(possible_offset_1, radians_to_rotate)
-    corrected_offset_from_flag_one_2 = _rotate_coordinate(possible_offset_2, radians_to_rotate)
+    corrected_offset_from_flag_one_1 = rotate_coordinate(possible_offset_1, radians_to_rotate)
+    corrected_offset_from_flag_one_2 = rotate_coordinate(possible_offset_2, radians_to_rotate)
 
     return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
 
@@ -626,32 +628,6 @@ def _approx_position(flags, state):
         solution = __find_mean_solution(all_solutions, state)
         if solution is not None and is_possible_position(solution, state):
             state.position.set_value(solution, state.world_view.sim_time)
-
-
-'''
-- Returns the position of an object.
-object_rel_angle is the relative angle to the observer (-180 to 180)
-distance is the distance from the observer to the object
-my_x, my_y are the coordinates of the observer
-my_angle is the global angle of the observer
-
-Formular:
-X= distance*cos(angle) +x0
-Y= distance*sin(angle) +y0
-
-example: 
-My pos: x: -19,  y: -16 my_angle 0
-(player Team1 9) 14.9 -7 0 0) = x:-4, y:-17,5
-'''
-
-
-def __get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float, my_y: float,
-                          my_global_angle: float):
-    actual_angle = my_global_angle + object_rel_angle
-    x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
-    y = dist_to_obj * math.sin(math.radians(actual_angle)) + my_y
-    return world.Coordinate(x, y)
-
 
 '''
 PHILIPS - DO NOT REMOVE
