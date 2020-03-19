@@ -143,17 +143,32 @@ def _parse_see(msg, ps: player.PlayerState):
             ball = element
 
     _approx_position(flags, ps)
-    # if ps.team_name == "Team1" and ps.player_num == "1":
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
-    if goals:
-        for x in range(len(goals)):
-            __parse_goal(goals[x], ps)
-    if ball is not None:
-        _parse_ball(ball, ps)
+    _parse_goals(goals, ps)
+    _parse_ball(ball, ps)
     # todo Parse flags...
-    # todo Parse goals...
     # todo Parse line...
+
+
+def _parse_goals(goals, ps):
+    for goal in goals:
+        _parse_goal(goal, ps)
+
+
+def _parse_goal(text: str, ps: player_state):
+    goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+    regular_expression = re.compile(goal_regex)
+    matched = regular_expression.match(text)
+
+    goal_side = matched.group(1)
+    goal_distance = matched.group(2)
+    goal_relative_angle = matched.group(3)
+
+    # Add information to WorldView
+    new_goal = world.Goal(goal_side=goal_side, distance=goal_distance, relative_angle=goal_relative_angle)
+    ps.world_view.goals.append(new_goal)
+    return matched
 
 
 def _approx_glob_angle(flags, ps):
@@ -194,7 +209,7 @@ def _approx_glob_angle(flags, ps):
 
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
-# # distance, direction, dist_change, dir_change
+# distance, direction, dist_change, dir_change
 def _extract_flag_directions(flags, ps):
     flag_directions = []
     for flag in flags:
@@ -232,6 +247,8 @@ def _find_closest_flag(flags, ps):
 # or ((ball) 44.7 -20)
 # distance, direction, dist_change, dir_change
 def _parse_ball(ball: str, ps: player.PlayerState):
+    if ball is None:
+        return
     # Remove ) from the items
     ball = str(ball).replace(")", "")
     ball = str(ball).replace("(", "")
@@ -651,5 +668,7 @@ my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18
 
 my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
           "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
-parse_message_update_state(my_str, player_state.PlayerState())
+parse_message_update_state(my_str3, player_state.PlayerState())
+
 '''
+
