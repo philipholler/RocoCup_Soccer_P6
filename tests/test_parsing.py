@@ -1,21 +1,22 @@
 from unittest import TestCase
 import parsing
-import player_state
+from player.player import PlayerState
 from player.world import Coordinate
 
 
 class Test(TestCase):
     def test_parse_message_update_state(self):
-        ps = player_state.PlayerState()
+        ps = PlayerState()
         self.skipTest("Not finished")
 
     # example: (hear 0 referee kick_off_l)
     def test_parse_hear01(self):
-        ps = player_state.PlayerState()
-        parsing.parse_hear("(hear 0 referee kick_off_l)", ps)
+        ps = PlayerState()
+        parsing._parse_hear("(hear 0 referee kick_off_l)", ps)
         self.assertEqual(ps.game_state, "kick_off_l", "Game state in the player state should update according to msg")
-        self.assertEqual(ps.sim_time, str(0), "Sim time in the player state should update according to msg")
+        self.assertEqual(ps.world_view.sim_time, 0, "Sim time in the player state should update according to msg")
 
+    # todo Fix trilateration tests
     def test_trilateration_horizontally_aligned(self):
         expected_position = Coordinate(19.53533, 21.47515)
         flag_one = (Coordinate(10, 15), 11.5)

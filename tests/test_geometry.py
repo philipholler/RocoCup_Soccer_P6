@@ -27,7 +27,7 @@ class Test(TestCase):
 
     def test_get_object_position04(self):
         # Observer at -2,-3 and ball at -4,1.
-        coord: Coordinate = geometry.get_object_position(45, 2.83, -2, -3, 180)
+        coord: Coordinate = geometry.get_object_position(64.43, 4.47, -2, -3, 180)
         delta = 0.1
         self.assertTrue(-4 - delta < coord.pos_x < -4 + delta, "Should report the correct position (-4,1)")
         self.assertTrue(1 - delta < coord.pos_y < 1 + delta, "Should report the correct position (-4,1)")
@@ -36,7 +36,6 @@ class Test(TestCase):
         # Observer at -2,-3 and ball at 1,1.
         coord: Coordinate = geometry.get_object_position(-53.13, 5, -2, -3, 0)
         delta = 0.1
-        print(coord)
         self.assertTrue(1 - delta < coord.pos_x < 1 + delta, "Should report the correct position (1,1)")
         self.assertTrue(1 - delta < coord.pos_y < 1 + delta, "Should report the correct position (1,1)")
 
@@ -46,8 +45,7 @@ class Test(TestCase):
     def test_get_object_position06(self):
         # Observer at -6.58, -33.74 and ball at 0,0.
         # object_rel_angle: float, dist_to_obj: float, my_x: float, my_y: float, my_global_angle: float
-        coord: Coordinate = geometry.get_object_position(36, 34.38, -6.58, -33.74, 249.38)
+        coord: Coordinate = geometry.get_object_position(36, 34.38, -6.58, -33.74, 245.05)
         delta = 0.1
-        print(coord)
         self.assertTrue(0 - delta < coord.pos_x < 0 + delta, "Should report the correct position (0,0)")
         self.assertTrue(0 - delta < coord.pos_y < 0 + delta, "Should report the correct position (0,0)")

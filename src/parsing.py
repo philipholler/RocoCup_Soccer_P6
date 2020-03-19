@@ -347,9 +347,12 @@ def _parse_players(players: [], ps: player.PlayerState):
             head_dir = split_by_whitespaces[8]
 
         my_pos: Coordinate = ps.position.get_value()
-        other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
-                                                   my_x=my_pos.pos_x, my_y=my_pos.pos_y,
-                                                   my_global_angle=float(ps.player_angle.get_value()))
+        other_player_coord = PrecariousData.unknown()
+        if ps.position.is_value_known():
+            other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
+                                                     my_x=my_pos.pos_x, my_y=my_pos.pos_y,
+                                                     my_global_angle=float(ps.player_angle.get_value()))
+
 
         new_player = Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
                             , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, coord=other_player_coord)

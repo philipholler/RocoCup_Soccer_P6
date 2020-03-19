@@ -44,34 +44,7 @@ My pos: x: -19,  y: -16 my_angle 0
 def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float, my_y: float,
                         my_global_angle: float):
     actual_angle = (my_global_angle + object_rel_angle) % 360
-    # Top right quadrant
-    if 270 < actual_angle <= 360:
-        print("Top right quadrant")
-        x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
-        y = dist_to_obj * math.sin(math.radians(actual_angle)) + my_y
-    # Bottom right quadrant
-    elif 0 <= actual_angle <= 90:
-        print("Bottom right quadrant")
-        x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
-        y = dist_to_obj * math.sin(math.radians(actual_angle)) + my_y
-    # Bottom left quadrant
-    elif 90 <= actual_angle <= 180:
-        print("Bottom left quadrant")
-        x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
-        y = dist_to_obj * math.sin(math.radians(actual_angle)) + my_y
-    # Top left quadrant
-    elif 180 < actual_angle <= 270:
-        print("Top left quadrant")
-        x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
-        y = dist_to_obj * math.sin(math.radians(actual_angle)) + my_y
-
-    print("My position: x:", my_x, " y: ", my_y)
-    print("Object rel angle: ", object_rel_angle)
-    print("My global angel: ", my_global_angle)
-    print("Distance to object: ", dist_to_obj)
-    print("Actual angle: ", actual_angle)
-    print("x: ({0}), y: ({1})".format(x, y))
-    rotated = rotate_coordinate(world.Coordinate(x, y), math.pi / 2)
-    print("Rotated: ", rotated)
+    x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
+    y = dist_to_obj * - math.sin(math.radians(actual_angle)) + my_y
     return world.Coordinate(x, y)
 

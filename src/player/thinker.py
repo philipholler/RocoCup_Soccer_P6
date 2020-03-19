@@ -59,5 +59,7 @@ class Thinker(threading.Thread):
         x = r.randint(-20, 20)
         y = r.randint(-20, 20)
         move_action = "(move " + str(x) + " " + str(y) + ")"
+        if self.player_state.team_name == "Team1" and self.player_state.player_num == 1:
+            move_action = "(move -5 -5)"
         self.player_conn.action_queue.put(move_action)
 
