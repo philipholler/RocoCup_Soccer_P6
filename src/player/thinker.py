@@ -1,17 +1,18 @@
 import enum
 import threading
 import queue
-from player import player_connection, player_state
+from player import player_connection, player
 import time
 import parsing
 import random as r
 import player.strategy as strategy
+from player.world import Coordinate
 
 
 class Thinker(threading.Thread):
     def __init__(self, team_name: str):
         super().__init__()
-        self.player_state = player_state.PlayerState()
+        self.player_state = player.PlayerState()
         self.player_state.team_name = team_name
         # Connection with the server
         self.player_conn: player_connection.PlayerConnection = None
@@ -19,6 +20,7 @@ class Thinker(threading.Thread):
         self.action_queue = queue.Queue()
         # Non processed inputs from server
         self.input_queue = queue.Queue()
+        self.current_objective : Objective = None
 
         self.strategy = strategy.Strategy(self.player_state)
 
@@ -44,6 +46,9 @@ class Thinker(threading.Thread):
             # Give the strategy a new state
             self.strategy.player_state = self.player_state
 
+        #Update strategizer
+        self.current_objective = self.strategy.determine_objective(self.player_state, self)
+
         if self.player_state.team_name == "Team1" and self.player_state.player_num == 1:
             if self.my_bool:
                 self.player_conn.action_queue.put("(dash 10)")
@@ -66,11 +71,28 @@ class Thinker(threading.Thread):
         move_action = "(move " + str(x) + " " + str(y) + ")"
         self.player_conn.action_queue.put(move_action)
 
+    def jog_towards(self, coordinate: Coordinate):
+        pass
+
+    def is_near(self, coordinate: Coordinate):
+        if not self.player_state.position.is_value_known():
+            return False
+
+        # temporary value
+        allowed_delta = 2.0
+
+        distance = coordinate.euclidean_distance_from(self.player_state.position.get_value())
+        return distance < allowed_delta
+
 
 class Objective:
 
-    def __init__(self, fulfillment_criteria) -> None:
-        self.fulfillment_criteria = fulfillment_criteria
+    def __init__(self, action_to_perform, achievement_criteria) -> None:
+        self.achievement_criteria = achievement_criteria
+        self.perform_action = action_to_perform
 
-    def is_achieved(self, player_state):
-        return self.fulfillment_criteria(player_state)
+    def is_achieved(self):
+        return self.achievement_criteria()
+
+    def perform_action(self):
+        self.perform_action()

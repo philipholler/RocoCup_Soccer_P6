@@ -1,9 +1,9 @@
 import math
 import re
-from player import player_state, world
+from player import player, world
 from math import sqrt, atan2
 
-from player.player_state import PlayerState
+from player.player import PlayerState
 from player.world import Coordinate
 from player.world import Player
 from player.world import PrecariousData
@@ -94,7 +94,7 @@ def _update_time(msg, state: PlayerState):
     state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
 
 
-def parse_message_update_state(msg: str, ps: player_state):
+def parse_message_update_state(msg: str, ps: player):
     _update_time(msg, ps)
 
     if msg.startswith("(hear"):
@@ -119,7 +119,7 @@ Example:
 '''
 
 
-def _parse_see(msg, ps: player_state.PlayerState):
+def _parse_see(msg, ps: player.PlayerState):
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
@@ -179,9 +179,9 @@ def _approx_glob_angle(flags, ps):
 
         # Find flag relative angle
         flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
-        player_angle = float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))
+        player_angle = (float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))) % math.radians(360)
         if ps.player_num == 1 and ps.team_name == "Team1":
-            print(str(math.degrees(player_angle)))
+            print(str(math.degrees(player_angle)) + " : " + closest_flag_id + " : " + str(ps.position.get_value()))
 
         '''
                 print("Flags: ", flags)
@@ -234,7 +234,7 @@ def _find_closest_flag(flags, ps):
 # Input ((ball) 13.5 -31 0 0)
 # or ((ball) 44.7 -20)
 # distance, direction, dist_change, dir_change
-def _parse_ball(ball: str, ps: player_state.PlayerState):
+def _parse_ball(ball: str, ps: player.PlayerState):
     # Remove ) from the items
     ball = str(ball).replace(")", "")
     ball = str(ball).replace("(", "")
@@ -279,7 +279,7 @@ def _parse_ball(ball: str, ps: player_state.PlayerState):
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
 # ((player Team1 5) 30 -41 0 0)
 # "\\(\\(player({0})?({1})?\\) ({2}) ({2}) ({2})? ({2})? ({2})? ({2})?\\)"
-def _parse_players(players: [], ps: player_state.PlayerState):
+def _parse_players(players: [], ps: player.PlayerState):
     for player in players:
         # Remove ) from the items
         player = str(player).replace(")", "")
@@ -340,7 +340,7 @@ def _parse_players(players: [], ps: player_state.PlayerState):
         ps.world_view.other_players.append(new_player)
 
 
-def _parse_init(msg, ps: player_state.PlayerState):
+def _parse_init(msg, ps: player.PlayerState):
     regex = re.compile("\\(init ([lr]) ([0-9]*)")
     matched = regex.match(msg)
     ps.side = matched.group(1)
@@ -351,7 +351,7 @@ def _parse_init(msg, ps: player_state.PlayerState):
 # example: (hear 0 referee kick_off_l)
 # example: (hear 0 self *msg*)
 # Pattern: (hear *time* *degrees* *msg*)
-def _parse_hear(text: str, ps: player_state):
+def _parse_hear(text: str, ps: player):
     split_by_whitespaces = re.split('\\s+', text)
     time = split_by_whitespaces[1]
     ps.sim_time = time  # Update players understanding of time
@@ -379,7 +379,7 @@ def _parse_hear(text: str, ps: player_state):
 
 # example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
 # Group [1] = time, [2] = stamina, [3] = effort, [4] = speed, [5] = kick count, [6] = dash, [7] = turn
-def _parse_body_sense(text: str, ps: player_state):
+def _parse_body_sense(text: str, ps: player):
     # Will view_mode ever change from "high normal"?
     regex_string = ".*sense_body ({1}).*stamina ({0}) ({0})\\).*speed ({0})\\).*kick ({0})\\)"
     regex_string += ".*dash ({0})\\).*turn ({1})\\)"
@@ -413,7 +413,7 @@ def _flag_position(pos_x, pos_y):
 #    print(m)
 
 
-def __parse_goal(text: str, ps: player_state):
+def __parse_goal(text: str, ps: player):
     goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     regular_expression = re.compile(goal_regex)
     matched = regular_expression.match(text)
@@ -548,14 +548,17 @@ def __average_point(cluster):
     return Coordinate(total_x / amount_of_clusters, total_y / amount_of_clusters)
 
 
-def __find_mean_solution(all_solutions):
+def __find_mean_solution(all_solutions, state):
     amount_of_correct_solutions = (len(all_solutions) * (len(all_solutions) - 1)) / 2
     acceptable_distance = 3.0
     cluster_size_best_solution = 0
     best_cluster = []
 
     for solution1 in all_solutions:
+        if not is_possible_position(solution1, state):
+            continue
         cluster = [solution1]
+
         for solution2 in all_solutions:
             if solution1 == solution2:
                 continue
@@ -569,6 +572,9 @@ def __find_mean_solution(all_solutions):
         if len(cluster) > cluster_size_best_solution:
             cluster_size_best_solution = len(cluster)
             best_cluster = cluster
+
+    if len(best_cluster) == 0:
+        return None
     return __average_point(best_cluster)
 
 
@@ -581,7 +587,7 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
         return True
 
     ticks_since_update = state.world_view.sim_time - state.position.last_updated_time
-    possible_travel_distance = player_state.MAX_MOVE_DISTANCE_PER_TICK * ticks_since_update
+    possible_travel_distance = player.MAX_MOVE_DISTANCE_PER_TICK * ticks_since_update
     return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
 
 
@@ -613,9 +619,10 @@ def _approx_position(flags, state):
         # print("no position trilaterations match previous positions")
     else:
         # handle case where this return an uncertain result
-        solution = __find_mean_solution(all_solutions)
-        state.position.set_value(solution, state.world_view.sim_time)
-        # print(solution)
+        solution = __find_mean_solution(all_solutions, state)
+        if solution is not None and is_possible_position(solution, state):
+            state.position.set_value(solution, state.world_view.sim_time)
+
 
 
 '''
