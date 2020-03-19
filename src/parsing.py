@@ -97,8 +97,11 @@ def _update_time(msg, state: PlayerState):
 
 
 def parse_message_update_state(msg: str, ps: player):
-    _update_time(msg, ps)
+    if msg.startswith("(error"):
+        print(msg)
+        return
 
+    _update_time(msg, ps)
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -175,6 +178,11 @@ def _approx_glob_angle(flags, ps):
     if not ps.position.is_value_known():
         return
 
+    # angle between c1 and c2, with c3 offsetting to make 0 degrees in some direction
+    # For this purpose x+ = east, -x = west etc.
+    def angle_between(c1, c2, c3):
+        return atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
+
     if len(flags) != 0:
         # Find closest flag
         closest_flag = _find_closest_flag(flags, ps)
@@ -182,30 +190,18 @@ def _approx_glob_angle(flags, ps):
 
         # Calculate global angle to flag
         closest_flag_coords = _extract_flag_coordinates([closest_flag_id])[0]
-        flag_coord: Coordinate = Coordinate(closest_flag_coords.pos_x, closest_flag_coords.pos_y)
         player_coord: Coordinate = ps.position.get_value()
-        global_angle_between_play_flag = angle_between(player_coord, flag_coord, Coordinate(player_coord.pos_x + 20,
-                                                                                            player_coord.pos_y))
+        global_angle_between_play_flag = angle_between(player_coord, closest_flag_coords,
+                                                       Coordinate(player_coord.pos_x + 20
+                                                                  , player_coord.pos_y))
 
         # Find flag relative angle
         flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
-        player_angle = (float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))) % \
-                       math.radians(360)
+        player_angle = float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))
+        player_angle_degrees = math.degrees(player_angle) % 360
 
-        # Update player state angle value
-        ps.player_angle.set_value(player_angle, ps.world_view.sim_time)
-
-        '''
-                print("Flags: ", flags)
-        print("Closest flag: ", closest_flag)
-        print("Closest flag id: ", closest_flag_id)
-        print("Closest flag coords: ", closest_flag_coords)
-        print("Player coord: ", player_coord)
-        print("Global Angle: ", math.degrees(global_angle_between_play_flag))
-        print("Flag direction: ", float(flag_relative_direction))
-        print("Player angle: ", math.degrees(player_angle))
-        '''
-
+        # Set player global angle
+        ps.player_angle.set_value(player_angle_degrees, ps.world_view.sim_time)
 
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
@@ -278,14 +274,15 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     # The position of the ball can only be calculated, if the position of the player is known
     if ps.position.is_value_known():
         pos: Coordinate = ps.position.get_value()
-        # todo add players actual global angle
         ball_coord = __get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
                                            my_x=pos.pos_x,
                                            my_y=pos.pos_y,
-                                           my_global_angle=0)
+                                           my_global_angle=ps.player_angle.get_value())
 
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
+    if ps.team_name == "Team1" and ps.player_num == 1:
+        print("Ball coord: ", ball_coord)
 
     ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
@@ -347,9 +344,13 @@ def _parse_players(players: [], ps: player.PlayerState):
             body_dir = split_by_whitespaces[7]
             head_dir = split_by_whitespaces[8]
 
-        # Todo Add correct coord
+        my_pos: Coordinate = ps.position.get_value()
+        other_player_coord = __get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
+                                                   my_x=my_pos.pos_x, my_y=my_pos.pos_y,
+                                                   my_global_angle=float(ps.player_angle.get_value()))
+
         new_player = Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
-                            , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, coord=None)
+                            , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, coord=other_player_coord)
 
         ps.world_view.other_players.append(new_player)
 

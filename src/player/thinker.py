@@ -1,3 +1,4 @@
+import enum
 import threading
 import queue
 
@@ -59,6 +60,4 @@ class Thinker(threading.Thread):
         y = r.randint(-20, 20)
         move_action = "(move " + str(x) + " " + str(y) + ")"
         self.player_conn.action_queue.put(move_action)
-
-
 
