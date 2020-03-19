@@ -156,7 +156,7 @@ def _parse_goals(goals, ps):
         _parse_goal(goal, ps)
 
 
-def _parse_goal(text: str, ps: player_state):
+def _parse_goal(text: str, ps: PlayerState):
     goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     regular_expression = re.compile(goal_regex)
     matched = regular_expression.match(text)
