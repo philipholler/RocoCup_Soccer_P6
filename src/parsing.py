@@ -1,5 +1,7 @@
 import math
 import re
+
+from geometry import angle_between, calculate_origin_angle_between, _rotate_coordinate
 from player import player, world
 from math import sqrt, atan2
 
@@ -158,13 +160,6 @@ def _approx_glob_angle(flags, ps):
     if not ps.position.is_value_known():
         return
 
-    # angle between c2 and c3 with vertex c1
-    def angle_between(c1, c2, c3):
-        angle = atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
-        if angle < 0:
-            return math.radians(360) + angle
-        return angle
-
     if len(flags) != 0:
         # Find closest flag
         closest_flag = _find_closest_flag(flags, ps)
@@ -175,11 +170,16 @@ def _approx_glob_angle(flags, ps):
         flag_coord: Coordinate = Coordinate(closest_flag_coords.pos_x, closest_flag_coords.pos_y)
         player_coord: Coordinate = ps.position.get_value()
         global_angle_between_play_flag = angle_between(player_coord, flag_coord, Coordinate(player_coord.pos_x + 20,
-                                                                                player_coord.pos_y))
+                                                                                            player_coord.pos_y))
 
         # Find flag relative angle
         flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
-        player_angle = (float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))) % math.radians(360)
+        player_angle = (float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))) % \
+                       math.radians(360)
+
+        # Update player state angle value
+        ps.player_angle.set_value(player_angle)
+
         if ps.player_num == 1 and ps.team_name == "Team1":
             print(str(math.degrees(player_angle)) + " : " + closest_flag_id + " : " + str(ps.position.get_value()))
 
@@ -493,23 +493,12 @@ def __trilaterate_offset(flag_one, flag_two):
     return Coordinate(x, y), Coordinate(x, -y)
 
 
-# Calculates angle between two points (relative to the origin (0, 0))
-def _calculate_angle_between(coordinate1, coordinate2):
-    return atan2(coordinate1.pos_y - coordinate2.pos_y, coordinate1.pos_x - coordinate2.pos_x)
-
-
-def _rotate_coordinate(coord, radians_to_rotate):
-    new_x = math.cos(radians_to_rotate) * coord.pos_x - math.sin(radians_to_rotate) * coord.pos_y
-    new_y = math.sin(radians_to_rotate) * coord.pos_x + math.cos(radians_to_rotate) * coord.pos_y
-    return Coordinate(new_x, new_y)
-
-
 def __solve_trilateration(flag_1, flag_2):
     (possible_offset_1, possible_offset_2) = __trilaterate_offset(flag_1, flag_2)
     # The trilateration algorithm assumes horizontally aligned flags
     # To resolve this, the solution is calculated as if the flags were horizontally aligned
     # and is then rotated to match the actual angle
-    radians_to_rotate = _calculate_angle_between(flag_1[0], flag_2[0])
+    radians_to_rotate = calculate_origin_angle_between(flag_1[0], flag_2[0])
     corrected_offset_from_flag_one_1 = _rotate_coordinate(possible_offset_1, radians_to_rotate)
     corrected_offset_from_flag_one_2 = _rotate_coordinate(possible_offset_2, radians_to_rotate)
 
@@ -622,7 +611,6 @@ def _approx_position(flags, state):
         solution = __find_mean_solution(all_solutions, state)
         if solution is not None and is_possible_position(solution, state):
             state.position.set_value(solution, state.world_view.sim_time)
-
 
 
 '''

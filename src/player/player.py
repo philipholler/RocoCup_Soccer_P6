@@ -1,3 +1,4 @@
+from geometry import calculate_origin_angle_between
 from player.world import PrecariousData, World, Player
 
 MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manual
@@ -17,6 +18,14 @@ class PlayerState:
 
     def __str__(self) -> str:
         return "side: {0}, team_name: {1}, player_num: {2}".format(self.side, self.team_name, self.player_num)
+
+    def facing(self, coordinate, delta):
+        if not self.player_angle.is_value_known() or not self.position.is_value_known():
+            # should this return unknown?(None?)
+            return False
+
+        expected_angle = calculate_origin_angle_between(self.position.get_value(), coordinate)
+        return abs(expected_angle - self.player_angle.get_value()) < delta
 
 
 class WorldView:
