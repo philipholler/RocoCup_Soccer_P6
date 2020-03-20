@@ -11,6 +11,7 @@ class PlayerState:
         self.team_name = ""
         self.player_num = -1
         self.game_state = ""
+        self.player_type = None
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
         self.player_angle: PrecariousData = PrecariousData.unknown()

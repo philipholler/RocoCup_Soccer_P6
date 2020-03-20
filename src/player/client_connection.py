@@ -4,7 +4,7 @@ import threading
 import queue
 
 
-class PlayerConnection(threading.Thread):
+class Connection(threading.Thread):
 
     def __init__(self, UDP_IP, UDP_PORT, think):
         super().__init__()
@@ -23,18 +23,18 @@ class PlayerConnection(threading.Thread):
         super().run()
         while True:
             while True:
-                msg = self.__receive_message()
+                msg = self._receive_message()
                 if msg is None:
                     break
                 self.think.input_queue.put(msg)
             while not self.action_queue.empty():
-                self.__send_message(self.action_queue.get())
+                self._send_message(self.action_queue.get())
 
-    def __send_message(self, msg: str):
+    def _send_message(self, msg: str):
         bytes_to_send = str.encode(msg)
         self.sock.sendto(bytes_to_send, self.addr)
 
-    def __receive_message(self):
+    def _receive_message(self):
         ready = select.select([self.sock], [], [], 0.02)
         if ready[0]:
             player_info = self.sock.recv(1024)

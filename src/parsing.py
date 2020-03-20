@@ -283,8 +283,8 @@ def _parse_ball(ball: str, ps: player.PlayerState):
 
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
-    if ps.team_name == "Team1" and ps.player_num == 1:
-        print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
+    # if ps.team_name == "Team1" and ps.player_num == 1:
+        # print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
 
     ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
