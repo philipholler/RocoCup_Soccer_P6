@@ -45,3 +45,4 @@ class WorldView:
         self.other_players = [Player]
         self.ball: PrecariousData = PrecariousData.unknown()
         self.goals = []
+        self.lines = []
