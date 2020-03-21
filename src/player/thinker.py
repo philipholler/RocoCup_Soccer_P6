@@ -13,12 +13,13 @@ from player.world import Coordinate
 
 
 class Thinker(threading.Thread):
-    def __init__(self, team_name: str):
+    def __init__(self, team_name: str, player_type: str):
         super().__init__()
         self.player_state = player.PlayerState()
         self.player_state.team_name = team_name
+        self.player_state.player_type = player_type
         # Connection with the server
-        self.player_conn: player_connection.PlayerConnection = None
+        self.player_conn: client_connection.Connection = None
         # Queue for actions to be send
         self.action_queue = queue.Queue()
         # Non processed inputs from server
@@ -31,7 +32,10 @@ class Thinker(threading.Thread):
 
     def start(self) -> None:
         super().start()
-        init_string = "(init " + self.player_state.team_name + ")"
+        if self.player_state.player_type == "goalie":
+            init_string = "(init " + self.player_state.team_name + "(goalie))"
+        else:
+            init_string = "(init " + self.player_state.team_name + ")"
         self.player_conn.action_queue.put(init_string)
         self.position_player()
 
@@ -62,7 +66,9 @@ class Thinker(threading.Thread):
         x = r.randint(-20, 20)
         y = r.randint(-20, 20)
         move_action = "(move " + str(x) + " " + str(y) + ")"
-        if self.player_state.team_name == "Team1" and self.player_state.player_num == 1:
+        if self.player_state.team_name == "Team1" and self.player_state.player_num == 2:
             move_action = "(move -5 -5)"
+        if self.player_state.player_type == "goalie":
+            move_action = "(move -50 0)"
         self.player_conn.action_queue.put(move_action)
 

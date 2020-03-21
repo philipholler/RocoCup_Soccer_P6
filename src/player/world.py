@@ -110,8 +110,20 @@ class Goal:
         self.relative_angle = relative_angle
 
     def __repr__(self) -> str:
-        return "(goal_side=" + str(self.goal_side) + ", coordinates=" + \
-               str(self.distance) + ", " + str(self.relative_angle) + ")"
+        return "(goal_side=" + str(self.goal_side) + ", distance to goal=" + \
+               str(self.distance) + ", relative_angle=" + str(self.relative_angle) + ")"
+
+
+class Line:
+    def __init__(self, line_side, distance, relative_angle) -> None:
+        super().__init__()
+        self.line_side = line_side
+        self.distance = distance
+        self.relative_angle = relative_angle
+
+    def __repr__(self) -> str:
+        return "(line_side=" + str(self.line_side) + ", distance to line=" + \
+               str(self.distance) + ", relative_angle=" + str(self.relative_angle) + ")"
 
 
 def is_inside_field_bounds(coordinate: Coordinate):

@@ -150,8 +150,28 @@ def _parse_see(msg, ps: player.PlayerState):
     _parse_players(players, ps)
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
-    # todo Parse flags...
-    # todo Parse line...
+    _parse_lines(lines, ps)
+    # todo Parse flags... Maybe not necessary?
+
+
+def _parse_lines(lines, ps):
+    for line in lines:
+        _parse_line(line, ps)
+
+
+def _parse_line(text: str, ps: PlayerState):
+    line_regex = "\\(\\(line (r|l|b|t)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+    regular_expression = re.compile(line_regex)
+    matched = regular_expression.match(text)
+
+    line_side = matched.group(1)
+    line_distance = matched.group(2)
+    line_relative_angle = matched.group(3)
+
+    # Add information to WorldView
+    new_line = world.Line(line_side=line_side, distance=line_distance, relative_angle=line_relative_angle)
+    ps.world_view.lines.append(new_line)
+    return matched
 
 
 def _parse_goals(goals, ps):
@@ -204,6 +224,7 @@ def _approx_glob_angle(flags, ps):
         ps.player_angle.set_value(player_angle_degrees, ps.world_view.sim_time)
         # if ps.player_num == 1 and ps.team_name == "Team1":
         #    print("My angle: ", ps.player_angle.get_value())
+
 
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
@@ -277,14 +298,15 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     if ps.position.is_value_known():
         pos: Coordinate = ps.position.get_value()
         ball_coord: Coordinate = get_object_position(object_rel_angle=int(direction), dist_to_obj=float(distance),
-                                           my_x=pos.pos_x,
-                                           my_y=pos.pos_y,
-                                           my_global_angle=ps.player_angle.get_value())
+                                                     my_x=pos.pos_x,
+                                                     my_y=pos.pos_y,
+                                                     my_global_angle=ps.player_angle.get_value())
 
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
-    #if ps.team_name == "Team1" and ps.player_num == 1:
-        #print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
+
+    # if ps.team_name == "Team1" and ps.player_num == 1:
+        # print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
 
     ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
@@ -352,7 +374,6 @@ def _parse_players(players: [], ps: player.PlayerState):
             other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
                                                      my_global_angle=float(ps.player_angle.get_value()))
-
 
         new_player = Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
                             , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, coord=other_player_coord)
@@ -613,6 +634,7 @@ def _approx_position(flags, state):
         if solution is not None and is_possible_position(solution, state):
             state.position.set_value(solution, state.world_view.sim_time)
 
+
 '''
 PHILIPS - DO NOT REMOVE
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
@@ -632,4 +654,3 @@ my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 1
 parse_message_update_state(my_str3, player_state.PlayerState())
 
 '''
-
