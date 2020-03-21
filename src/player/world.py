@@ -53,8 +53,8 @@ class PrecariousData:
     def get_value(self):
         return self._value
 
-    def is_value_known(self):
-        return self._value is not None
+    def is_value_known(self, last_update_time_minimum=0):
+        return self._value is not None and self.last_updated_time >= last_update_time_minimum
 
     def set_value_unknown(self):
         self._value = None

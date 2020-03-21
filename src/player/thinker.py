@@ -2,7 +2,7 @@ import enum
 import threading
 import queue
 
-from geometry import calculate_origin_angle_between
+from geometry import calculate_smallest_origin_angle_between
 from player import player_connection, player
 from player.strategy import Objective
 import time

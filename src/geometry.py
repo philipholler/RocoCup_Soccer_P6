@@ -14,8 +14,21 @@ def angle_between(c1, c2, c3):
 
 
 # Calculates angle between two points (relative to the origin (0, 0))
-def calculate_origin_angle_between(c1, c2):
-    return atan2(c1.pos_y - c2.pos_y, c1.pos_x - c2.pos_x)
+def calculate_smallest_origin_angle_between(c1, c2):
+    angle = atan2(c1.pos_y - c2.pos_y, c1.pos_x - c2.pos_x)
+    return angle
+
+
+# Calculates the angle (0-6.24 radians) from due east to c2 relative to c1
+def calculate_full_circle_origin_angle(c1, c2):
+    angle = atan2(c1.pos_y - c2.pos_y, c1.pos_x - c2.pos_x)
+
+    # Turn negative angles into positive angles
+    if angle < 0:
+        angle += math.radians(360)
+
+    # RoboCup inverts angles with respect to regular geometric functions (ie. clockwise is positive)
+    return math.radians(360) - angle
 
 
 def rotate_coordinate(coord, radians_to_rotate):
@@ -47,4 +60,3 @@ def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float
     x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
     y = dist_to_obj * - math.sin(math.radians(actual_angle)) + my_y
     return world.Coordinate(x, y)
-

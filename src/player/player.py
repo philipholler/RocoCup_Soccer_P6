@@ -1,4 +1,4 @@
-from geometry import calculate_origin_angle_between
+from geometry import calculate_smallest_origin_angle_between
 from player.world import PrecariousData, World, Player, Coordinate
 
 MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manual
@@ -24,7 +24,7 @@ class PlayerState:
             # should this return unknown?(None?)
             return False
 
-        expected_angle = calculate_origin_angle_between(self.position.get_value(), coordinate)
+        expected_angle = calculate_smallest_origin_angle_between(self.position.get_value(), coordinate)
         return abs(expected_angle - self.player_angle.get_value()) < delta
 
     def is_near(self, coordinate: Coordinate):

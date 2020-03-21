@@ -1,7 +1,7 @@
 import math
 import re
 
-from geometry import angle_between, calculate_origin_angle_between, rotate_coordinate, get_object_position
+from geometry import angle_between, calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position
 from player import player, world
 from math import sqrt, atan2
 
@@ -283,8 +283,8 @@ def _parse_ball(ball: str, ps: player.PlayerState):
 
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
-    if ps.team_name == "Team1" and ps.player_num == 1:
-        print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
+    #if ps.team_name == "Team1" and ps.player_num == 1:
+        #print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
 
     ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
@@ -429,25 +429,6 @@ def _flag_position(pos_x, pos_y):
     return None
 
 
-# for m in reg_str.groups():
-#    print(m)
-
-
-def __parse_goal(text: str, ps: player):
-    goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
-    regular_expression = re.compile(goal_regex)
-    matched = regular_expression.match(text)
-
-    goal_side = matched.group(1)
-    goal_distance = matched.group(2)
-    goal_relative_angle = matched.group(3)
-
-    # Add information to WorldView
-    new_goal = world.Goal(goal_side=goal_side, distance=goal_distance, relative_angle=goal_relative_angle)
-    ps.world_view.goals.append(new_goal)
-    return matched
-
-
 def _extract_flag_identifiers(flags):
     flag_identifiers_regex = ".*\\(flag ([^\\)]*)\\)"
     flag_identifiers = []
@@ -518,7 +499,7 @@ def __solve_trilateration(flag_1, flag_2):
     # The trilateration algorithm assumes horizontally aligned flags
     # To resolve this, the solution is calculated as if the flags were horizontally aligned
     # and is then rotated to match the actual angle
-    radians_to_rotate = calculate_origin_angle_between(flag_1[0], flag_2[0])
+    radians_to_rotate = calculate_smallest_origin_angle_between(flag_1[0], flag_2[0])
     corrected_offset_from_flag_one_1 = rotate_coordinate(possible_offset_1, radians_to_rotate)
     corrected_offset_from_flag_one_2 = rotate_coordinate(possible_offset_2, radians_to_rotate)
 

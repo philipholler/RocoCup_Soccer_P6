@@ -2,7 +2,7 @@ from player import actions
 from player.world import Coordinate
 
 
-_conga_positions = [Coordinate(-40, -15), Coordinate(40, -15), Coordinate(40, 15), Coordinate(-40, 15)]
+_conga_positions = [Coordinate(-30, 20), Coordinate(40, -15), Coordinate(40, 15), Coordinate(-40, 15)]
 
 
 class Objective:
@@ -21,14 +21,14 @@ class Objective:
 class Strategy:
     def __init__(self) -> None:
         super().__init__()
-        self.conga_count = 0
+        self.conga_count = -1
 
     def determine_objective(self, player_state, current_objective: Objective):
         if current_objective is None or current_objective.is_achieved():
-            new_objective = Objective(lambda: actions.jog_towards(player_state, _conga_positions[self.conga_count]),
-                                      lambda: player_state.is_near(_conga_positions[self.conga_count]))
             self.conga_count += 1
             self.conga_count %= 4
+            new_objective = Objective(lambda: actions.jog_towards(player_state, _conga_positions[self.conga_count]),
+                                      lambda: player_state.is_near(_conga_positions[self.conga_count]))
             return new_objective
         return current_objective
 
