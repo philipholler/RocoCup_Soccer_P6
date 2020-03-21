@@ -11,10 +11,11 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
         return orient_self()
 
     # delta angle should depend on how close the player is to the target
-    if not player_state.facing(target_position, math.radians(15)):
-        rotation = calculate_full_circle_origin_angle(player_state.position.get_value(), target_position)
+    if not player_state.facing(target_position, 4):
+        rotation = calculate_full_circle_origin_angle(target_position, player_state.position.get_value())
         rotation = math.degrees(rotation)
         rotation -= player_state.player_angle.get_value()
+
         if rotation > 180:
             rotation -= 360
         elif rotation < -180:

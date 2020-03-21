@@ -2,7 +2,7 @@ from player import actions
 from player.world import Coordinate
 
 
-_conga_positions = [Coordinate(-30, 20), Coordinate(40, -15), Coordinate(40, 15), Coordinate(-40, 15)]
+_conga_positions = [Coordinate(-30, -20), Coordinate(30, -15), Coordinate(40, 15), Coordinate(-40, 15)]
 
 
 class Objective:

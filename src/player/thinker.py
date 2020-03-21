@@ -50,9 +50,12 @@ class Thinker(threading.Thread):
             self.strategy.player_state = self.player_state
 
         # Update current objective in accordance to the player's strategy
-        self.current_objective = self.strategy.determine_objective(self.player_state, self.current_objective)
-        action = self.current_objective.perform_action()
-        self.player_conn.action_queue.put(action)
+        if self.player_state.player_num == 1 and self.player_state.team_name == "Team1":
+            self.current_objective = self.strategy.determine_objective(self.player_state, self.current_objective)
+            action = self.current_objective.perform_action()
+            print(action)
+            self.player_conn.action_queue.put(action)
+
         return
 
     def position_player(self):
