@@ -515,7 +515,7 @@ def __trilaterate_offset(flag_one, flag_two):
     return Coordinate(x, y), Coordinate(x, -y)
 
 
-def __solve_trilateration(flag_1, flag_2):
+def _solve_trilateration(flag_1, flag_2):
     (possible_offset_1, possible_offset_2) = __trilaterate_offset(flag_1, flag_2)
     # The trilateration algorithm assumes horizontally aligned flags
     # To resolve this, the solution is calculated as if the flags were horizontally aligned
@@ -541,7 +541,7 @@ def __find_all_solutions(coords_and_distance):
     solutions = []
     flag_combinations = __get_all_combinations(coords_and_distance)
     for combination in flag_combinations:
-        possible_solutions = __solve_trilateration(combination[0], combination[1])
+        possible_solutions = _solve_trilateration(combination[0], combination[1])
         solutions.append(possible_solutions[0])
         solutions.append(possible_solutions[1])
     return solutions

@@ -16,12 +16,12 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
         rotation = math.degrees(rotation)
         rotation -= player_state.player_angle.get_value()
 
+        # Pick the short way around (<180 degrees)
         if rotation > 180:
             rotation -= 360
         elif rotation < -180:
             rotation += 360
-        print(rotation)
-        return "(turn " + str(rotation) + ")"
+        return "(turn " + str(rotation * 0.8) + ")"
     else:
         return "(dash 65)"
 
