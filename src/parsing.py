@@ -125,9 +125,6 @@ Example:
 
 
 def _parse_see(msg, ps: player.PlayerState):
-    if not ps.team_name == "Team1" or not ps.player_num == 1:
-        return
-
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
@@ -204,8 +201,28 @@ def _parse_goal(text: str, ps: PlayerState):
     ps.world_view.goals.append(new_goal)
     return matched
 
+class Flag:
 
-def _approx_glob_angle(flags, ps):
+    def __init__(self, identifier, coordinate, distance, direction) -> None:
+        self.identifier = identifier
+        self.coordinate = coordinate
+        self.relative_distance = distance
+        self.relative_direction = direction
+
+def create_flags(flag_strings):
+    ids = _extract_flag_identifiers(flag_strings)
+    coords = _extract_flag_coordinates(flag_strings)
+    distances = __extract_flag_distances(flag_strings)
+    directions = _extract_flag_directions(flag_strings)
+
+    flags = []
+    for i in range(0, len(flag_strings)):
+        flags.append(Flag(ids[i], coords[i], distances[i], directions[i]))
+
+    return flags
+
+
+def _approx_glob_angle(flags : [Flag], ps):
     if not ps.position.is_value_known():
         return
 
@@ -220,25 +237,28 @@ def _approx_glob_angle(flags, ps):
     def angle_between(c1, c2, c3):
         return atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
 
-    if len(known_flags) != 0:
-        # Find closest flag
-        closest_flag = _find_closest_flag(known_flags, ps)
-        closest_flag_id = _extract_flag_identifiers([closest_flag])[0]
+    if len(flags) != 0:
+        flag_ids = _extract_flag_identifiers(flags)
+        flag_coords = _extract_flag_coordinates(flag_ids)
+        flag_directions = _extract_flag_directions(flag_ids)
+        coords_and_directions = zip(flag_coords, flag_directions)
 
-        # Calculate global angle to flag
-        closest_flag_coords = _extract_flag_coordinates([closest_flag_id])[0]
         player_coord: Coordinate = ps.position.get_value()
-        global_angle_between_play_flag = angle_between(player_coord, closest_flag_coords,
-                                                       Coordinate(player_coord.pos_x + 20
-                                                                  , player_coord.pos_y))
 
-        # Find flag relative angle
-        flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
-        player_angle = float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))
-        player_angle_degrees = math.degrees(player_angle) % 360
+        estimated_angles = []
 
-        # Set player global angle
-        ps.player_angle.set_value(player_angle_degrees, ps.world_view.sim_time)
+        for flag_coord_direction in coords_and_directions:
+            global_angle_between_play_flag = angle_between(player_coord, ,
+                                                           Coordinate(player_coord.pos_x + 20
+                                                                      , player_coord.pos_y))
+            # Find flag relative angle
+            flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
+            player_angle = float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))
+            player_angle_degrees = math.degrees(player_angle) % 360
+
+            # Set player global angle
+            ps.player_angle.set_value(player_angle_degrees, ps.world_view.sim_time)
+
 
 
 # ((flag g r b) 99.5 -5)
