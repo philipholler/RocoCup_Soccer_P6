@@ -6,12 +6,16 @@ from player.world import Coordinate
 
 
 def jog_towards(player_state: PlayerState, target_position: Coordinate):
+    minimum_last_update_time = player_state.now() - 5
+    angle_known = player_state.player_angle.is_value_known(minimum_last_update_time)
+    position_known = player_state.position.is_value_known(minimum_last_update_time)
 
-    if not player_state.position.is_value_known() or not player_state.player_angle.is_value_known(player_state.world_view.sim_time - 5):
+    if not angle_known or not position_known:
         return orient_self()
 
-    # delta angle should depend on how close the player is to the target
     if not player_state.facing(target_position, 4):
+        if player_state.last_turn_time >= player_state.player_angle.last_updated_time:
+            return ""
         rotation = calculate_full_circle_origin_angle(target_position, player_state.position.get_value())
         rotation = math.degrees(rotation)
         rotation -= player_state.player_angle.get_value()
@@ -21,10 +25,12 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
             rotation -= 360
         elif rotation < -180:
             rotation += 360
-        return "(turn " + str(rotation * 0.8) + ")"
+
+        player_state.last_turn_time = player_state.now()
+        return "(turn " + str(rotation) + ")"
     else:
         return "(dash 65)"
 
 
 def orient_self():
-    return "(turn 15)"
+    return "(turn 45)"
