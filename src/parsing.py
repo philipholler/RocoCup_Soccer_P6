@@ -487,8 +487,10 @@ def _parse_hear(text: str, ps: player):
 # (dash 0) (turn 0) (say 0) (turn_neck 0) (catch 0) (move 0) (change_view 0) (arm (movable 0) (expires 0) (target 0 0)
 # (count 0)) (focus (target none) (count 0)) (tackle (expires 0) (count 0)) (collision none) (foul  (charged 0)
 # (card none)))
+
 # example 2 : (sense_body 0 (view_mode high normal) (stamina 7605 1) (speed 0 -54) (head_angle 0) (kick 0) (dash 23)
 # (turn 7) (say 0) (turn_neck 0) (catch 0) (move 1) (change_view 0))
+
 # ALL COUNT COMMANDS MEAN: HOW MANY TIMES THE COMMAND HAS BEEN EXECUTED BY THE PLAYER SO FAR
 # Group [1] = time,
 # [2] = stamina, [3] = effort, [4] = capacity,
@@ -508,21 +510,21 @@ def _parse_hear(text: str, ps: player):
 
 # TODO make it work
 def _parse_body_sense(text: str, ps: player):
-    #print(text)
+    # print(text)
     # Will view_mode ever change from "high normal"?
-    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
+    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0}) ({1})?\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
-    regex_string += "(.*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\))?"
-    regex_string += "(.*target (none|l|r) ({1})?\\).*count ({1})\\)\\))?"
-    regex_string += "(.*expires ({1})\\).*count ({1})\\))?"
-    regex_string += "(.*collision (none|{2})\\).*charged {1}\\).*card (red|yellow|none)\\)\\)\\))?"
-    regex_string = regex_string.format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+    #regex_string += "(.*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\))?"
+    #regex_string += "(.*target (none|l|r) ({1})?\\).*count ({1})\\)\\))?"
+    #regex_string += "(.*expires ({1})\\).*count ({1})\\))?"
+    #regex_string += "(.*collision (none|{2})\\).*charged {1}\\).*card (red|yellow|none)\\)\\)\\))?"
+    regex_string = regex_string.format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
-    ##print(matched.groups)
+    print(matched.groups)
 
     return matched
 
