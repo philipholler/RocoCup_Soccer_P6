@@ -33,9 +33,9 @@ class Thinker(threading.Thread):
     def start(self) -> None:
         super().start()
         if self.player_state.player_type == "goalie":
-            init_string = "(init " + self.player_state.team_name + "(goalie))"
+            init_string = "(init " + self.player_state.team_name + "(goalie)" + "(version 7))"
         else:
-            init_string = "(init " + self.player_state.team_name + ")"
+            init_string = "(init " + self.player_state.team_name + " (version 7))"
         self.player_conn.action_queue.put(init_string)
         self.position_player()
 

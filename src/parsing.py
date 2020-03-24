@@ -101,7 +101,7 @@ def parse_message_update_state(msg: str, ps: player):
         print(msg)
         return
 
-    _update_time(msg, ps)
+    # _update_time(msg, ps)
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -134,33 +134,39 @@ def _parse_see(msg, ps: player.PlayerState):
     lines = []
     ball = None
     for element in matches:
-        if str(element).startswith("((flag"):
+        if str(element).startswith("((f") or str(element).startswith("((F"):
             flags.append(element)
-        elif str(element).startswith("((goal"):
+        elif str(element).startswith("((g") or str(element).startswith("((G"):
             goals.append(element)
-        elif str(element).startswith("((player"):
+        elif str(element).startswith("((p") or str(element).startswith("((P"):
             players.append(element)
-        elif str(element).startswith("((line"):
+        elif str(element).startswith("((l") or str(element).startswith("((L"):
             lines.append(element)
-        elif str(element).startswith("((ball"):
+        elif str(element).startswith("((b") or str(element).startswith("((B"):
             ball = element
+        else:
+            raise Exception("Unknown see element: ", element)
 
     _approx_position(flags, ps)
+    if ps.team_name == "Team1" and ps.player_num == 1:
+        print("Position: ", ps.position.get_value())
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
     _parse_lines(lines, ps)
-    # todo Parse flags... Maybe not necessary?
 
 
 def _parse_lines(lines, ps):
     for line in lines:
-        _parse_line(line, ps)
+        if str(line).startswith("((L"):
+            continue
+        else:
+            _parse_line(line, ps)
 
 
 def _parse_line(text: str, ps: PlayerState):
-    line_regex = "\\(\\(line (r|l|b|t)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+    line_regex = "\\(\\(l (r|l|b|t)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     regular_expression = re.compile(line_regex)
     matched = regular_expression.match(text)
 
@@ -180,7 +186,11 @@ def _parse_goals(goals, ps):
 
 
 def _parse_goal(text: str, ps: PlayerState):
-    goal_regex = "\\(\\(goal (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+    # Unknown see object (out of field of view)
+    if text.startswith("((G"):
+        return world.Goal(None, None, None)
+
+    goal_regex = "\\(\\(g (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     regular_expression = re.compile(goal_regex)
     matched = regular_expression.match(text)
 
@@ -198,14 +208,20 @@ def _approx_glob_angle(flags, ps):
     if not ps.position.is_value_known():
         return
 
+    known_flags = []
+    # Remove flags out of field of view
+    for flag in flags:
+        if not str(flag).startswith("((F)"):
+            known_flags.append(flag)
+
     # angle between c1 and c2, with c3 offsetting to make 0 degrees in some direction
     # For this purpose x+ = east, -x = west etc.
     def angle_between(c1, c2, c3):
         return atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
 
-    if len(flags) != 0:
+    if len(known_flags) != 0:
         # Find closest flag
-        closest_flag = _find_closest_flag(flags, ps)
+        closest_flag = _find_closest_flag(known_flags, ps)
         closest_flag_id = _extract_flag_identifiers([closest_flag])[0]
 
         # Calculate global angle to flag
@@ -222,8 +238,6 @@ def _approx_glob_angle(flags, ps):
 
         # Set player global angle
         ps.player_angle.set_value(player_angle_degrees, ps.world_view.sim_time)
-        # if ps.player_num == 1 and ps.team_name == "Team1":
-        #    print("My angle: ", ps.player_angle.get_value())
 
 
 # ((flag g r b) 99.5 -5)
@@ -252,9 +266,9 @@ def _extract_flag_directions(flags, ps):
 
 def _find_closest_flag(flags, ps):
     closest_distance_flag: str = flags[0]
-    closest_distance: float = float(__extract_flag_distances([flags[0]])[0])
+    closest_distance: float = float(_extract_flag_distances([flags[0]])[0])
     for flag in flags:
-        flag_distance = __extract_flag_distances([flag])[0]
+        flag_distance = _extract_flag_distances([flag])[0]
         if closest_distance == -1 or closest_distance > float(flag_distance):
             closest_distance_flag = flag
             closest_distance = float(flag_distance)
@@ -262,12 +276,18 @@ def _find_closest_flag(flags, ps):
     return closest_distance_flag
 
 
-# Input ((ball) 13.5 -31 0 0)
-# or ((ball) 44.7 -20)
+# Input ((b) 13.5 -31 0 0)
+# or ((b) 44.7 -20)
+# Or B
 # distance, direction, dist_change, dir_change
 def _parse_ball(ball: str, ps: player.PlayerState):
+    # If ball is not present at all
     if ball is None:
         return
+    # Unknown see object (out of field of view)
+    if ball.startswith("((B"):
+        return world.Ball(None, None, None, None, None)
+
     # Remove ) from the items
     ball = str(ball).replace(")", "")
     ball = str(ball).replace("(", "")
@@ -276,7 +296,7 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     split_by_whitespaces = re.split('\\s+', ball)
 
     # We now have a list of elements like this:
-    # ['ball', '13.5', '-31', '2', '-5']
+    # ['b', '13.5', '-31', '2', '-5']
 
     # These are always included
     distance = split_by_whitespaces[1]
@@ -305,30 +325,49 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
                           coord=ball_coord)
 
-    # if ps.team_name == "Team1" and ps.player_num == 1:
-        # print("My angle: ", ps.player_angle.get_value(), "My coord: ", ps.position.get_value(), "Ball coord: ", ball_coord, "Distance: ", distance, ", direction: ", direction)
-
     ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
 
-# ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
-# ((player Team1 5) 30 -41 0 0)
-# "\\(\\(player({0})?({1})?\\) ({2}) ({2}) ({2})? ({2})? ({2})? ({2})?\\)"
+# Parse this: (p "team"? num? goalie?)
+# Returns arguments in this order: team, num, is_goalie
+def _parse_player_obj_name(obj_name, ps: player.PlayerState):
+    # Remove "noise" in form of " and ( from the object name
+    obj_name = str(obj_name).replace("(", "")
+    obj_name = str(obj_name).replace("\"", "")
+
+    # Split by whitespaces to get a divided list like so:
+    # ['p', '"Team2"', '7']
+    split_by_whitespaces = re.split('\\s+', obj_name)
+
+    # If we have no info on who the player is
+    if len(split_by_whitespaces) == 1:
+        return None, None, None
+
+    # If we know the team of the player
+    if len(split_by_whitespaces) == 2:
+        return split_by_whitespaces[1], None, None
+
+    # If we know both team and player_num
+    if len(split_by_whitespaces) == 3:
+        return split_by_whitespaces[1], split_by_whitespaces[2], None
+
+    # If we know both the team, player_num and that the player is the goalie
+    if len(split_by_whitespaces) == 4:
+        return split_by_whitespaces[1], split_by_whitespaces[2], True
+
+
+
+# ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
+# ((p "Team1" 5) 30 -41 0 0)
 def _parse_players(players: [], ps: player.PlayerState):
-    for player in players:
-        # Remove ) from the items
-        player = str(player).replace(")", "")
-        player = str(player).replace("(", "")
-
-        split_by_whitespaces = []
-        split_by_whitespaces = re.split('\\s+', player)
-
-        # We now have a list of elements like this:
-        # ['player', 'Team1', '5', '30', '-41', '0', '0' ]
-
+    for cur_player in players:
+        # Unknown see object (out of field of view)
+        if cur_player.startswith("((P"):
+            continue
         # Default values
         team = None
         num = None
+        is_goalie = None
         distance = None
         direction = None
         dist_chng = None
@@ -336,37 +375,47 @@ def _parse_players(players: [], ps: player.PlayerState):
         body_dir = None
         head_dir = None
 
+        # Get object name like (player Team1 5) or (player Team1 5 goalie)
+        obj_name = re.split('\\)+', cur_player)[0]
+        team, num, is_goalie = _parse_player_obj_name(obj_name, ps)
+
+        # The rest of the player like 9 0 0 0 0 0
+        # Start from index 1 to remove a white space
+        cur_player = re.split('\\)+', cur_player)[1][1:]
+
+        # Remove ),( and " from the items
+        cur_player = str(cur_player).replace(")", "")
+        cur_player = str(cur_player).replace("(", "")
+        cur_player = str(cur_player).replace("\"", "")
+
+        split_by_whitespaces = re.split('\\s+', cur_player)
+
+        # We now have a list of elements like this:
+        # Diretion DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
+        # ['30', '-41', '0', '0' ]
+
+        # If only direction
+        if len(split_by_whitespaces) == 1:
+            direction = split_by_whitespaces[0]
         # If only distance and direction
-        if len(split_by_whitespaces) <= 3:
-            distance = split_by_whitespaces[1]
-            direction = split_by_whitespaces[2]
-        # If team, distance and direction
-        elif len(split_by_whitespaces) <= 4:
-            team = split_by_whitespaces[1]
-            distance = split_by_whitespaces[2]
-            direction = split_by_whitespaces[3]
-
-        # If team, num, distance, direction, dir_chng, dist_chng
-        # ['player', 'Team1', '5', '30', '-41', '0', '0']
-        elif len(split_by_whitespaces) <= 7:
-            team = split_by_whitespaces[1]
-            num = split_by_whitespaces[2]
-            distance = split_by_whitespaces[3]
-            direction = split_by_whitespaces[4]
-            dir_chng = split_by_whitespaces[5]
-            dist_chng = split_by_whitespaces[6]
-
-        # If team, num, distance, direction, dir_chng, dist_chng, body_dir, head_dir
-        # ['player', 'Team1', '5', '30', '-41', '0', '0', '0', '0']
-        elif len(split_by_whitespaces) > 7:
-            team = split_by_whitespaces[1]
-            num = split_by_whitespaces[2]
-            distance = split_by_whitespaces[3]
-            direction = split_by_whitespaces[4]
-            dir_chng = split_by_whitespaces[5]
-            dist_chng = split_by_whitespaces[6]
-            body_dir = split_by_whitespaces[7]
-            head_dir = split_by_whitespaces[8]
+        elif len(split_by_whitespaces) == 2:
+            distance = split_by_whitespaces[0]
+            direction = split_by_whitespaces[1]
+        # If Distance Diretion DistChange DirChange
+        elif len(split_by_whitespaces) == 4:
+            distance = split_by_whitespaces[0]
+            direction = split_by_whitespaces[1]
+            dist_chng = split_by_whitespaces[2]
+            dir_chng = split_by_whitespaces[3]
+        # If Distance Diretion DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
+        # Todo should we include pointdir? - Philip
+        elif len(split_by_whitespaces) >= 6:
+            distance = split_by_whitespaces[0]
+            direction = split_by_whitespaces[1]
+            dist_chng = split_by_whitespaces[2]
+            dir_chng = split_by_whitespaces[3]
+            body_dir = split_by_whitespaces[4]
+            head_dir = split_by_whitespaces[5]
 
         my_pos: Coordinate = ps.position.get_value()
         other_player_coord = PrecariousData.unknown()
@@ -376,7 +425,8 @@ def _parse_players(players: [], ps: player.PlayerState):
                                                      my_global_angle=float(ps.player_angle.get_value()))
 
         new_player = Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
-                            , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, coord=other_player_coord)
+                            , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
+                            , coord=other_player_coord)
 
         ps.world_view.other_players.append(new_player)
 
@@ -436,7 +486,7 @@ def _parse_body_sense(text: str, ps: player):
 #           ((flag p r b) 27.9 21) ((flag p r c) 27.9 -21 0 0) ((Player) 1 -179) ((player Team2 2) 1 0 0 0)
 #           ((Player) 0.5 151) ((player Team2 4) 0.5 -28 0 0) ((line r) 42.5 90))
 def _parse_flags(text):
-    flag_regex = "\\(flag [^)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
+    flag_regex = "\\(f [^)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
     return re.findall(flag_regex, text)
 
 
@@ -451,7 +501,7 @@ def _flag_position(pos_x, pos_y):
 
 
 def _extract_flag_identifiers(flags):
-    flag_identifiers_regex = ".*\\(flag ([^\\)]*)\\)"
+    flag_identifiers_regex = ".*\\(f ([^\\)]*)\\)"
     flag_identifiers = []
     for flag in flags:
         m = _match(flag_identifiers_regex, flag)
@@ -459,8 +509,8 @@ def _extract_flag_identifiers(flags):
     return flag_identifiers
 
 
-def __extract_flag_distances(flags):
-    flag_distance_regex = ".*\\(flag [^\\)]*\\) ({0}) ".format(__REAL_NUM_REGEX)
+def _extract_flag_distances(flags):
+    flag_distance_regex = ".*\\(f [^\\)]*\\) ({0}) ".format(__REAL_NUM_REGEX)
     flag_distances = []
     for flag in flags:
         m = _match(flag_distance_regex, flag)
@@ -476,11 +526,11 @@ def _extract_flag_coordinates(flag_ids):
     return coords
 
 
-def __zip_flag_coords_distance(flags):
+def _zip_flag_coords_distance(flags):
     coords_zipped_distance = []
     flag_ids = _extract_flag_identifiers(flags)
     flag_coords = _extract_flag_coordinates(flag_ids)
-    flag_distances = __extract_flag_distances(flags)
+    flag_distances = _extract_flag_distances(flags)
 
     for i in range(0, len(flag_ids)):
         coords_zipped_distance.append((flag_coords[i], flag_distances[i]))
@@ -495,7 +545,7 @@ def _calculate_distance(coord1, coord2):
 
 
 # Calculates position as two possible offsets from flag_one
-def __trilaterate_offset(flag_one, flag_two):
+def _trilaterate_offset(flag_one, flag_two):
     coord1 = flag_one[0]
     coord2 = flag_two[0]
     distance_between_flags = _calculate_distance(coord1, coord2)
@@ -516,7 +566,7 @@ def __trilaterate_offset(flag_one, flag_two):
 
 
 def _solve_trilateration(flag_1, flag_2):
-    (possible_offset_1, possible_offset_2) = __trilaterate_offset(flag_1, flag_2)
+    (possible_offset_1, possible_offset_2) = _trilaterate_offset(flag_1, flag_2)
     # The trilateration algorithm assumes horizontally aligned flags
     # To resolve this, the solution is calculated as if the flags were horizontally aligned
     # and is then rotated to match the actual angle
@@ -537,7 +587,7 @@ def __get_all_combinations(original_list):
     return combinations
 
 
-def __find_all_solutions(coords_and_distance):
+def _find_all_solutions(coords_and_distance):
     solutions = []
     flag_combinations = __get_all_combinations(coords_and_distance)
     for combination in flag_combinations:
@@ -547,7 +597,7 @@ def __find_all_solutions(coords_and_distance):
     return solutions
 
 
-def __average_point(cluster):
+def _average_point(cluster):
     amount_of_clusters = len(cluster)
     total_x = 0
     total_y = 0
@@ -559,7 +609,7 @@ def __average_point(cluster):
     return Coordinate(total_x / amount_of_clusters, total_y / amount_of_clusters)
 
 
-def __find_mean_solution(all_solutions, state):
+def _find_mean_solution(all_solutions, state):
     amount_of_correct_solutions = (len(all_solutions) * (len(all_solutions) - 1)) / 2
     acceptable_distance = 3.0
     cluster_size_best_solution = 0
@@ -578,7 +628,7 @@ def __find_mean_solution(all_solutions, state):
                 cluster.append(solution2)
 
             if len(cluster) >= amount_of_correct_solutions:
-                return __average_point(cluster)
+                return _average_point(cluster)
 
         if len(cluster) > cluster_size_best_solution:
             cluster_size_best_solution = len(cluster)
@@ -586,7 +636,7 @@ def __find_mean_solution(all_solutions, state):
 
     if len(best_cluster) == 0:
         return None
-    return __average_point(best_cluster)
+    return _average_point(best_cluster)
 
 
 def is_possible_position(new_position: Coordinate, state: PlayerState):
@@ -594,7 +644,7 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
         return False
 
     # If no information on previous state exists, then all positions inside the field are possible positions
-    if not state.position.is_value_known():
+    if not state.position.is_value_known(state.world_view.sim_time - 5):
         return True
 
     ticks_since_update = state.world_view.sim_time - state.position.last_updated_time
@@ -603,12 +653,21 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
 
 
 def _approx_position(flags, state):
-    parsed_flags = __zip_flag_coords_distance(flags)
+    known_flags = []
+
+    for flag in flags:
+        if not str(flag).startswith("((F)"):
+            known_flags.append(flag)
+
+    parsed_flags = _zip_flag_coords_distance(known_flags)
     if len(parsed_flags) < 2:
         # print("No flag can be seen - Position unknown")
         return
 
-    all_solutions = __find_all_solutions(parsed_flags)
+    all_solutions = _find_all_solutions(parsed_flags)
+
+    if state.team_name == "Team1" and state.player_num == 1:
+        print("# flags: ", len(known_flags), ", solutions: ", len(all_solutions), ", known flags: ", known_flags, )
     if len(all_solutions) == 2:
         # print("only two flags visible")
         solution_1_plausible = is_possible_position(all_solutions[0], state)
@@ -630,13 +689,12 @@ def _approx_position(flags, state):
         # print("no position trilaterations match previous positions")
     else:
         # handle case where this return an uncertain result
-        solution = __find_mean_solution(all_solutions, state)
+        solution = _find_mean_solution(all_solutions, state)
         if solution is not None and is_possible_position(solution, state):
             state.position.set_value(solution, state.world_view.sim_time)
 
 
-'''
-PHILIPS - DO NOT REMOVE
+# PHILIPS - DO NOT REMOVE
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
          "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
          "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
@@ -651,6 +709,13 @@ my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18
 
 my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
           "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
-parse_message_update_state(my_str3, player_state.PlayerState())
 
-'''
+my_str4 = "(see 0 ((f r t) 55.7 3) ((f g r b) 70.8 38) ((g r) 66.7 34) ((f g r t) 62.8 28) ((f p r c) 53.5 43) ((f p " \
+          "r t) 42.5 23) ((f t 0) 3.6 -34 0 0) ((f t r 10) 13.2 -9 0 0) ((f t r 20) 23.1 -5 0 0) ((f t r 30) 33.1 -3 " \
+          "0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f " \
+          "r t 30) 60.9 7) ((f r b 10) 76.7 38) ((f r b 20) 83.1 43) ((p) 66.7 35) ((p \"Team2\" 2) 9 0 0 0 0 0) ((p " \
+          "\"Team2\" 3) 12.2 0 0 0 0 0) ((p \"Team2\" 4) 14.9 0 0 0 0 0) ((p \"Team2\" 5) 18.2 0 0 0 0 0) ((p " \
+          "\"Team2\" 6) 20.1 0 0 0 0 0) ((p \"Team2\" 7) 24.5 0 0 0 0 0) ((p \"Team2\") 27.1 0) ((p \"Team2\" 9) 30 0 " \
+          "0 0 0 0) ((p \"Team2\") 33.1 0) ((p \"Team2\") 36.6 0)) "
+# parse_message_update_state(my_str4, player.PlayerState())
+

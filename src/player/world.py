@@ -62,7 +62,7 @@ class PrecariousData:
 
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
 class Player:
-    def __init__(self, team, num, distance, direction, dist_chng, dir_chng, body_dir, head_dir, coord) -> None:
+    def __init__(self, team, num, distance, direction, dist_chng, dir_chng, body_dir, head_dir, is_goalie, coord) -> None:
         super().__init__()
         self.team = team
         self.num = num
@@ -72,15 +72,15 @@ class Player:
         self.dir_chng = dir_chng
         self.body_dir = body_dir
         self.head_dir = head_dir
+        self.is_goalie = is_goalie
         self.coord = coord
 
     def __repr__(self) -> str:
         return "(team=" + str(self.team) + ", num=" + str(self.num) + ", distance=" + str(
             self.distance) + ", direction=" \
                + str(self.direction) + ", dist_chng=" + str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) \
-               + ", body_dir=" + str(self.body_dir) + ", head_dir=" + str(self.head_dir) + ", coord=" + str(self.coord) \
-               + ")"
-
+               + ", body_dir=" + str(self.body_dir) + ", head_dir=" + str(self.head_dir) + ", is_goalie=" \
+               + str(self.is_goalie) + ", coord=" + str(self.coord) + ")"
 
 LOWER_FIELD_BOUND = Coordinate(-60, -40)
 UPPER_FIELD_BOUND = Coordinate(60, 40)

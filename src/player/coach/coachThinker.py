@@ -18,13 +18,12 @@ class CoachThinker(threading.Thread):
 
         self.strategy = strategy.Strategy()
 
-        self.my_bool = True
-
     def start(self) -> None:
         super().start()
 
-        init_string = "(init " + self.team + "(version 7))"
+        init_string = "(init " + self.team + "(version 7))"  # todo find correct coach version...
         self.connection.action_queue.put(init_string)
+
 
     def run(self) -> None:
         super().run()
@@ -33,8 +32,8 @@ class CoachThinker(threading.Thread):
 
     def _think(self) -> None:
         time.sleep(1)
-        print("Coach from team ({0}) thinking...".format(self.team))
+        # print("Coach from team ({0}) thinking...".format(self.team))
         while not self.input_queue.empty():
             msg = self.input_queue.get()
             # print(msg)
-            self.connection.action_queue.put("(look)")
+
