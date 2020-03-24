@@ -101,7 +101,7 @@ def parse_message_update_state(msg: str, ps: player):
         print(msg)
         return
 
-    # _update_time(msg, ps)
+    _update_time(msg, ps)
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -125,6 +125,9 @@ Example:
 
 
 def _parse_see(msg, ps: player.PlayerState):
+    if not ps.team_name == "Team1" or not ps.player_num == 1:
+        return
+
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
@@ -148,8 +151,6 @@ def _parse_see(msg, ps: player.PlayerState):
             raise Exception("Unknown see element: ", element)
 
     _approx_position(flags, ps)
-    if ps.team_name == "Team1" and ps.player_num == 1:
-        print("Position: ", ps.position.get_value())
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
@@ -667,7 +668,7 @@ def _approx_position(flags, state):
     all_solutions = _find_all_solutions(parsed_flags)
 
     if state.team_name == "Team1" and state.player_num == 1:
-        print("# flags: ", len(known_flags), ", solutions: ", len(all_solutions), ", known flags: ", known_flags, )
+        print("# flags: ", len(known_flags), ", solutions: ", len(all_solutions), ", known flags: ", known_flags)
     if len(all_solutions) == 2:
         # print("only two flags visible")
         solution_1_plausible = is_possible_position(all_solutions[0], state)
