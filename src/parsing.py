@@ -490,25 +490,25 @@ def _parse_hear(text: str, ps: player):
 
 # ALL COUNT COMMANDS MEAN: HOW MANY TIMES THE COMMAND HAS BEEN EXECUTED BY THE PLAYER SO FAR
 # Group [1] = time,
-# [2] = stamina, [3] = effort, [4] = capacity,
-# [5] = speed, [6] = direction of speed,
-# [7] = kick count,
-# [8] = dash count,
-# [9] = turn count,
-# [10] = say count,
-# [11] = turn neck count,
-# [12] = catch count,
-# [13] = move count,
-# [14] = change view count,
-# [15] = movable cycles, [16] = expire cycles, [17] = point to count,
-# [18] = target, [19] = Unum, [20] = count,
-# [21] = expire cycles, [22] count, [23] = collision,
-# [24] = charged, [25] = card
+# [2] = view mode,
+# [3] = stamina, [4] = effort, [5] = capacity,
+# [6] = speed, [7] = direction of speed,
+# [8] = kick count,
+# [9] = dash count,
+# [10] = turn count,
+# [11] = say count,
+# [12] = turn neck count,
+# [13] = catch count,
+# [14] = move count,
+# [15] = change view count,
+# [16] = movable cycles, [17] = expire cycles, [18] = point to count,
+# [19] = target, [20] = Unum, [21] = count,
+# [22] = expire cycles, [23] count, [24] = collision,
+# [25] = charged, [26] = card
 
 def _parse_body_sense(text: str, ps: player):
 
-    # TODO: Will view_mode ever change from "high normal"?
-    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
+    regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
     regex_string += ".*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\)"
@@ -519,6 +519,8 @@ def _parse_body_sense(text: str, ps: player):
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
+
+    print(matched.groups())
 
     return matched
 
