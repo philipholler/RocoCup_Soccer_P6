@@ -157,8 +157,8 @@ def _parse_see(msg, ps: player.PlayerState):
             raise Exception("Unknown see element: " + str(element))
 
     _approx_position(flags, ps)
-    if ps.team_name == "Team1" and ps.player_num == 1:
-        print("Position: ", ps.position.get_value())
+    # if ps.team_name == "Team1" and ps.player_num == 1:
+        # print("Position: ", ps.position.get_value())
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
@@ -410,13 +410,13 @@ def _parse_players(players: [], ps: player.PlayerState):
         elif len(split_by_whitespaces) == 2:
             distance = split_by_whitespaces[0]
             direction = split_by_whitespaces[1]
-        # If Distance Diretion DistChange DirChange
+        # If Distance Direction DistChange DirChange
         elif len(split_by_whitespaces) == 4:
             distance = split_by_whitespaces[0]
             direction = split_by_whitespaces[1]
             dist_chng = split_by_whitespaces[2]
             dir_chng = split_by_whitespaces[3]
-        # If Distance Diretion DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
+        # If Distance Direction DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
         # Todo should we include pointdir? - Philip
         elif len(split_by_whitespaces) >= 6:
             distance = split_by_whitespaces[0]
@@ -715,8 +715,8 @@ def _approx_position(flags, state):
 
     all_solutions = _find_all_solutions(parsed_flags)
 
-    if state.team_name == "Team1" and state.player_num == 1:
-        print("# flags: ", len(known_flags), ", solutions: ", len(all_solutions), ", known flags: ", known_flags, )
+    # if state.team_name == "Team1" and state.player_num == 1:
+        # print("# flags: ", len(known_flags), ", solutions: ", len(all_solutions), ", known flags: ", known_flags, )
     if len(all_solutions) == 2:
         # print("only two flags visible")
         solution_1_plausible = is_possible_position(all_solutions[0], state)
