@@ -15,7 +15,7 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
 
     if not player_state.facing(target_position, 4):
         if player_state.last_turn_time >= player_state.player_angle.last_updated_time:
-            return ""
+            return None
         rotation = calculate_full_circle_origin_angle(target_position, player_state.position.get_value())
         rotation = math.degrees(rotation)
         rotation -= player_state.player_angle.get_value()

@@ -103,7 +103,6 @@ def parse_message_update_state(msg: str, ps: player):
         print(msg)
         return
 
-    _update_time(msg, ps)
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -111,6 +110,7 @@ def parse_message_update_state(msg: str, ps: player):
     elif msg.startswith("(init"):
         _parse_init(msg, ps)
     elif msg.startswith("(see "):
+        _update_time(msg, ps)
         _parse_see(msg, ps)
 
 
@@ -700,7 +700,7 @@ def _get_all_combinations(original_list):
 
 def _find_all_solutions(flags: [Flag]):
     solutions = []
-    flag_combinations = __get_all_combinations(flags)
+    flag_combinations = _get_all_combinations(flags)
     for combination in flag_combinations:
         possible_solutions = _solve_trilateration(combination[0], combination[1])
         solutions.append(possible_solutions[0])

@@ -57,7 +57,9 @@ class Thinker(threading.Thread):
         if self.player_state.player_num == 1 and self.player_state.team_name == "Team1":
             self.current_objective = self.strategy.determine_objective(self.player_state, self.current_objective)
             action = self.current_objective.perform_action()
-            self.player_conn.action_queue.put(action)
+            if action is not None:
+                self.player_conn.action_queue.put(action)
+
 
         return
 
