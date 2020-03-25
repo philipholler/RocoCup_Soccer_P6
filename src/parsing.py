@@ -520,8 +520,6 @@ def _parse_body_sense(text: str, ps: player):
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
-    print(matched.groups())
-
     return matched
 
 
