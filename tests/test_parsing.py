@@ -19,8 +19,8 @@ class Test(TestCase):
     # todo Fix trilateration tests
     def test_trilateration_horizontally_aligned(self):
         expected_position = Coordinate(19.53533, 21.47515)
-        flag_one = (Coordinate(10, 15), 11.5)
-        flag_two = (Coordinate(40, 15), 21.5)
+        flag_one = parsing.Flag("", Coordinate(10, 15), 11.5, 0)
+        flag_two = parsing.Flag("", Coordinate(40, 15), 21.5, 0)
 
         (first_solution, second_solution) = parsing._solve_trilateration(flag_one, flag_two)
         first_solution_correct = is_same_coordinate(first_solution, expected_position)
@@ -30,8 +30,8 @@ class Test(TestCase):
 
     def test_trilateration_horizontally_aligned_both_negative(self):
         expected_position = Coordinate(-20, 10)
-        flag_one = (Coordinate(-40, 0.0), 22.36)
-        flag_two = (Coordinate(-10, 0.0), 14.14)
+        flag_one = parsing.Flag("", Coordinate(-40, 0.0), 22.36, 0)
+        flag_two = parsing.Flag("", Coordinate(-10, 0.0), 14.14, 0)
 
         (first_solution, second_solution) = parsing._solve_trilateration(flag_one, flag_two)
         first_solution_correct = is_same_coordinate(first_solution, expected_position)
@@ -41,8 +41,8 @@ class Test(TestCase):
 
     def test_trilateration_horizontally_misaligned_negative_and_positive(self):
         expected_position = Coordinate(0, -5)
-        flag_one = (Coordinate(5, 5), 11.1803398875)
-        flag_two = (Coordinate(-15, -10), 15.8113883008)
+        flag_one = parsing.Flag("", Coordinate(5, 5), 11.1803398875, 0)
+        flag_two = parsing.Flag("", Coordinate(-15, -10), 15.8113883008, 0)
 
         (first_solution, second_solution) = parsing._solve_trilateration(flag_one, flag_two)
         first_solution_correct = is_same_coordinate(first_solution, expected_position)
@@ -51,8 +51,8 @@ class Test(TestCase):
         self.assertTrue(first_solution_correct or second_solution_correct)
 
     def test_trilateration_order_reversed(self):
-        flag_one = (Coordinate(0, 0), 11.5)
-        flag_two = (Coordinate(30, 0), 21.5)
+        flag_one = parsing.Flag("", Coordinate(0, 0), 11.5, 0)
+        flag_two = parsing.Flag("", Coordinate(30, 0), 21.5, 0)
 
         result_1 = parsing._solve_trilateration(flag_one, flag_two)
         result_2 = parsing._solve_trilateration(flag_two, flag_one)
