@@ -488,9 +488,6 @@ def _parse_hear(text: str, ps: player):
 # (count 0)) (focus (target none) (count 0)) (tackle (expires 0) (count 0)) (collision none) (foul  (charged 0)
 # (card none)))
 
-# example 2 : (sense_body 0 (view_mode high normal) (stamina 7605 1) (speed 0 -54) (head_angle 0) (kick 0) (dash 23)
-# (turn 7) (say 0) (turn_neck 0) (catch 0) (move 1) (change_view 0))
-
 # ALL COUNT COMMANDS MEAN: HOW MANY TIMES THE COMMAND HAS BEEN EXECUTED BY THE PLAYER SO FAR
 # Group [1] = time,
 # [2] = stamina, [3] = effort, [4] = capacity,
@@ -500,33 +497,28 @@ def _parse_hear(text: str, ps: player):
 # [9] = turn count,
 # [10] = say count,
 # [11] = turn neck count,
-# [11] = catch count,
-# [12] = move count,
-# [13] = change view count,
-# [14] = movable cycles, [15] = expire cycles, [16] = point to count,
-# [17] = target, [] = Unum, [18] = count,
-# [19] = expire cycles, [20] count, [21] = collision,
-# [22] = charged, [23] = card
+# [12] = catch count,
+# [13] = move count,
+# [14] = change view count,
+# [15] = movable cycles, [16] = expire cycles, [17] = point to count,
+# [18] = target, [19] = Unum, [20] = count,
+# [21] = expire cycles, [22] count, [23] = collision,
+# [24] = charged, [25] = card
 
-#  ({1})?\\).*speed ({0}) ({1})\\)
-
-# TODO make it work
 def _parse_body_sense(text: str, ps: player):
-    # print(text)
-    # Will view_mode ever change from "high normal"?
-    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0})"
-    #regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
-    #regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
-    #regex_string += "(.*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\))?"
-    #regex_string += "(.*target (none|l|r) ({1})?\\).*count ({1})\\)\\))?"
-    #regex_string += "(.*expires ({1})\\).*count ({1})\\))?"
-    #regex_string += "(.*collision (none|{2})\\).*charged {1}\\).*card (red|yellow|none)\\)\\)\\))?"
-    regex_string = regex_string.format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+
+    # TODO: Will view_mode ever change from "high normal"?
+    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
+    regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
+    regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
+    regex_string += ".*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\)"
+    regex_string += ".*target (none|l|r)( {1})?\\).*count ({1})\\)\\)"
+    regex_string += ".*expires ({1})\\).*count ({1})\\)"
+    regex_string += ".*collision (none|{2})\\).*charged ({1})\\).*card (red|yellow|none)\\)\\)\\)"
+    regex_string = regex_string.format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
-
-    print(matched.groups())
 
     return matched
 
