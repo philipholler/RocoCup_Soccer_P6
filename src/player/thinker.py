@@ -33,19 +33,21 @@ class Thinker(threading.Thread):
     def start(self) -> None:
         super().start()
         if self.player_state.player_type == "goalie":
-            init_string = "(init " + self.player_state.team_name + "(goalie)" + "(version 7))"
+            init_string = "(init " + self.player_state.team_name + "(goalie)" + "(version 16))"
         else:
-            init_string = "(init " + self.player_state.team_name + " (version 7))"
+            init_string = "(init " + self.player_state.team_name + " (version 16))"
         self.player_conn.action_queue.put(init_string)
-        self.position_player()
 
     def run(self) -> None:
         super().run()
+        # Wait for client connection thread to receive the correct new port
+        time.sleep(0.5)
+        self.position_player()
         while True:
             self.think()
 
     def think(self):
-        time.sleep(0.05)
+        time.sleep(0.1)
         while not self.input_queue.empty():
             # Parse message and update player state / world view
             msg = self.input_queue.get()

@@ -115,7 +115,7 @@ def parse_message_update_state(msg: str, ps: player):
 
 
 '''
-Example: 
+Old protocol 3: 
 (see 0 ((flag c) 50.4 -25) ((flag c b) 47 14) ((flag r t) 113.3 -29) ((flag r b) 98.5 7) ((flag g r b) " \
 "99.5 -8) ((goal r) 100.5 -12) ((flag g r t) 102.5 -16) ((flag p r b) 81.5 -1) ((flag p r c) 84.8 -15) ((" \
 "flag p r t) 91.8 -27) ((flag p l b) 9.7 -10 0 0) ((ball) 49.4 -25) ((player) 44.7 -24) ((player Team1 5) " \
@@ -123,6 +123,15 @@ Example:
 "40.4 -2) ((player) 60.3 7) ((player) 60.3 -16) ((player) 66.7 -20) ((player) 60.3 -31) ((player) 90 -39) (" \
 "(player) 99.5 -9) ((player) 66.7 -10) ((player) 66.7 -21) ((player) 99.5 -19) ((player) 90 6) ((player) " \
 "60.3 -27) ((line r) 98.5 90))
+
+New protocol 7-16:
+"(see 0 ((f r t) 55.7 3) ((f g r b) 70.8 38) ((g r) 66.7 34) ((f g r t) 62.8 28) ((f p r c) 53.5 43) ((f p " \
+"r t) 42.5 23) ((f t 0) 3.6 -34 0 0) ((f t r 10) 13.2 -9 0 0) ((f t r 20) 23.1 -5 0 0) ((f t r 30) 33.1 -3 " \
+"0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f " \
+"r t 30) 60.9 7) ((f r b 10) 76.7 38) ((f r b 20) 83.1 43) ((p) 66.7 35) ((p \"Team2\" 2) 9 0 0 0 0 0) ((p " \
+"\"Team2\" 3) 12.2 0 0 0 0 0) ((p \"Team2\" 4) 14.9 0 0 0 0 0) ((p \"Team2\" 5) 18.2 0 0 0 0 0) ((p " \
+"\"Team2\" 6) 20.1 0 0 0 0 0) ((p \"Team2\" 7) 24.5 0 0 0 0 0) ((p \"Team2\") 27.1 0) ((p \"Team2\" 9) 30 0 " \
+"0 0 0 0) ((p \"Team2\") 33.1 0) ((p \"Team2\") 36.6 0)) "
 '''
 
 
@@ -147,7 +156,7 @@ def _parse_see(msg, ps: player.PlayerState):
         elif str(element).startswith("((b") or str(element).startswith("((B"):
             ball = element
         else:
-            raise Exception("Unknown see element: ", element)
+            raise Exception("Unknown see element: " + str(element))
 
     flags = create_flags(flag_strings)
 
@@ -475,13 +484,13 @@ def _parse_players(players: [], ps: player.PlayerState):
         elif len(split_by_whitespaces) == 2:
             distance = split_by_whitespaces[0]
             direction = split_by_whitespaces[1]
-        # If Distance Diretion DistChange DirChange
+        # If Distance Direction DistChange DirChange
         elif len(split_by_whitespaces) == 4:
             distance = split_by_whitespaces[0]
             direction = split_by_whitespaces[1]
             dist_chng = split_by_whitespaces[2]
             dir_chng = split_by_whitespaces[3]
-        # If Distance Diretion DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
+        # If Distance Direction DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
         # Todo should we include pointdir? - Philip
         elif len(split_by_whitespaces) >= 6:
             distance = split_by_whitespaces[0]
@@ -533,6 +542,12 @@ def _parse_hear(text: str, ps: player):
         return
     elif sender == "self":
         return
+    elif sender == "online_coach_left":
+        return # todo Handle incoming messages from online coach
+    elif sender == "online_coach_right":
+        return # todo handle incoming messages from online coach
+    elif sender == "coach":
+        return # todo handle trainer input
     else:
         regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
 
@@ -542,13 +557,39 @@ def _parse_hear(text: str, ps: player):
         return
 
 
-# example : (sense_body 0 (view_mode high normal) (stamina 8000 1) (speed 0) (kick 0) (dash 0) (turn 0) (say 0))
-# Group [1] = time, [2] = stamina, [3] = effort, [4] = speed, [5] = kick count, [6] = dash, [7] = turn
+# example : (sense_body 0 (view_mode high normal) (stamina 8000 1 130600) (speed 0 0) (head_angle 0) (kick 0)
+# (dash 0) (turn 0) (say 0) (turn_neck 0) (catch 0) (move 0) (change_view 0) (arm (movable 0) (expires 0) (target 0 0)
+# (count 0)) (focus (target none) (count 0)) (tackle (expires 0) (count 0)) (collision none) (foul  (charged 0)
+# (card none)))
+
+# ALL COUNT COMMANDS MEAN: HOW MANY TIMES THE COMMAND HAS BEEN EXECUTED BY THE PLAYER SO FAR
+# Group [1] = time,
+# [2] = view mode,
+# [3] = stamina, [4] = effort, [5] = capacity,
+# [6] = speed, [7] = direction of speed,
+# [8] = kick count,
+# [9] = dash count,
+# [10] = turn count,
+# [11] = say count,
+# [12] = turn neck count,
+# [13] = catch count,
+# [14] = move count,
+# [15] = change view count,
+# [16] = movable cycles, [17] = expire cycles, [18] = point to count,
+# [19] = target, [20] = Unum, [21] = count,
+# [22] = expire cycles, [23] count, [24] = collision,
+# [25] = charged, [26] = card
+
 def _parse_body_sense(text: str, ps: player):
-    # Will view_mode ever change from "high normal"?
-    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0})\\).*speed ({0})\\).*kick ({0})\\)"
-    regex_string += ".*dash ({0})\\).*turn ({1})\\)"
-    regex_string = regex_string.format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+
+    regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
+    regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
+    regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
+    regex_string += ".*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\)"
+    regex_string += ".*target (none|l|r)( {1})?\\).*count ({1})\\)\\)"
+    regex_string += ".*expires ({1})\\).*count ({1})\\)"
+    regex_string += ".*collision (none|{2})\\).*charged ({1})\\).*card (red|yellow|none)\\)\\)\\)"
+    regex_string = regex_string.format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
@@ -647,7 +688,7 @@ def _solve_trilateration(flag_1, flag_2):
     return flag_1.coordinate - corrected_offset_from_flag_one_1, flag_1.coordinate - corrected_offset_from_flag_one_2
 
 
-def __get_all_combinations(original_list):
+def _get_all_combinations(original_list):
     combinations = []
 
     for i in range(0, len(original_list) - 1):
