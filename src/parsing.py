@@ -508,13 +508,15 @@ def _parse_hear(text: str, ps: player):
 # [19] = expire cycles, [20] count, [21] = collision,
 # [22] = charged, [23] = card
 
+#  ({1})?\\).*speed ({0}) ({1})\\)
+
 # TODO make it work
 def _parse_body_sense(text: str, ps: player):
     # print(text)
     # Will view_mode ever change from "high normal"?
-    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0}) ({1})?\\).*speed ({0}) ({1})\\)"
-    regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
-    regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
+    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0})"
+    #regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
+    #regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
     #regex_string += "(.*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\))?"
     #regex_string += "(.*target (none|l|r) ({1})?\\).*count ({1})\\)\\))?"
     #regex_string += "(.*expires ({1})\\).*count ({1})\\))?"
@@ -524,7 +526,7 @@ def _parse_body_sense(text: str, ps: player):
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
-    print(matched.groups)
+    print(matched.groups())
 
     return matched
 
