@@ -24,10 +24,11 @@ for team in TEAM_NAMES:
         else:
             player.Client(team, UDP_PORT, UDP_IP, "field").start()
 
-time.sleep(3)
+time.sleep(2)
 
 Coach(TEAM_NAMES[0], 6002, UDP_IP).start()
 
-time.sleep(2)
+time.sleep(3)
 
 Coach(TEAM_NAMES[1], 6002, UDP_IP).start()
+
