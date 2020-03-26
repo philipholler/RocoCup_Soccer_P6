@@ -1,7 +1,9 @@
 import math
 import re
+import time
 
-from geometry import angle_between, calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position
+from geometry import angle_between, calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
+    calculate_full_circle_origin_angle
 from player import player, world
 from math import sqrt, atan2
 
@@ -144,14 +146,14 @@ def _parse_see(msg, ps: player.PlayerState):
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
-    flags = []
+    flag_strings = []
     players = []
     goals = []
     lines = []
     ball = None
     for element in matches:
         if str(element).startswith("((f") or str(element).startswith("((F"):
-            flags.append(element)
+            flag_strings.append(element)
         elif str(element).startswith("((g") or str(element).startswith("((G"):
             goals.append(element)
         elif str(element).startswith("((p") or str(element).startswith("((P"):
@@ -163,14 +165,24 @@ def _parse_see(msg, ps: player.PlayerState):
         else:
             raise Exception("Unknown see element: " + str(element))
 
+    flags = create_flags(flag_strings)
+
+    time_before = time.time()
     _approx_position(flags, ps)
-    # if ps.team_name == "Team1" and ps.player_num == 1:
-        # print("Position: ", ps.position.get_value())
+    time_after = time.time()
+    #print("Approx position calculation time : " + str((time_after - time_before) * 1000) + " ms")
+
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
     _parse_lines(lines, ps)
+
+    if ps.team_name == "Team1" and ps.player_num == 1:
+        if ps.position.is_value_known():
+            print(ps.position.get_value())
+        if ps.player_angle.is_value_known():
+            print(ps.player_angle.get_value())
 
 
 def _parse_lines(lines, ps):
@@ -220,50 +232,113 @@ def _parse_goal(text: str, ps: PlayerState):
     return matched
 
 
-def _approx_glob_angle(flags, ps):
-    if not ps.position.is_value_known():
+class Flag:
+
+    def __init__(self, identifier, coordinate, distance, direction) -> None:
+        self.identifier = identifier
+        self.coordinate = coordinate
+        self.relative_distance = distance
+        self.relative_direction = direction
+
+    def __repr__(self) -> str:
+        return "Flag " + self.identifier + " : " + str(self.coordinate) + ", dist: " + str(self.relative_distance) + \
+               ", direction: " + str(self.relative_direction)
+
+
+def create_flags(flag_strings):
+    known_flags_strings = []
+
+    # Remove flags out of field of view
+    for flag in flag_strings:
+        if not str(flag).startswith("((F)"):
+            known_flags_strings.append(flag)
+
+    ids = _extract_flag_identifiers(known_flags_strings)
+    coords = _extract_flag_coordinates(ids)
+    distances = _extract_flag_distances(known_flags_strings)
+    directions = _extract_flag_directions(known_flags_strings)
+
+    flags = []
+    for i in range(0, len(known_flags_strings)):
+        flags.append(Flag(ids[i], coords[i], float(distances[i]), float(directions[i])))
+
+    return flags
+
+
+# Note that the mean value of angles is not well defined (fx. what is the mean angle of (0, 90, 180, 270)?)
+# This function averages angles that are close together.
+def average(numbers):
+    return sum(numbers) / len(numbers)
+
+
+def find_mean_angle(angles):
+    if len(angles) == 0:
+        return None
+
+    if len(angles) == 1:
+        return angles[0]
+
+    # We expect more than half of the angles to be close together (eliminate outliers)
+    expected_close_angles = int(len(angles) / 2 + 1)
+    acceptable_variance = 3.0
+    cluster_size_best_solution = 0
+    best_cluster = []
+
+    for i in range(0, len(angles) - 1):
+        first_angle = angles[i]
+        cluster = [angles[i]]
+        for j in range(i + 1, len(angles)):
+            other_angle = angles[j]
+            # Handle wrap-around 360 degrees
+            if first_angle < 0 + acceptable_variance:
+                if other_angle > 360 - acceptable_variance:
+                    other_angle = -(360 - other_angle)
+            # Handle other case of wrap-around 360 degrees
+            elif first_angle > 360 - acceptable_variance:
+                if other_angle < acceptable_variance:
+                    other_angle = 360 + other_angle
+
+            if abs(first_angle - other_angle) <= acceptable_variance:
+                cluster.append(other_angle)
+
+        if len(cluster) >= expected_close_angles:
+            return average(cluster)
+
+        if len(cluster) > cluster_size_best_solution:
+            cluster_size_best_solution = len(cluster)
+            best_cluster = cluster
+
+    # No angles were close enough to provide a non-ambiguous solution
+    if len(best_cluster) <= 1:
+        return None
+    return average(best_cluster)
+
+
+def _approx_glob_angle(flags: [Flag], ps):
+    if not ps.position.is_value_known():  # todo Make time dependent? (Magnus)
         return
 
-    known_flags = []
-    # Remove flags out of field of view
-    for flag in flags:
-        if not str(flag).startswith("((F)"):
-            known_flags.append(flag)
-
+    estimated_angles = []
     # angle between c1 and c2, with c3 offsetting to make 0 degrees in some direction
     # For this purpose x+ = east, -x = west etc.
-    def angle_between(c1, c2, c3):
-        return atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
+    player_coord = ps.position.get_value()
+    for flag in flags:
+        radians_between_flag_player = calculate_full_circle_origin_angle(flag.coordinate, player_coord)
+        player_angle = float(radians_between_flag_player) - math.radians(float(flag.relative_direction))
+        estimated_player_angle = math.degrees(player_angle) % 360
 
-    if len(known_flags) != 0:
-        # Find closest flag
-        closest_flag = _find_closest_flag(known_flags, ps)
-        closest_flag_id = _extract_flag_identifiers([closest_flag])[0]
+        estimated_angles.append(estimated_player_angle)
 
-        # Calculate global angle to flag
-        closest_flag_coords = _extract_flag_coordinates([closest_flag_id])[0]
-        player_coord: Coordinate = ps.position.get_value()
-        global_angle_between_play_flag = angle_between(player_coord, closest_flag_coords,
-                                                       Coordinate(player_coord.pos_x + 20
-                                                                  , player_coord.pos_y))
-
-        # Find flag relative angle
-        flag_relative_direction = _extract_flag_directions([closest_flag], ps)[0]
-        player_angle = float(global_angle_between_play_flag) - math.radians(float(flag_relative_direction))
-        player_angle_degrees = math.degrees(player_angle) % 360
-
-        # Set player global angle
-        ps.player_angle.set_value(player_angle_degrees, ps.world_view.sim_time)
-
+    ps.player_angle.set_value(find_mean_angle(estimated_angles), ps.now())
 
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
 # distance, direction, dist_change, dir_change
-def _extract_flag_directions(flags, ps):
+def _extract_flag_directions(flag_strings):
     flag_directions = []
-    for flag in flags:
+    for flag_string in flag_strings:
         # Remove the first part of the string *((flag p l c)*
-        removed_flag_name = flag.split(') ', 1)[1]
+        removed_flag_name = flag_string.split(') ', 1)[1]
         # Remove ) from the items
         cur_flag = str(removed_flag_name).replace(")", "")
         cur_flag = str(cur_flag).replace("(", "")
@@ -370,7 +445,6 @@ def _parse_player_obj_name(obj_name, ps: player.PlayerState):
     # If we know both the team, player_num and that the player is the goalie
     if len(split_by_whitespaces) == 4:
         return split_by_whitespaces[1], split_by_whitespaces[2], True
-
 
 
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
@@ -497,25 +571,25 @@ def _parse_hear(text: str, ps: player):
 
 # ALL COUNT COMMANDS MEAN: HOW MANY TIMES THE COMMAND HAS BEEN EXECUTED BY THE PLAYER SO FAR
 # Group [1] = time,
-# [2] = stamina, [3] = effort, [4] = capacity,
-# [5] = speed, [6] = direction of speed,
-# [7] = kick count,
-# [8] = dash count,
-# [9] = turn count,
-# [10] = say count,
-# [11] = turn neck count,
-# [12] = catch count,
-# [13] = move count,
-# [14] = change view count,
-# [15] = movable cycles, [16] = expire cycles, [17] = point to count,
-# [18] = target, [19] = Unum, [20] = count,
-# [21] = expire cycles, [22] count, [23] = collision,
-# [24] = charged, [25] = card
+# [2] = view mode,
+# [3] = stamina, [4] = effort, [5] = capacity,
+# [6] = speed, [7] = direction of speed,
+# [8] = kick count,
+# [9] = dash count,
+# [10] = turn count,
+# [11] = say count,
+# [12] = turn neck count,
+# [13] = catch count,
+# [14] = move count,
+# [15] = change view count,
+# [16] = movable cycles, [17] = expire cycles, [18] = point to count,
+# [19] = target, [20] = Unum, [21] = count,
+# [22] = expire cycles, [23] count, [24] = collision,
+# [25] = charged, [26] = card
 
 def _parse_body_sense(text: str, ps: player):
 
-    # TODO: Will view_mode ever change from "high normal"?
-    regex_string = ".*sense_body ({1}).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
+    regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
     regex_string += ".*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\)"
@@ -594,20 +668,16 @@ def _calculate_distance(coord1, coord2):
 
 # Calculates position as two possible offsets from flag_one
 def _trilaterate_offset(flag_one, flag_two):
-    coord1 = flag_one[0]
-    coord2 = flag_two[0]
-    distance_between_flags = _calculate_distance(coord1, coord2)
-    distance_to_flag1 = float(flag_one[1])
-    distance_to_flag2 = float(flag_two[1])
+    distance_between_flags = _calculate_distance(flag_one.coordinate, flag_two.coordinate)
 
-    x = (((distance_to_flag1 ** 2) - (distance_to_flag2 ** 2)) + (distance_between_flags ** 2)) \
+    x = (((flag_one.relative_distance ** 2) - (flag_two.relative_distance ** 2)) + (distance_between_flags ** 2)) \
         / (2.0 * distance_between_flags)
 
     # Not sure if this is a correct solution
-    if abs(distance_to_flag1) > abs(x):
-        y = sqrt((distance_to_flag1 ** 2) - (x ** 2))
+    if abs(flag_one.relative_distance) > abs(x):
+        y = sqrt((flag_one.relative_distance ** 2) - (x ** 2))
     else:
-        y = sqrt(pow(x, 2.0) - pow(distance_to_flag1, 2.0))
+        y = sqrt(pow(x, 2.0) - pow(flag_one.relative_distance, 2.0))
 
     # This calculation provides two possible offset solutions (x, y) and (x, -y)
     return Coordinate(x, y), Coordinate(x, -y)
@@ -618,11 +688,11 @@ def _solve_trilateration(flag_1, flag_2):
     # The trilateration algorithm assumes horizontally aligned flags
     # To resolve this, the solution is calculated as if the flags were horizontally aligned
     # and is then rotated to match the actual angle
-    radians_to_rotate = calculate_smallest_origin_angle_between(flag_1[0], flag_2[0])
+    radians_to_rotate = calculate_smallest_origin_angle_between(flag_1.coordinate, flag_2.coordinate)
     corrected_offset_from_flag_one_1 = rotate_coordinate(possible_offset_1, radians_to_rotate)
     corrected_offset_from_flag_one_2 = rotate_coordinate(possible_offset_2, radians_to_rotate)
 
-    return flag_1[0] - corrected_offset_from_flag_one_1, flag_1[0] - corrected_offset_from_flag_one_2
+    return flag_1.coordinate - corrected_offset_from_flag_one_1, flag_1.coordinate - corrected_offset_from_flag_one_2
 
 
 def _get_all_combinations(original_list):
@@ -635,9 +705,9 @@ def _get_all_combinations(original_list):
     return combinations
 
 
-def _find_all_solutions(coords_and_distance):
+def _find_all_solutions(flags: [Flag]):
     solutions = []
-    flag_combinations = _get_all_combinations(coords_and_distance)
+    flag_combinations = _get_all_combinations(flags)
     for combination in flag_combinations:
         possible_solutions = _solve_trilateration(combination[0], combination[1])
         solutions.append(possible_solutions[0])
@@ -700,22 +770,13 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
     return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
 
 
-def _approx_position(flags, state):
-    known_flags = []
-
-    for flag in flags:
-        if not str(flag).startswith("((F)"):
-            known_flags.append(flag)
-
-    parsed_flags = _zip_flag_coords_distance(known_flags)
-    if len(parsed_flags) < 2:
+def _approx_position(flags: [Flag], state):
+    if len(flags) < 2:
         # print("No flag can be seen - Position unknown")
         return
 
-    all_solutions = _find_all_solutions(parsed_flags)
+    all_solutions = _find_all_solutions(flags)
 
-    # if state.team_name == "Team1" and state.player_num == 1:
-        # print("# flags: ", len(known_flags), ", solutions: ", len(all_solutions), ", known flags: ", known_flags, )
     if len(all_solutions) == 2:
         # print("only two flags visible")
         solution_1_plausible = is_possible_position(all_solutions[0], state)
@@ -743,27 +804,11 @@ def _approx_position(flags, state):
 
 
 # PHILIPS - DO NOT REMOVE
-my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
-         "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
-         "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
-         "-2) ((player) 60.3 -44) ((player Team1) 44.7 -11) ((player Team1 10) 20.1 -37 0 0) ((player) 66.7 -13) ((" \
-         "player) 66.7 -36) ((player) 66.7 -16) ((player) 49.4 6) ((player) 73.7 -39) ((player) 60.3 -33) ((player) " \
-         "60.3 -8) ((player) 66.7 -4) ((player) 90 6) ((player) 99.5 -21) ((player) 66.7 -20) ((line r) 97.5 -80)) "
-
-my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18) ((goal r) 67.4 12) ((flag g r t) 66 " \
-          "6) ((flag p r b) 60.3 35) ((flag p r c) 51.4 17) ((flag p r t) 49.4 -6) ((player Team1 3) 8.2 0 0 0) ((" \
-          "player Team1 7) 2 0 0 0) ((player Team2) 33.1 32) ((player) 49.4 38) ((player Team2) 40.4 36) ((player " \
-          "Team2) 40.4 37) ((player) 66.7 21) ((player Team2) 27.1 39) ((line r) 65.4 90))"
-
-my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
-          "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
-
 my_str4 = "(see 0 ((f r t) 55.7 3) ((f g r b) 70.8 38) ((g r) 66.7 34) ((f g r t) 62.8 28) ((f p r c) 53.5 43) ((f p " \
           "r t) 42.5 23) ((f t 0) 3.6 -34 0 0) ((f t r 10) 13.2 -9 0 0) ((f t r 20) 23.1 -5 0 0) ((f t r 30) 33.1 -3 " \
-          "0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f " \
+          "0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f "\
           "r t 30) 60.9 7) ((f r b 10) 76.7 38) ((f r b 20) 83.1 43) ((p) 66.7 35) ((p \"Team2\" 2) 9 0 0 0 0 0) ((p " \
           "\"Team2\" 3) 12.2 0 0 0 0 0) ((p \"Team2\" 4) 14.9 0 0 0 0 0) ((p \"Team2\" 5) 18.2 0 0 0 0 0) ((p " \
-          "\"Team2\" 6) 20.1 0 0 0 0 0) ((p \"Team2\" 7) 24.5 0 0 0 0 0) ((p \"Team2\") 27.1 0) ((p \"Team2\" 9) 30 0 " \
+          "\"Team2\" 6) 20.1 0 0 0 0 0) ((p \"Team2\" 7) 24.5 0 0 0 0 0) ((p \"Team2\") 27.1 0) ((p \"Team2\" 9) 30 0 "\
           "0 0 0 0) ((p \"Team2\") 33.1 0) ((p \"Team2\") 36.6 0)) "
 # parse_message_update_state(my_str4, player.PlayerState())
-

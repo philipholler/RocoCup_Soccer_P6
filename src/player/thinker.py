@@ -52,14 +52,14 @@ class Thinker(threading.Thread):
             # Parse message and update player state / world view
             msg = self.input_queue.get()
             parsing.parse_message_update_state(msg, self.player_state)
-            # Give the strategy a new state
-            self.strategy.player_state = self.player_state
 
         # Update current objective in accordance to the player's strategy
         if self.player_state.player_num == 1 and self.player_state.team_name == "Team1":
             self.current_objective = self.strategy.determine_objective(self.player_state, self.current_objective)
             action = self.current_objective.perform_action()
-            self.player_conn.action_queue.put(action)
+            if action is not None:
+                self.player_conn.action_queue.put(action)
+
 
         return
 
