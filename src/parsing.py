@@ -118,7 +118,7 @@ def parse_message_online_coach(msg: str):
     return ps.world_view
 
 
-def parse_message_update_state(msg: str, ps: player):
+def parse_message_update_state(msg: str, ps: PlayerState):
     if msg.startswith("(error"):
         print(msg)
         return
@@ -139,6 +139,12 @@ def parse_message_update_state(msg: str, ps: player):
         _parse_init(msg, ps)
     elif msg.startswith("(see "):
         _parse_see(msg, ps)
+    elif (msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type")):
+        return
+    elif msg.startswith("(change_player_type"):
+        print("Server changed player: {0}, team: {1} type, msg: {2}".format(ps.player_num, ps.team_name, msg))
+    else:
+        raise Exception("Unknown message received: " + msg)
 
 
 '''
@@ -551,7 +557,6 @@ def _parse_players_online_coach(players: [], wv: WorldView):
 
         other_player = Player_View_Coach(team=team, num=num, coord=coord, delta_x=delta_x, delta_y=delta_y
                                          , body_angle=body_angle, neck_angle=neck_angle, is_goalie=is_goalie)
-        print(other_player)
 
         wv.other_players.append(other_player)
 
@@ -727,14 +732,14 @@ def _parse_body_sense(text: str, ps: player):
     ps.body_state.time = int(matched.group(1))
     ps.body_state.view_mode = matched.group(2)
     ps.body_state.stamina = int(matched.group(3))
-    ps.body_state.effort = int(matched.group(4))
+    ps.body_state.effort = float(matched.group(4))
     ps.body_state.capacity = int(matched.group(5))
-    ps.body_state.speed = int(matched.group(6))
+    ps.body_state.speed = float(matched.group(6))
     ps.body_state.direction_of_speed = int(matched.group(7))
     ps.body_state.head_angle = int(matched.group(9))
     ps.body_state.arm_movable_cycles = int(matched.group(17))
     ps.body_state.arm_expire_cycles = int(matched.group(18))
-    ps.body_state.distance = int(matched.group(19))
+    ps.body_state.distance = float(matched.group(19))
     ps.body_state.direction = int(matched.group(20))
     ps.body_state.target = matched.group(22)
     ps.body_state.unum.set_value(unum, ps.body_state.time)

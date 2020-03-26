@@ -28,7 +28,7 @@ class CoachThinker(threading.Thread):
         init_string = "(init " + self.team + " (version 16))"
         self.connection.action_queue.put(init_string)
 
-        time.sleep(0.5)
+        time.sleep(1)
 
 
     def run(self) -> None:
@@ -41,7 +41,9 @@ class CoachThinker(threading.Thread):
         # Look command returns a vision of the entire field
         self.connection.action_queue.put("(look)")
         while not self.input_queue.empty():
-            msg = self.input_queue.get()
+            msg: str = self.input_queue.get()
+            if msg.startswith("(error"):
+                print("Coach for team {0} received error: {1}".format(self.team, msg))
             self.world_view = parsing.parse_message_online_coach(msg)
 
 
