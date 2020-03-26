@@ -18,6 +18,9 @@ __ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
 __SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
 __TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
 
+# Introduced to reduce calculation time
+MAX_FLAGS_FOR_POSITION_ESTIMATE = 15
+
 __FLAG_COORDS = {
     # perimiter flags
     "tl50": (-50, 39),
@@ -163,7 +166,7 @@ def _parse_see(msg, ps: player.PlayerState):
     time_before = time.time()
     _approx_position(flags, ps)
     time_after = time.time()
-    #print("Approx position calculation time : " + str((time_after - time_before) * 1000) + " ms")
+    print("Approx position calculation time : " + str((time_after - time_before) * 1000) + " ms")
 
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
@@ -304,7 +307,7 @@ def find_mean_angle(angles):
     # No angles were close enough to provide a non-ambiguous solution
     if len(best_cluster) <= 1:
         return None
-    return average(best_cluster)
+    return average(best_cluster) % 360
 
 
 def _approx_glob_angle(flags: [Flag], ps):
@@ -322,7 +325,10 @@ def _approx_glob_angle(flags: [Flag], ps):
 
         estimated_angles.append(estimated_player_angle)
 
-    ps.player_angle.set_value(find_mean_angle(estimated_angles), ps.now())
+    mean_angle = find_mean_angle(estimated_angles)
+    if mean_angle is not None:
+        ps.player_angle.set_value(mean_angle, ps.now())
+
 
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
@@ -346,18 +352,6 @@ def _extract_flag_directions(flag_strings):
         flag_directions.append(direction)
 
     return flag_directions
-
-
-def _find_closest_flag(flags, ps):
-    closest_distance_flag: str = flags[0]
-    closest_distance: float = float(_extract_flag_distances([flags[0]])[0])
-    for flag in flags:
-        flag_distance = _extract_flag_distances([flag])[0]
-        if closest_distance == -1 or closest_distance > float(flag_distance):
-            closest_distance_flag = flag
-            closest_distance = float(flag_distance)
-
-    return closest_distance_flag
 
 
 # Input ((b) 13.5 -31 0 0)
@@ -543,11 +537,11 @@ def _parse_hear(text: str, ps: player):
     elif sender == "self":
         return
     elif sender == "online_coach_left":
-        return # todo Handle incoming messages from online coach
+        return  # todo Handle incoming messages from online coach
     elif sender == "online_coach_right":
-        return # todo handle incoming messages from online coach
+        return  # todo handle incoming messages from online coach
     elif sender == "coach":
-        return # todo handle trainer input
+        return  # todo handle trainer input
     else:
         regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
 
@@ -581,7 +575,6 @@ def _parse_hear(text: str, ps: player):
 # [25] = charged, [26] = card
 
 def _parse_body_sense(text: str, ps: player):
-
     regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
@@ -763,10 +756,44 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
     return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
 
 
+def furthest_flag_distance_and_index(flags: [Flag]):
+    furthest_flag = flags[0]
+    furthest_dist = furthest_flag.relative_distance
+    furthest_index = 0
+
+    for index in range(1, len(flags)):
+        flag = flags[index]
+        dist = flag.relative_distance
+        if dist > furthest_dist:
+            furthest_index = index
+            furthest_dist = dist
+    return furthest_dist, furthest_index
+
+
+def find_closest_flags(flags, amount):
+    closest_flags = flags[0:amount]
+    furthest_dist_closest_flags, furthest_index = furthest_flag_distance_and_index(closest_flags)
+
+    i = amount
+    while i < len(flags):
+        f = flags[i]
+        f_dist = f.relative_distance
+        if f_dist < furthest_dist_closest_flags:
+            closest_flags[furthest_index] = f
+            # Find new furthest flag in closest_flags list
+            furthest_dist_closest_flags, furthest_index = furthest_flag_distance_and_index(closest_flags)
+        i += 1
+
+    return closest_flags
+
+
 def _approx_position(flags: [Flag], state):
     if len(flags) < 2:
         # print("No flag can be seen - Position unknown")
         return
+
+    if len(flags) > MAX_FLAGS_FOR_POSITION_ESTIMATE:
+        flags = find_closest_flags(flags, MAX_FLAGS_FOR_POSITION_ESTIMATE)
 
     all_solutions = _find_all_solutions(flags)
 
@@ -799,12 +826,12 @@ def _approx_position(flags: [Flag], state):
 # PHILIPS - DO NOT REMOVE
 my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
          "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
-         "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 "\
+         "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
          "-2) ((player) 60.3 -44) ((player Team1) 44.7 -11) ((player Team1 10) 20.1 -37 0 0) ((player) 66.7 -13) ((" \
          "player) 66.7 -36) ((player) 66.7 -16) ((player) 49.4 6) ((player) 73.7 -39) ((player) 60.3 -33) ((player) " \
          "60.3 -8) ((player) 66.7 -4) ((player) 90 6) ((player) 99.5 -21) ((player) 66.7 -20) ((line r) 97.5 -80)) "
 
-my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18) ((goal r) 67.4 12) ((flag g r t) 66 "\
+my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18) ((goal r) 67.4 12) ((flag g r t) 66 " \
           "6) ((flag p r b) 60.3 35) ((flag p r c) 51.4 17) ((flag p r t) 49.4 -6) ((player Team1 3) 8.2 0 0 0) ((" \
           "player Team1 7) 2 0 0 0) ((player Team2) 33.1 32) ((player) 49.4 38) ((player Team2) 40.4 36) ((player " \
           "Team2) 40.4 37) ((player) 66.7 21) ((player Team2) 27.1 39) ((line r) 65.4 90))"
@@ -814,9 +841,9 @@ my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 1
 
 my_str4 = "(see 0 ((f r t) 55.7 3) ((f g r b) 70.8 38) ((g r) 66.7 34) ((f g r t) 62.8 28) ((f p r c) 53.5 43) ((f p " \
           "r t) 42.5 23) ((f t 0) 3.6 -34 0 0) ((f t r 10) 13.2 -9 0 0) ((f t r 20) 23.1 -5 0 0) ((f t r 30) 33.1 -3 " \
-          "0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f "\
+          "0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f " \
           "r t 30) 60.9 7) ((f r b 10) 76.7 38) ((f r b 20) 83.1 43) ((p) 66.7 35) ((p \"Team2\" 2) 9 0 0 0 0 0) ((p " \
           "\"Team2\" 3) 12.2 0 0 0 0 0) ((p \"Team2\" 4) 14.9 0 0 0 0 0) ((p \"Team2\" 5) 18.2 0 0 0 0 0) ((p " \
-          "\"Team2\" 6) 20.1 0 0 0 0 0) ((p \"Team2\" 7) 24.5 0 0 0 0 0) ((p \"Team2\") 27.1 0) ((p \"Team2\" 9) 30 0 "\
+          "\"Team2\" 6) 20.1 0 0 0 0 0) ((p \"Team2\" 7) 24.5 0 0 0 0 0) ((p \"Team2\") 27.1 0) ((p \"Team2\" 9) 30 0 " \
           "0 0 0 0) ((p \"Team2\") 33.1 0) ((p \"Team2\") 36.6 0)) "
 # parse_message_update_state(my_str4, player.PlayerState())
