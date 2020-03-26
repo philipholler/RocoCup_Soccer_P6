@@ -105,6 +105,7 @@ def parse_message_online_coach(msg: str):
     if msg.startswith("(error"):
         print(msg)
         return
+
     ps: PlayerState = PlayerState()
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
@@ -459,6 +460,9 @@ def _parse_player_obj_name(obj_name, ps: player.PlayerState):
 # (b) 0 0 0 0)
 # X Y DELTAX DELTAY
 def _parse_ball_online_coach(ball, wv):
+    if ball is None:
+        return
+
     my_ball = ball
 
     # Remove ),( and " from the items
@@ -541,13 +545,17 @@ def _parse_players_online_coach(players: [], wv: WorldView):
         delta_y = split_by_whitespaces[6 + is_goalie_included]
         coord: Coordinate = Coordinate(x, y)
         body_angle = split_by_whitespaces[7 + is_goalie_included]
+        body_angle = int(body_angle) % 360
         neck_angle = split_by_whitespaces[8 + is_goalie_included]
+        neck_angle = int(neck_angle) % 360
 
         other_player = Player_View_Coach(team=team, num=num, coord=coord, delta_x=delta_x, delta_y=delta_y
                                          , body_angle=body_angle, neck_angle=neck_angle, is_goalie=is_goalie)
+        print(other_player)
 
         wv.other_players.append(other_player)
 
+_parse_ok_look_online_coach('((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0)', WorldView(0))
 
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
 # ((p "Team1" 5) 30 -41 0 0)
