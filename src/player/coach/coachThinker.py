@@ -1,14 +1,17 @@
 import queue
 import threading
 import time
+import parsing
 
 from player import client_connection, strategy
 from player.strategy import Objective
+from player.player import WorldView, PlayerState
 
 
 class CoachThinker(threading.Thread):
     def __init__(self, team_name: str):
         super().__init__()
+        self.world_view = WorldView(0)
         self.team = team_name
         # Connection with the server
         self.connection: client_connection.Connection = None
@@ -39,4 +42,6 @@ class CoachThinker(threading.Thread):
         self.connection.action_queue.put("(look)")
         while not self.input_queue.empty():
             msg = self.input_queue.get()
+            self.world_view = parsing.parse_message_online_coach(msg)
+
 

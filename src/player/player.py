@@ -9,10 +9,8 @@ MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manu
 class PlayerState:
 
     def __init__(self):
-        self.side = ""
         self.team_name = ""
         self.player_num = -1
-        self.game_state = ""
         self.player_type = None
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
@@ -52,3 +50,12 @@ class WorldView:
         self.ball: PrecariousData = PrecariousData.unknown()
         self.goals = []
         self.lines = []
+        self.side = ""
+        self.game_state = ""
+
+    def __repr__(self) -> str:
+        return super().__repr__()
+
+
+
+
