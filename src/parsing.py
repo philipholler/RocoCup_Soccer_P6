@@ -18,6 +18,9 @@ __ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
 __SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
 __TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
 
+# Introduced to reduce calculation time
+MAX_FLAGS_FOR_POSITION_ESTIMATE = 15
+
 __FLAG_COORDS = {
     # perimiter flags
     "tl50": (-50, 39),
@@ -183,11 +186,7 @@ def _parse_see(msg, ps: player.PlayerState):
 
     flags = create_flags(flag_strings)
 
-    time_before = time.time()
     _approx_position(flags, ps)
-    time_after = time.time()
-    # print("Approx position calculation time : " + str((time_after - time_before) * 1000) + " ms")
-
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
@@ -329,7 +328,7 @@ def find_mean_angle(angles):
     # No angles were close enough to provide a non-ambiguous solution
     if len(best_cluster) <= 1:
         return None
-    return average(best_cluster)
+    return average(best_cluster) % 360
 
 
 def _approx_glob_angle(flags: [Flag], ps):
@@ -347,7 +346,10 @@ def _approx_glob_angle(flags: [Flag], ps):
 
         estimated_angles.append(estimated_player_angle)
 
-    ps.player_angle.set_value(find_mean_angle(estimated_angles), ps.now())
+    mean_angle = find_mean_angle(estimated_angles)
+    if mean_angle is not None:
+        ps.player_angle.set_value(mean_angle, ps.now())
+
 
 
 # ((flag g r b) 99.5 -5)
@@ -372,18 +374,6 @@ def _extract_flag_directions(flag_strings):
         flag_directions.append(direction)
 
     return flag_directions
-
-
-def _find_closest_flag(flags, ps):
-    closest_distance_flag: str = flags[0]
-    closest_distance: float = float(_extract_flag_distances([flags[0]])[0])
-    for flag in flags:
-        flag_distance = _extract_flag_distances([flag])[0]
-        if closest_distance == -1 or closest_distance > float(flag_distance):
-            closest_distance_flag = flag
-            closest_distance = float(flag_distance)
-
-    return closest_distance_flag
 
 
 # Input ((b) 13.5 -31 0 0)
@@ -888,10 +878,44 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
     return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
 
 
+def furthest_flag_distance_and_index(flags: [Flag]):
+    furthest_flag = flags[0]
+    furthest_dist = furthest_flag.relative_distance
+    furthest_index = 0
+
+    for index in range(1, len(flags)):
+        flag = flags[index]
+        dist = flag.relative_distance
+        if dist > furthest_dist:
+            furthest_index = index
+            furthest_dist = dist
+    return furthest_dist, furthest_index
+
+
+def find_closest_flags(flags, amount):
+    closest_flags = flags[0:amount]
+    furthest_dist_closest_flags, furthest_index = furthest_flag_distance_and_index(closest_flags)
+
+    i = amount
+    while i < len(flags):
+        f = flags[i]
+        f_dist = f.relative_distance
+        if f_dist < furthest_dist_closest_flags:
+            closest_flags[furthest_index] = f
+            # Find new furthest flag in closest_flags list
+            furthest_dist_closest_flags, furthest_index = furthest_flag_distance_and_index(closest_flags)
+        i += 1
+
+    return closest_flags
+
+
 def _approx_position(flags: [Flag], state):
     if len(flags) < 2:
         # print("No flag can be seen - Position unknown")
         return
+
+    if len(flags) > MAX_FLAGS_FOR_POSITION_ESTIMATE:
+        flags = find_closest_flags(flags, MAX_FLAGS_FOR_POSITION_ESTIMATE)
 
     all_solutions = _find_all_solutions(flags)
 
