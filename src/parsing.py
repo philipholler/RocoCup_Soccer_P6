@@ -106,6 +106,14 @@ def parse_message_update_state(msg: str, ps: player):
         print(msg)
         return
 
+    # The server_param and player_param files do not contain a time stamp
+    # Can be used to get the configuration of the server and player
+    # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
+    # player_param: General parameters of players, like max substitutions etc.
+    # player_type: The current player type and its stats, like max_speed, kick power etc.
+    if not (msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type")):
+        _update_time(msg, ps)
+
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -113,7 +121,6 @@ def parse_message_update_state(msg: str, ps: player):
     elif msg.startswith("(init"):
         _parse_init(msg, ps)
     elif msg.startswith("(see "):
-        _update_time(msg, ps)
         _parse_see(msg, ps)
 
 
@@ -163,11 +170,7 @@ def _parse_see(msg, ps: player.PlayerState):
 
     flags = create_flags(flag_strings)
 
-    time_before = time.time()
     _approx_position(flags, ps)
-    time_after = time.time()
-    print("Approx position calculation time : " + str((time_after - time_before) * 1000) + " ms")
-
     _approx_glob_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
@@ -590,9 +593,9 @@ def _parse_body_sense(text: str, ps: player):
     return matched
 
 
-# Example : (see 0 ((flag r b) 48.9 29) ((flag g r b) 42.5 -4) ((goal r) 43.8 -13) ((flag g r t) 45.6 -21)
-#           ((flag p r b) 27.9 21) ((flag p r c) 27.9 -21 0 0) ((Player) 1 -179) ((player Team2 2) 1 0 0 0)
-#           ((Player) 0.5 151) ((player Team2 4) 0.5 -28 0 0) ((line r) 42.5 90))
+# Example : (see 0 ((f r b) 48.9 29) ((f g r b) 42.5 -4) ((g r) 43.8 -13) ((f g r t) 45.6 -21)
+#           ((f p r b) 27.9 21) ((f p r c) 27.9 -21 0 0) ((P) 1 -179) ((p Team2 2) 1 0 0 0)
+#           ((P) 0.5 151) ((p Team2 4) 0.5 -28 0 0) ((l r) 42.5 90))
 def _parse_flags(text):
     flag_regex = "\\(f [^)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
     return re.findall(flag_regex, text)
@@ -824,21 +827,6 @@ def _approx_position(flags: [Flag], state):
 
 
 # PHILIPS - DO NOT REMOVE
-my_str = "(see 0 ((flag c) 55.1 -27) ((flag c b) 43.8 10) ((flag r t) 117.9 -24) ((flag r b) 96.5 10) ((flag g r b) " \
-         "99.5 -5) ((goal r) 101.5 -9) ((flag g r t) 104.6 -12) ((flag p r b) 80.6 0) ((flag p r c) 86.5 -12) ((flag " \
-         "p r t) 96.5 -23) ((ball) 54.6 -27) ((player Team1) 54.6 -33) ((player Team1) 44.7 -10) ((player Team1) 40.4 " \
-         "-2) ((player) 60.3 -44) ((player Team1) 44.7 -11) ((player Team1 10) 20.1 -37 0 0) ((player) 66.7 -13) ((" \
-         "player) 66.7 -36) ((player) 66.7 -16) ((player) 49.4 6) ((player) 73.7 -39) ((player) 60.3 -33) ((player) " \
-         "60.3 -8) ((player) 66.7 -4) ((player) 90 6) ((player) 99.5 -21) ((player) 66.7 -20) ((line r) 97.5 -80)) "
-
-my_str2 = "(see 0 ((flag r t) 68 -16) ((flag r b) 81.5 36) ((flag g r b) 69.4 18) ((goal r) 67.4 12) ((flag g r t) 66 " \
-          "6) ((flag p r b) 60.3 35) ((flag p r c) 51.4 17) ((flag p r t) 49.4 -6) ((player Team1 3) 8.2 0 0 0) ((" \
-          "player Team1 7) 2 0 0 0) ((player Team2) 33.1 32) ((player) 49.4 38) ((player Team2) 40.4 36) ((player " \
-          "Team2) 40.4 37) ((player) 66.7 21) ((player Team2) 27.1 39) ((line r) 65.4 90))"
-
-my_str3 = "(see 185 ((flag l b) 57.4 -22) ((flag g l b) 44.7 4) ((goal l) 43.4 13) ((flag g l t) 43.4 22) ((flag p l " \
-          "b) 35.9 -23 -0 -0) ((flag p l c) 27.1 10 -0 0) ((line l) 45.6 -71)) "
-
 my_str4 = "(see 0 ((f r t) 55.7 3) ((f g r b) 70.8 38) ((g r) 66.7 34) ((f g r t) 62.8 28) ((f p r c) 53.5 43) ((f p " \
           "r t) 42.5 23) ((f t 0) 3.6 -34 0 0) ((f t r 10) 13.2 -9 0 0) ((f t r 20) 23.1 -5 0 0) ((f t r 30) 33.1 -3 " \
           "0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f " \
