@@ -28,7 +28,7 @@ time.sleep(2)
 
 Coach(TEAM_NAMES[0], 6002, UDP_IP).start()
 
-time.sleep(3)
+time.sleep(1)
 
 Coach(TEAM_NAMES[1], 6002, UDP_IP).start()
 

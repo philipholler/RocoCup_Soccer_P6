@@ -178,11 +178,13 @@ def _parse_see(msg, ps: player.PlayerState):
     _parse_ball(ball, ps)
     _parse_lines(lines, ps)
 
+    '''
     if ps.team_name == "Team1" and ps.player_num == 1:
         if ps.position.is_value_known():
             print(ps.position.get_value())
         if ps.player_angle.is_value_known():
             print(ps.player_angle.get_value())
+    '''
 
 
 def _parse_lines(lines, ps):
