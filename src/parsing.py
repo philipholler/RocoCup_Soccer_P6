@@ -101,7 +101,14 @@ def parse_message_update_state(msg: str, ps: player):
         print(msg)
         return
 
-    # _update_time(msg, ps)
+    # The server_param and player_param files do not contain a time stamp
+    # Can be used to get the configuration of the server and player
+    # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
+    # player_param: General parameters of players, like max substitutions etc.
+    # player_type: The current player type and its stats, like max_speed, kick power etc.
+    if not (msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type")):
+        _update_time(msg, ps)
+
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
@@ -523,9 +530,9 @@ def _parse_body_sense(text: str, ps: player):
     return matched
 
 
-# Example : (see 0 ((flag r b) 48.9 29) ((flag g r b) 42.5 -4) ((goal r) 43.8 -13) ((flag g r t) 45.6 -21)
-#           ((flag p r b) 27.9 21) ((flag p r c) 27.9 -21 0 0) ((Player) 1 -179) ((player Team2 2) 1 0 0 0)
-#           ((Player) 0.5 151) ((player Team2 4) 0.5 -28 0 0) ((line r) 42.5 90))
+# Example : (see 0 ((f r b) 48.9 29) ((f g r b) 42.5 -4) ((g r) 43.8 -13) ((f g r t) 45.6 -21)
+#           ((f p r b) 27.9 21) ((f p r c) 27.9 -21 0 0) ((P) 1 -179) ((p Team2 2) 1 0 0 0)
+#           ((P) 0.5 151) ((p Team2 4) 0.5 -28 0 0) ((l r) 42.5 90))
 def _parse_flags(text):
     flag_regex = "\\(f [^)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
     return re.findall(flag_regex, text)
