@@ -576,18 +576,20 @@ def _parse_hear(text: str, ps: player):
 # [2] = view mode,
 # [3] = stamina, [4] = effort, [5] = capacity,
 # [6] = speed, [7] = direction of speed,
-# [8] = kick count,
-# [9] = dash count,
-# [10] = turn count,
-# [11] = say count,
-# [12] = turn neck count,
-# [13] = catch count,
-# [14] = move count,
-# [15] = change view count,
-# [16] = movable cycles, [17] = expire cycles, [18] = point to count,
-# [19] = target, [20] = Unum, [21] = count,
-# [22] = expire cycles, [23] count, [24] = collision,
-# [25] = charged, [26] = card
+# [8] = head angle,
+# [9] = kick count,
+# [10] = dash count,
+# [11] = turn count,
+# [12] = say count,
+# [13] = turn neck count,
+# [14] = catch count,
+# [15] = move count,
+# [16] = change view count,
+# [17] = movable cycles, [18] = expire cycles, [19] = distance, [20] = direction, [21] = point to count
+# [22] = target, [23] = Unum, [24] = count,
+# [25] = expire cycles, [26] count,
+# [27] = collision,
+# [28] = charged, [29] = card
 
 def _parse_body_sense(text: str, ps: player):
 
@@ -602,6 +604,30 @@ def _parse_body_sense(text: str, ps: player):
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
+
+    if matched.group(23) is None:
+        unum = "none"
+    else:
+        unum = int(matched.group(23))
+
+    ps.body_state.time = int(matched.group(1))
+    ps.body_state.view_mode = matched.group(2)
+    ps.body_state.stamina = int(matched.group(3))
+    ps.body_state.effort = int(matched.group(4))
+    ps.body_state.capacity = int(matched.group(5))
+    ps.body_state.speed = int(matched.group(6))
+    ps.body_state.direction_of_speed = int(matched.group(7))
+    ps.body_state.head_angle = int(matched.group(9))
+    ps.body_state.arm_movable_cycles = int(matched.group(17))
+    ps.body_state.arm_expire_cycles = int(matched.group(18))
+    ps.body_state.distance = int(matched.group(19))
+    ps.body_state.direction = int(matched.group(20))
+    ps.body_state.target = matched.group(22)
+    ps.body_state.unum.set_value(unum, ps.body_state.time)
+    ps.body_state.tackle_expire_cycles = int(matched.group(25))
+    ps.body_state.collision = matched.group(27)
+    ps.body_state.charged = int(matched.group(28))
+    ps.body_state.card = matched.group(29)
 
     return matched
 

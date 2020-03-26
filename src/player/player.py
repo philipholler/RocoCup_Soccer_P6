@@ -18,6 +18,7 @@ class PlayerState:
         self.world_view = WorldView(0)
         self.player_angle: PrecariousData = PrecariousData.unknown()
         self.last_turn_time = 0
+        self.body_state = BodyState()
         super().__init__()
 
     def __str__(self) -> str:
@@ -43,6 +44,28 @@ class PlayerState:
 
     def now(self):
         return self.world_view.sim_time
+
+
+class BodyState:
+    def __init__(self):
+        self.time = 0
+        self.view_mode = ""
+        self.stamina = 0
+        self.effort = 0
+        self.capacity = 0
+        self.speed = 0
+        self.direction_of_speed = 0
+        self.head_angle = 0
+        self.arm_movable_cycles = 0
+        self.arm_expire_cycles = 0
+        self.distance = 0
+        self.direction = 0
+        self.target = ""
+        self.unum: PrecariousData = PrecariousData.unknown()
+        self.tackle_expire_cycles = 0
+        self.collision = ""
+        self.charged = 0
+        self.card = ""
 
 
 class WorldView:
