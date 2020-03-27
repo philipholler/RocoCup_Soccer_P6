@@ -7,9 +7,9 @@ from geometry import angle_between, calculate_smallest_origin_angle_between, rot
 from player import player, world
 from math import sqrt, atan2
 
-from player.player import PlayerState
+from player.player import PlayerState, WorldView
 from player.world import Coordinate
-from player.world import Player
+from player.world import Player, Player_View_Coach, Ball_Online_Coach
 from player.world import PrecariousData
 
 __REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
@@ -101,10 +101,42 @@ def _update_time(msg, state: PlayerState):
     state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
 
 
-def parse_message_update_state(msg: str, ps: player):
+def parse_message_online_coach(msg: str, team: str):
     if msg.startswith("(error"):
-        print(msg)
+        print("Coach for team {0} received error: {1}".format(team, msg))
         return
+    # The server_param and player_param files do not contain a time stamp
+    # Can be used to get the configuration of the server and player
+    # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
+    # player_param: General parameters of players, like max substitutions etc.
+    # player_type: The current player type and its stats, like max_speed, kick power etc.
+    if msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
+        return
+
+    ps: PlayerState = PlayerState()
+    if msg.startswith("(hear"):
+        _parse_hear(msg, ps)
+    elif msg.startswith("(init"):
+        _parse_init_online_coach(msg, ps.world_view)
+    elif msg.startswith("(ok look"):
+        _parse_ok_look_online_coach(msg, ps.world_view)
+        _update_time(msg, ps)
+    elif msg.startswith("(change_player_type"):
+        # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
+        # changed type. The type is not disclosed by the opponent team.
+        return
+    else:
+        raise Exception("Unknown message received: " + msg)
+
+    return ps.world_view
+
+
+def parse_message_update_state(msg: str, ps: PlayerState):
+    if msg.startswith("(error"):
+        print("Player num {0}, team {1}, received error: {2}".format(ps.player_num, ps.team_name, msg))
+        return
+
+
     # The server_param and player_param files do not contain a time stamp
     # Can be used to get the configuration of the server and player
     # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
@@ -122,6 +154,14 @@ def parse_message_update_state(msg: str, ps: player):
     elif msg.startswith("(see "):
         _update_time(msg, ps)
         _parse_see(msg, ps)
+    elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
+        return
+    elif msg.startswith("(change_player_type"):
+        # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
+        # changed type. The type is not disclosed by the opponent team.
+        return
+    else:
+        raise Exception("Unknown message received: " + msg)
 
 '''
 Old protocol 3: 
@@ -175,14 +215,6 @@ def _parse_see(msg, ps: player.PlayerState):
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
     _parse_lines(lines, ps)
-
-    '''
-    if ps.team_name == "Team1" and ps.player_num == 1:
-        if ps.position.is_value_known():
-            print(ps.position.get_value())
-        if ps.player_angle.is_value_known():
-            print(ps.player_angle.get_value())
-    '''
 
 
 def _parse_lines(lines, ps):
@@ -334,6 +366,7 @@ def _approx_glob_angle(flags: [Flag], ps):
         ps.player_angle.set_value(mean_angle, ps.now())
 
 
+
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
 # distance, direction, dist_change, dir_change
@@ -439,9 +472,109 @@ def _parse_player_obj_name(obj_name, ps: player.PlayerState):
         return split_by_whitespaces[1], split_by_whitespaces[2], True
 
 
+# (b) 0 0 0 0)
+# X Y DELTAX DELTAY
+def _parse_ball_online_coach(ball, wv):
+    if ball is None:
+        return
+
+    my_ball = ball
+
+    # Remove ),( and " from the items
+    my_ball = str(my_ball).replace(")", "")
+    my_ball = str(my_ball).replace("(", "")
+
+    # This gives us a list like:
+    # ['b', '0', '0', '0', '0']
+    split_by_whitespaces = re.split('\\s+', my_ball)
+
+    x = split_by_whitespaces[1]
+    y = split_by_whitespaces[2]
+    delta_x = split_by_whitespaces[3]
+    delta_y = split_by_whitespaces[4]
+
+    coord = Coordinate(x, y)
+
+    new_ball = Ball_Online_Coach(coord=coord, delta_x=delta_x, delta_y=delta_y)
+    wv.ball.set_value(new_ball, wv.sim_time)
+
+
+# (ok look 926 ((g r) 52.5 0) ((g l) -52.5 0) ((b) 0 0 0 0) ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0))
+def _parse_ok_look_online_coach(msg, wv: WorldView):
+    regex2 = re.compile(__SEE_MSG_REGEX)
+    matches = regex2.findall(msg)
+
+    players = []
+    goals = []
+    ball = None
+    for element in matches:
+        if str(element).startswith("((p") or str(element).startswith("((P"):
+            players.append(element)
+        elif str(element).startswith("((b") or str(element).startswith("((B"):
+            ball = element
+        elif str(element).startswith("((g") or str(element).startswith("((G"):
+            continue
+        else:
+            raise Exception("Unknown see element: " + str(element))
+
+    _parse_players_online_coach(players, wv)
+    _parse_ball_online_coach(ball, wv)
+
+
+# ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0)
+# ((p "team" num goalie?) X Y DELTAX DELTAY BODYANGLE NECKANGLE [POINTING DIRECTION]
+def _parse_players_online_coach(players: [], wv: WorldView):
+    wv.other_players.clear()
+    # ((p "Team1" 1) -50 0 0 0 0 0)
+    for cur_player in players:
+        team = None
+        num = None
+        is_goalie = False
+        coord: Coordinate = None
+        delta_x = None
+        delta_y = None
+        body_angle = None
+        neck_angle = None
+        pointing_direction = None
+
+        # Remove ),( and " from the items
+        cur_player = str(cur_player).replace(")", "")
+        cur_player = str(cur_player).replace("(", "")
+        cur_player = str(cur_player).replace("\"", "")
+
+        # This gives us a list like this:
+        # ['p', 'Team1', '1', 'goalie', '-50', '0', '0', '0', '0', '0']
+        # Todo include pointing direction? - Philip
+        split_by_whitespaces = re.split('\\s+', cur_player)
+
+        is_goalie_included = 0
+        if len(split_by_whitespaces) >= 10:
+            is_goalie = True
+            is_goalie_included = 1
+
+        team = split_by_whitespaces[1]
+        num = split_by_whitespaces[2]
+        x = split_by_whitespaces[3 + is_goalie_included]
+        y = split_by_whitespaces[4 + is_goalie_included]
+        delta_x = split_by_whitespaces[5 + is_goalie_included]
+        delta_y = split_by_whitespaces[6 + is_goalie_included]
+        coord: Coordinate = Coordinate(x, y)
+        body_angle = split_by_whitespaces[7 + is_goalie_included]
+        body_angle = int(body_angle) % 360
+        neck_angle = split_by_whitespaces[8 + is_goalie_included]
+        neck_angle = int(neck_angle) % 360
+
+        other_player = Player_View_Coach(team=team, num=num, coord=coord, delta_x=delta_x, delta_y=delta_y
+                                         , body_angle=body_angle, neck_angle=neck_angle, is_goalie=is_goalie)
+
+        wv.other_players.append(other_player)
+
+_parse_ok_look_online_coach('((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0)', WorldView(0))
+
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
 # ((p "Team1" 5) 30 -41 0 0)
 def _parse_players(players: [], ps: player.PlayerState):
+    ps.world_view.other_players.clear()
     for cur_player in players:
         # Unknown see object (out of field of view)
         if cur_player.startswith("((P"):
@@ -513,10 +646,16 @@ def _parse_players(players: [], ps: player.PlayerState):
         ps.world_view.other_players.append(new_player)
 
 
+def _parse_init_online_coach(msg, wv: WorldView):
+    regex = re.compile("\\(init ([lr]) .*\\)")
+    matched = regex.match(msg)
+    wv.side = matched.group(1)
+
+
 def _parse_init(msg, ps: player.PlayerState):
     regex = re.compile("\\(init ([lr]) ([0-9]*)")
     matched = regex.match(msg)
-    ps.side = matched.group(1)
+    ps.world_view.side = matched.group(1)
     ps.player_num = int(matched.group(2))
 
 
@@ -527,7 +666,7 @@ def _parse_init(msg, ps: player.PlayerState):
 def _parse_hear(text: str, ps: player):
     split_by_whitespaces = re.split('\\s+', text)
     time = split_by_whitespaces[1]
-    ps.sim_time = time  # Update players understanding of time
+    ps.world_view.sim_time = int(time)  # Update players understanding of time
 
     sender = split_by_whitespaces[2]
     if sender == "referee":
@@ -536,7 +675,7 @@ def _parse_hear(text: str, ps: player):
         regular_expression = re.compile(regex_string)
         matched = regular_expression.match(text)
 
-        ps.game_state = matched.group(2)
+        ps.world_view.game_state = matched.group(2)
 
         return
     elif sender == "self":
@@ -566,18 +705,20 @@ def _parse_hear(text: str, ps: player):
 # [2] = view mode,
 # [3] = stamina, [4] = effort, [5] = capacity,
 # [6] = speed, [7] = direction of speed,
-# [8] = kick count,
-# [9] = dash count,
-# [10] = turn count,
-# [11] = say count,
-# [12] = turn neck count,
-# [13] = catch count,
-# [14] = move count,
-# [15] = change view count,
-# [16] = movable cycles, [17] = expire cycles, [18] = point to count,
-# [19] = target, [20] = Unum, [21] = count,
-# [22] = expire cycles, [23] count, [24] = collision,
-# [25] = charged, [26] = card
+# [8] = head angle,
+# [9] = kick count,
+# [10] = dash count,
+# [11] = turn count,
+# [12] = say count,
+# [13] = turn neck count,
+# [14] = catch count,
+# [15] = move count,
+# [16] = change view count,
+# [17] = movable cycles, [18] = expire cycles, [19] = distance, [20] = direction, [21] = point to count
+# [22] = target, [23] = Unum, [24] = count,
+# [25] = expire cycles, [26] count,
+# [27] = collision,
+# [28] = charged, [29] = card
 
 def _parse_body_sense(text: str, ps: player):
     regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
@@ -591,6 +732,29 @@ def _parse_body_sense(text: str, ps: player):
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
+
+    if matched.group(23) is None:
+        unum = "none"
+    else:
+        unum = int(matched.group(23))
+
+    ps.body_state.time = int(matched.group(1))
+    ps.body_state.view_mode = matched.group(2)
+    ps.body_state.stamina = int(matched.group(3))
+    ps.body_state.effort = float(matched.group(4))
+    ps.body_state.capacity = int(matched.group(5))
+    ps.body_state.speed = float(matched.group(6))
+    ps.body_state.direction_of_speed = int(matched.group(7))
+    ps.body_state.head_angle = int(matched.group(9))
+    ps.body_state.arm_movable_cycles = int(matched.group(17))
+    ps.body_state.arm_expire_cycles = int(matched.group(18))
+    ps.body_state.distance = float(matched.group(19))
+    ps.body_state.direction = int(matched.group(20))
+    ps.body_state.target = matched.group(22)
+    ps.body_state.tackle_expire_cycles = int(matched.group(25))
+    ps.body_state.collision = matched.group(27)
+    ps.body_state.charged = int(matched.group(28))
+    ps.body_state.card = matched.group(29)
 
     return matched
 

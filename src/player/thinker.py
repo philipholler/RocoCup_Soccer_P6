@@ -42,7 +42,7 @@ class Thinker(threading.Thread):
     def run(self) -> None:
         super().run()
         # Wait for client connection thread to receive the correct new port
-        time.sleep(0.5)
+        time.sleep(1)
         self.position_player()
         time.sleep(0.5)
         self.think()
