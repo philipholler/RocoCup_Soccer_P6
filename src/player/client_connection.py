@@ -35,6 +35,7 @@ class Connection(threading.Thread):
         # \0 is the string terminator for C++
         bytes_to_send = str.encode(msg + "\0")
         self.sock.sendto(bytes_to_send, self.addr)
+        print("sent " + msg)
 
     def _receive_message(self):
         ready = select.select([self.sock], [], [], 0.02)

@@ -17,7 +17,6 @@ class PlayerState:
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
         self.player_angle: PrecariousData = PrecariousData.unknown()
-        self.last_turn_time = 0
         super().__init__()
 
     def __str__(self) -> str:
@@ -52,3 +51,4 @@ class WorldView:
         self.ball: PrecariousData = PrecariousData.unknown()
         self.goals = []
         self.lines = []
+

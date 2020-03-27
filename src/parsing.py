@@ -19,7 +19,7 @@ __SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
 __TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
 
 # Introduced to reduce calculation time
-MAX_FLAGS_FOR_POSITION_ESTIMATE = 15
+MAX_FLAGS_FOR_POSITION_ESTIMATE = 10
 
 __FLAG_COORDS = {
     # perimiter flags
@@ -105,7 +105,6 @@ def parse_message_update_state(msg: str, ps: player):
     if msg.startswith("(error"):
         print(msg)
         return
-
     # The server_param and player_param files do not contain a time stamp
     # Can be used to get the configuration of the server and player
     # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
@@ -121,8 +120,8 @@ def parse_message_update_state(msg: str, ps: player):
     elif msg.startswith("(init"):
         _parse_init(msg, ps)
     elif msg.startswith("(see "):
+        _update_time(msg, ps)
         _parse_see(msg, ps)
-
 
 '''
 Old protocol 3: 
@@ -355,6 +354,7 @@ def _extract_flag_directions(flag_strings):
 
         direction = split_by_whitespaces[1]
         flag_directions.append(direction)
+
 
     return flag_directions
 
