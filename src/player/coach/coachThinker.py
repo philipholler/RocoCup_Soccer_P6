@@ -42,8 +42,6 @@ class CoachThinker(threading.Thread):
         self.connection.action_queue.put("(look)")
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
-            if msg.startswith("(error"):
-                print("Coach for team {0} received error: {1}".format(self.team, msg))
-            self.world_view = parsing.parse_message_online_coach(msg)
+            self.world_view = parsing.parse_message_online_coach(msg, self.team)
 
 

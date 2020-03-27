@@ -20,7 +20,8 @@ class PlayerState:
         super().__init__()
 
     def __str__(self) -> str:
-        return "side: {0}, team_name: {1}, player_num: {2}".format(self.side, self.team_name, self.player_num)
+        return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name
+                                                                                  , self.player_num, self.position)
 
     def facing(self, coordinate, delta):
         if not self.player_angle.is_value_known() or not self.position.is_value_known():
@@ -59,7 +60,6 @@ class BodyState:
         self.distance = 0
         self.direction = 0
         self.target = ""
-        self.unum: PrecariousData = PrecariousData.unknown()
         self.tackle_expire_cycles = 0
         self.collision = ""
         self.charged = 0

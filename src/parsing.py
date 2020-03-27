@@ -101,9 +101,17 @@ def _update_time(msg, state: PlayerState):
     state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
 
 
-def parse_message_online_coach(msg: str):
+def parse_message_online_coach(msg: str, team: str):
     if msg.startswith("(error"):
-        print(msg)
+        print("Coach for team {0} received error: {1}".format(team, msg))
+        return
+
+    # The server_param and player_param files do not contain a time stamp
+    # Can be used to get the configuration of the server and player
+    # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
+    # player_param: General parameters of players, like max substitutions etc.
+    # player_type: The current player type and its stats, like max_speed, kick power etc.
+    if msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
 
     ps: PlayerState = PlayerState()
@@ -114,14 +122,21 @@ def parse_message_online_coach(msg: str):
     elif msg.startswith("(ok look"):
         _parse_ok_look_online_coach(msg, ps.world_view)
         _update_time(msg, ps)
+    elif msg.startswith("(change_player_type"):
+        # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
+        # changed type. The type is not disclosed by the opponent team.
+        return
+    else:
+        raise Exception("Unknown message received: " + msg)
 
     return ps.world_view
 
 
 def parse_message_update_state(msg: str, ps: PlayerState):
     if msg.startswith("(error"):
-        print(msg)
+        print("Player num {0}, team {1}, received error: {2}".format(ps.player_num, ps.team_name, msg))
         return
+
 
     # The server_param and player_param files do not contain a time stamp
     # Can be used to get the configuration of the server and player
@@ -139,10 +154,12 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         _parse_init(msg, ps)
     elif msg.startswith("(see "):
         _parse_see(msg, ps)
-    elif (msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type")):
+    elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
-        print("Server changed player: {0}, team: {1} type, msg: {2}".format(ps.player_num, ps.team_name, msg))
+        # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
+        # changed type. The type is not disclosed by the opponent team.
+        return
     else:
         raise Exception("Unknown message received: " + msg)
 
@@ -199,14 +216,6 @@ def _parse_see(msg, ps: player.PlayerState):
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
     _parse_lines(lines, ps)
-
-    '''
-    if ps.team_name == "Team1" and ps.player_num == 1:
-        if ps.position.is_value_known():
-            print(ps.position.get_value())
-        if ps.player_angle.is_value_known():
-            print(ps.player_angle.get_value())
-    '''
 
 
 def _parse_lines(lines, ps):
@@ -657,7 +666,7 @@ def _parse_init(msg, ps: player.PlayerState):
 def _parse_hear(text: str, ps: player):
     split_by_whitespaces = re.split('\\s+', text)
     time = split_by_whitespaces[1]
-    ps.world_view.sim_time = time  # Update players understanding of time
+    ps.world_view.sim_time = int(time)  # Update players understanding of time
 
     sender = split_by_whitespaces[2]
     if sender == "referee":
@@ -742,7 +751,6 @@ def _parse_body_sense(text: str, ps: player):
     ps.body_state.distance = float(matched.group(19))
     ps.body_state.direction = int(matched.group(20))
     ps.body_state.target = matched.group(22)
-    ps.body_state.unum.set_value(unum, ps.body_state.time)
     ps.body_state.tackle_expire_cycles = int(matched.group(25))
     ps.body_state.collision = matched.group(27)
     ps.body_state.charged = int(matched.group(28))

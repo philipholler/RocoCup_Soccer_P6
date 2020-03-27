@@ -51,8 +51,6 @@ class Thinker(threading.Thread):
         while not self.input_queue.empty():
             # Parse message and update player state / world view
             msg = self.input_queue.get()
-            if msg.startswith("(error"):
-                print("Player num {0}, team {1}, received error: {2}".format(self.player_state.player_num, self.player_state.team_name, msg))
             parsing.parse_message_update_state(msg, self.player_state)
 
         # Update current objective in accordance to the player's strategy
