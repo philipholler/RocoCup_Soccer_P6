@@ -13,7 +13,11 @@ player_threads = []
 UDP_IP = "127.0.0.1"
 UDP_PORT = 6000
 
-soccer_sim = threading.Thread(target=lambda: os.system("rcsoccersim")).start()
+
+# server::say_coach_cnt_max=-1
+# server::freeform_send_period=1
+# server::freeform_wait_period=0
+soccer_sim = threading.Thread(target=lambda: os.system("rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=1 server::freeform_wait_period=0 & rcssmonitor")).start()
 
 time.sleep(3)
 
