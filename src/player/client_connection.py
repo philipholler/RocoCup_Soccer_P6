@@ -44,7 +44,5 @@ class Connection(threading.Thread):
             # Adapt socket to this port. Each client gets it's own port like this.
             if self.addr != address:
                 self.addr = address
-            # if type(self.think) is CoachThinker:
-                # print("Received msg: ", player_info.decode(), ", from address: ", address, ", My adress: ", self.addr)
             return player_info.decode()
         return None

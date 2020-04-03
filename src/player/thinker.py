@@ -43,6 +43,9 @@ class Thinker(threading.Thread):
         # Wait for client connection thread to receive the correct new port
         time.sleep(1)
         self.position_player()
+        time.sleep(0.5)
+        # Set accepted coach language versions
+        self.player_conn.action_queue.put("(clang (ver 8 8))")
         while True:
             self.think()
 
@@ -52,6 +55,7 @@ class Thinker(threading.Thread):
             # Parse message and update player state / world view
             msg = self.input_queue.get()
             parsing.parse_message_update_state(msg, self.player_state)
+
 
         # Update current objective in accordance to the player's strategy
         if self.player_state.player_num == 1 and self.player_state.team_name == "Team1":
@@ -71,5 +75,7 @@ class Thinker(threading.Thread):
             move_action = "(move -5 -5)"
         if self.player_state.player_type == "goalie":
             move_action = "(move -50 0)"
+        if self.player_state.player_num == 10:
+            move_action = "(move 0 0)"
         self.player_conn.action_queue.put(move_action)
 

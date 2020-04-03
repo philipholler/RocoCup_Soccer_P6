@@ -30,6 +30,8 @@ class CoachThinker(threading.Thread):
 
         time.sleep(1)
 
+        # Enable periodic messages from the server with positions of all objects
+        self.connection.action_queue.put("(eye on)")
 
     def run(self) -> None:
         super().run()
@@ -38,10 +40,10 @@ class CoachThinker(threading.Thread):
 
     def _think(self) -> None:
         time.sleep(0.1)
-        # Look command returns a vision of the entire field
-        self.connection.action_queue.put("(look)")
+
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
             self.world_view = parsing.parse_message_online_coach(msg, self.team)
 
-
+        # USE THIS FOR SENDING MESSAGES TO PLAYERS
+        # self.connection.action_queue.put('(say (freeform "MSG"))')
