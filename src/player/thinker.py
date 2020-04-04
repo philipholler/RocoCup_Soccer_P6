@@ -15,6 +15,7 @@ from player.world import Coordinate
 class Thinker(threading.Thread):
     def __init__(self, team_name: str, player_type: str):
         super().__init__()
+        self._stop_event = threading.Event()
         self.player_state = player.PlayerState()
         self.player_state.team_name = team_name
         self.player_state.player_type = player_type
@@ -47,7 +48,12 @@ class Thinker(threading.Thread):
         # Set accepted coach language versions
         self.player_conn.action_queue.put("(clang (ver 8 8))")
         while True:
+            if self._stop_event.is_set():
+                return
             self.think()
+
+    def stop(self) -> None:
+        self._stop_event.set()
 
     def think(self):
         time.sleep(0.1)

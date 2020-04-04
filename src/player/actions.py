@@ -29,7 +29,7 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
         player_state.last_turn_time = player_state.now()
         return "(turn " + str(rotation) + ")"
     else:
-        return "(dash 65)"
+        return "(dash 100)"
 
 
 def orient_self():
