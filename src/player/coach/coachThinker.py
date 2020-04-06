@@ -44,8 +44,12 @@ class CoachThinker(threading.Thread):
     def _think(self) -> None:
         time.sleep(0.1)
 
+        time.sleep(0.5)
+        # Look command returns a vision of the entire field
+        self.connection.action_queue.put('(say sou coach)')
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
+            print(msg)
             self.world_view = parsing.parse_message_online_coach(msg, self.team)
 
         # USE THIS FOR SENDING MESSAGES TO PLAYERS

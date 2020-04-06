@@ -70,6 +70,8 @@ class Thinker(threading.Thread):
                 can_perform_action = False
                 print(action)
 
+            time.sleep(0.01)
+
     def position_player(self):
         x = r.randint(-20, 20)
         y = r.randint(-20, 20)
