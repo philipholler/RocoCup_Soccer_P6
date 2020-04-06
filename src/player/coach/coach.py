@@ -1,6 +1,7 @@
 from player import client_connection
 from player.coach.coachThinker import CoachThinker
 import threading
+import time
 
 
 class Coach(threading.Thread):
@@ -9,6 +10,7 @@ class Coach(threading.Thread):
     def __init__(self, team: str, UDP_PORT, UDP_IP) -> None:
         # Init thinker thread
         super().__init__()
+        self._stop_event = threading.Event()
         self.think: CoachThinker = CoachThinker(team_name=team)
         # Init player connection thread
         self.coach_conn = client_connection.Connection(UDP_PORT=UDP_PORT, UDP_IP=UDP_IP, think=self.think)
@@ -24,3 +26,14 @@ class Coach(threading.Thread):
 
     def run(self) -> None:
         super().run()
+        while True:
+            if self._stop_event.is_set():
+                return
+            time.sleep(0.2)
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self.coach_conn.stop()
+        self.coach_conn.join()
+        self.think.stop()
+        self.think.join()

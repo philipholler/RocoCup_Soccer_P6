@@ -11,6 +11,7 @@ from player.player import WorldView, PlayerState
 class CoachThinker(threading.Thread):
     def __init__(self, team_name: str):
         super().__init__()
+        self._stop_event = threading.Event()
         self.world_view = WorldView(0)
         self.team = team_name
         # Connection with the server
@@ -30,18 +31,25 @@ class CoachThinker(threading.Thread):
 
         time.sleep(1)
 
+        # Enable periodic messages from the server with positions of all objects
+        self.connection.action_queue.put("(eye on)")
 
     def run(self) -> None:
         super().run()
         while True:
+            if self._stop_event.is_set():
+                return
             self._think()
 
     def _think(self) -> None:
         time.sleep(0.1)
-        # Look command returns a vision of the entire field
-        self.connection.action_queue.put("(look)")
+
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
             self.world_view = parsing.parse_message_online_coach(msg, self.team)
 
+        # USE THIS FOR SENDING MESSAGES TO PLAYERS
+        # self.connection.action_queue.put('(say (freeform "MSG"))')
 
+    def stop(self) -> None:
+        self._stop_event.set()

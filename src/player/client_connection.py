@@ -9,6 +9,7 @@ class Connection(threading.Thread):
 
     def __init__(self, UDP_IP, UDP_PORT, think):
         super().__init__()
+        self._stop_event = threading.Event()
         self.addr = (UDP_IP, UDP_PORT)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setblocking(False)
@@ -24,12 +25,25 @@ class Connection(threading.Thread):
         super().run()
         while True:
             while True:
+                if self._stop_event.is_set():
+                    return
                 msg = self._receive_message()
                 if msg is None:
                     break
                 self.think.input_queue.put(msg)
             while not self.action_queue.empty():
+                if self._stop_event.is_set():
+                    return
                 self._send_message(self.action_queue.get())
+            if self._stop_event.is_set():
+                return
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._send_bye()
+
+    def _send_bye(self):
+        self._send_message("(bye)")
 
     def _send_message(self, msg: str):
         # \0 is the string terminator for C++
@@ -45,7 +59,5 @@ class Connection(threading.Thread):
             # Adapt socket to this port. Each client gets it's own port like this.
             if self.addr != address:
                 self.addr = address
-            # if type(self.think) is CoachThinker:
-                # print("Received msg: ", player_info.decode(), ", from address: ", address, ", My adress: ", self.addr)
             return player_info.decode()
         return None

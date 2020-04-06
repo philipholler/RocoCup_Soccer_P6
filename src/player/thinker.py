@@ -15,6 +15,7 @@ class Thinker(threading.Thread):
 
     def __init__(self, team_name: str, player_type: str):
         super().__init__()
+        self._stop_event = threading.Event()
         self.player_state = player.PlayerState()
         self.player_state.team_name = team_name
         self.player_state.player_type = player_type
@@ -47,9 +48,12 @@ class Thinker(threading.Thread):
         time.sleep(0.5)
         self.think()
 
+    def stop(self) -> None:
+        self._stop_event.set()
+
     def think(self):
         can_perform_action = False
-        while True:
+        while not self._stop_event.is_set():
             while not self.input_queue.empty():
                 # Parse message and update player state / world view
                 msg : str = self.input_queue.get()
@@ -74,5 +78,7 @@ class Thinker(threading.Thread):
             move_action = "(move -5 -5)"
         if self.player_state.player_type == "goalie":
             move_action = "(move -50 0)"
+        if self.player_state.player_num == 10:
+            move_action = "(move 0 0)"
         self.player_conn.action_queue.put(move_action)
 

@@ -111,6 +111,8 @@ def parse_message_online_coach(msg: str, team: str):
     # player_param: General parameters of players, like max substitutions etc.
     # player_type: The current player type and its stats, like max_speed, kick power etc.
     if msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
+        if msg.startswith("(server_param"):
+            print(msg)
         return
 
     ps: PlayerState = PlayerState()
@@ -118,12 +120,20 @@ def parse_message_online_coach(msg: str, team: str):
         _parse_hear(msg, ps)
     elif msg.startswith("(init"):
         _parse_init_online_coach(msg, ps.world_view)
-    elif msg.startswith("(ok look"):
+    elif msg.startswith("(ok look") or msg.startswith("(see_global"):
         _parse_ok_look_online_coach(msg, ps.world_view)
         _update_time(msg, ps)
     elif msg.startswith("(change_player_type"):
         # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
         # changed type. The type is not disclosed by the opponent team.
+        return
+    elif msg.startswith("(clang"):
+        # The players tell the coach which versions of commands they support.
+        # Example: (clang (ver (p "Team1" 6) 7 16))
+        return
+    elif msg.startswith("(ok eye") or msg.startswith("(ok"):
+        # (ok for general confirmations
+        # Simple confirmation, that vision mode was changed
         return
     else:
         raise Exception("Unknown message received: " + msg)
@@ -142,7 +152,9 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
     # player_param: General parameters of players, like max substitutions etc.
     # player_type: The current player type and its stats, like max_speed, kick power etc.
-    if not (msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type")):
+    # ok clang is just an ok message, that the coach language requested has been accepted.
+    if not (msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type")
+            or msg.startswith("(ok clang")):
         _update_time(msg, ps)
 
     if msg.startswith("(hear"):
@@ -159,6 +171,9 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     elif msg.startswith("(change_player_type"):
         # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
         # changed type. The type is not disclosed by the opponent team.
+        return
+    elif msg.startswith("(ok clang"):
+        # Simply a confirmation, that the requested coach language was accepted
         return
     else:
         raise Exception("Unknown message received: " + msg)
@@ -740,7 +755,7 @@ def _parse_body_sense(text: str, ps: player):
 
     ps.body_state.time = int(matched.group(1))
     ps.body_state.view_mode = matched.group(2)
-    ps.body_state.stamina = int(matched.group(3))
+    ps.body_state.stamina = float(matched.group(3))
     ps.body_state.effort = float(matched.group(4))
     ps.body_state.capacity = int(matched.group(5))
     ps.body_state.speed = float(matched.group(6))
