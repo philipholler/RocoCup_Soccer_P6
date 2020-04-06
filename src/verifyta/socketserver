@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Use this script when the native dynamic linker is incompatible
+HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+LD_LIBRARY_PATH= $HERE/ld-linux.so $HERE/socketserver.bin "$@"

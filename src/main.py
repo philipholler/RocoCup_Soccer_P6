@@ -21,8 +21,6 @@ def shut_down_gracefully():
     soccer_sim.send_signal(signal.SIGINT)
     soccer_monitor.send_signal(signal.SIGINT)
 
-
-
 TEAM_NAMES = ["Team1", "Team2"]
 NUM_PLAYERS = 11
 
