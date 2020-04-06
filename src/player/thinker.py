@@ -46,6 +46,8 @@ class Thinker(threading.Thread):
         time.sleep(1)
         self.position_player()
         time.sleep(0.5)
+        # Set accepted coach language versions
+        self.player_conn.action_queue.put("(clang (ver 8 8))")
         self.think()
 
     def stop(self) -> None:
@@ -68,7 +70,6 @@ class Thinker(threading.Thread):
                 if action is not None:
                     self.player_conn.action_queue.put(action)
                 can_perform_action = False
-                print(action)
 
             time.sleep(0.01)
 

@@ -29,7 +29,7 @@ class Coach(threading.Thread):
         while True:
             if self._stop_event.is_set():
                 return
-            time.sleep(0.2)
+            time.sleep(0.1)
 
     def stop(self) -> None:
         self._stop_event.set()

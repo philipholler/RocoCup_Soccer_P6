@@ -36,7 +36,7 @@ UDP_PORT = 6000
 # server::say_coach_cnt_max=-1
 # server::freeform_send_period=1
 # server::freeform_wait_period=0
-soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=1 server::freeform_wait_period=0"], shell=True)
+soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1"], shell=True)
 # Use soccerwindow2: soccerwindow2 --kill-server
 # Use regular monitor: rcssmonitor
 soccer_monitor = subprocess.Popen(["rcssmonitor"], shell=True)
@@ -55,13 +55,8 @@ for team in TEAM_NAMES:
         player_threads.append(t)
         t.start()
 
-
-time.sleep(2)
-
 coach_1 = Coach(TEAM_NAMES[0], 6002, UDP_IP)
 coach_1.start()
-
-time.sleep(1)
 
 coach_2 = Coach(TEAM_NAMES[1], 6002, UDP_IP)
 coach_2.start()

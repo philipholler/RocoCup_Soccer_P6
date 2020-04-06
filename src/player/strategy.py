@@ -31,6 +31,3 @@ class Strategy:
                                       lambda: player_state.is_near(_conga_positions[self.conga_count]))
             return new_objective
         return current_objective
-
-
-
