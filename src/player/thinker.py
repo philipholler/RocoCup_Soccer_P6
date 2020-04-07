@@ -64,7 +64,7 @@ class Thinker(threading.Thread):
                 parsing.parse_message_update_state(msg, self.player_state)
 
             # Update current objective in accordance to the player's strategy
-            if can_perform_action and self.player_state.player_num == 1 and self.player_state.team_name == "Team1":
+            if can_perform_action:
                 self.current_objective = self.strategy.determine_objective(self.player_state, self.current_objective)
                 action = self.current_objective.perform_action()
                 if action is not None:
