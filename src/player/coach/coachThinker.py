@@ -3,16 +3,11 @@ import queue
 import threading
 import time
 import parsing
-import subprocess
 
-from pathlib import Path
+
 from player import client_connection, strategy
 from player.strategy import Objective
 from player.player import WorldView, PlayerState
-
-VERIFYTA_PATH = Path(__file__).parent.parent.parent / 'verifyta' / 'verifyta'
-VERIFYTA_QUERIES_PATH = Path(__file__).parent.parent.parent / 'verifyta' / 'queries'
-VERIFYTA_MODELS_PATH = Path(__file__).parent.parent.parent / 'verifyta' / 'models'
 
 
 class CoachThinker(threading.Thread):
@@ -64,6 +59,3 @@ class CoachThinker(threading.Thread):
     def update_strategy(self):
 
         pass
-
-# Prepared for using verifyta
-# verifyta = subprocess.Popen([VERIFYTA_PATH], shell=True)
