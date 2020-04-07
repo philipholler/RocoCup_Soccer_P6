@@ -6,7 +6,7 @@ from player.world import Coordinate
 
 
 def jog_towards(player_state: PlayerState, target_position: Coordinate):
-    minimum_last_update_time = player_state.now() - 5
+    minimum_last_update_time = player_state.now() - 10
     angle_known = player_state.player_angle.is_value_known(minimum_last_update_time)
     position_known = player_state.position.is_value_known(minimum_last_update_time)
 
@@ -26,7 +26,7 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
 
         return "(turn " + str(rotation) + ")"
     else:
-        return "(dash 100)"
+        return "(dash 60)"
 
 
 def orient_self():
