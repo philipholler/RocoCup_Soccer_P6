@@ -2,7 +2,7 @@
 <!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
 <nta>
 	<declaration>// Place global declarations here.
-int windSpeed = 0;
+int windSpeed = 0; int b = 0;
 int isOn = 0;
 clock time, windTimer;
 hybrid clock power;</declaration>
