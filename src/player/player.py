@@ -1,5 +1,6 @@
 import math
 
+import geometry
 from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle
 from player.world import PrecariousData, World, Player, Coordinate
 
@@ -29,7 +30,7 @@ class PlayerState:
             return False
 
         expected_angle = math.degrees(calculate_full_circle_origin_angle(coordinate, self.position.get_value()))
-        return abs(expected_angle - self.player_angle.get_value()) < delta
+        return abs(geometry.smallest_angle_difference(expected_angle, self.player_angle.get_value())) < delta
 
     def is_near(self, coordinate: Coordinate):
         if not self.position.is_value_known():

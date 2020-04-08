@@ -50,3 +50,9 @@ class Test(TestCase):
         delta = 0.1
         self.assertTrue(0 - delta < coord.pos_x < 0 + delta, "Should report the correct position (0,0)")
         self.assertTrue(0 - delta < coord.pos_y < 0 + delta, "Should report the correct position (0,0)")
+
+    def test_smallest_angle_difference(self):
+        self.assertEqual(-7, geometry.smallest_angle_difference(354, 1))
+
+    def test_smallest_angle_difference_reverse(self):
+        self.assertEqual(7, geometry.smallest_angle_difference(1, 354))

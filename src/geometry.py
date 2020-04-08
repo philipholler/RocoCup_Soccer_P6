@@ -37,6 +37,10 @@ def rotate_coordinate(coord, radians_to_rotate):
     return Coordinate(new_x, new_y)
 
 
+def smallest_angle_difference(a1, a2):
+    a = a1 - a2
+    return (a + 180) % 360 - 180
+
 '''
 - Returns the position of an object.
 object_rel_angle is the relative angle to the observer (0 - 360)

@@ -748,7 +748,7 @@ def _parse_body_sense(text: str, ps: player):
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
-    if matched.group(23) is None:
+    if matched.group(23) is None: # todo Does not not work when no groups are present
         unum = "none"
     else:
         unum = int(matched.group(23))
