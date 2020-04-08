@@ -9,6 +9,7 @@ class SystemDeclaration(object):
         self.ident = ident
         self.typ = typ
         self.arguments = arguments
+        self.numb_arguments = len(arguments)  # todo error check wrong arguments - Philip
 
     def __str__(self) -> str:
         return "(Sys_decl: ident: {0}, type: {1}, arguments: {2})".format(self.ident, self.typ, self.arguments)
