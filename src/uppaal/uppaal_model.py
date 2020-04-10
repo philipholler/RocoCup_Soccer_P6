@@ -107,7 +107,7 @@ class UPPAAL_MODEL:
         # Extract all declarations from the lines
         decls = []
         for l in lines:
-            # Split into statements
+            # Split into declarations
             ds = l.split(";")
             for d in ds:
                 # Filter out empty spaces and system main system declaration
@@ -116,6 +116,7 @@ class UPPAAL_MODEL:
                 if d.startswith("system"):
                     system_line = d
 
+        # parse declarations into SystemDeclarations objects
         for decl in decls:
             d = self._parse_system_decl(decl)
             system_decls.append(d)

@@ -584,10 +584,13 @@ def _parse_players_online_coach(players: [], wv: WorldView):
 
         wv.other_players.append(other_player)
 
-_parse_ok_look_online_coach('((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0)', WorldView(0))
 
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
 # ((p "Team1" 5) 30 -41 0 0)
+# 1: (ObjName Distance Direction DistChange DirChange BodyFacingDir HeadFacingDir [PointDir] [t] [k]])
+# 2: (ObjName Distance Direction DistChange DirChange [PointDir] [t] [k]])
+# 3: (ObjName Distance Direction)
+# 4: (ObjName Direction)
 def _parse_players(players: [], ps: player.PlayerState):
     ps.world_view.other_players.clear()
     for cur_player in players:
@@ -626,7 +629,8 @@ def _parse_players(players: [], ps: player.PlayerState):
 
         # If only direction
         if len(split_by_whitespaces) == 1:
-            direction = split_by_whitespaces[0]
+            # We don't save states of players without distance
+            continue
         # If only distance and direction
         elif len(split_by_whitespaces) == 2:
             distance = split_by_whitespaces[0]
@@ -638,7 +642,6 @@ def _parse_players(players: [], ps: player.PlayerState):
             dist_chng = split_by_whitespaces[2]
             dir_chng = split_by_whitespaces[3]
         # If Distance Direction DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
-        # Todo should we include pointdir? - Philip
         elif len(split_by_whitespaces) >= 6:
             distance = split_by_whitespaces[0]
             direction = split_by_whitespaces[1]
@@ -649,7 +652,8 @@ def _parse_players(players: [], ps: player.PlayerState):
 
         my_pos: Coordinate = ps.position.get_value()
         other_player_coord = PrecariousData.unknown()
-        if ps.position.is_value_known() and direction is not None: #todo (is not none) = temp fix
+
+        if ps.position.is_value_known():
             other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
                                                      my_global_angle=float(ps.player_angle.get_value()))
