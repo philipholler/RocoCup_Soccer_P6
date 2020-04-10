@@ -1,0 +1,156 @@
+from uppaal.verifyta import VERIFYTA_MODELS_PATH
+import xml.etree.ElementTree as ET
+import re
+
+
+# Example: SeqGirl(const girl_id_t id) = Girl(id, true, false, false);
+class SystemDeclaration(object):
+    def __init__(self, ident, typ, arguments: []):
+        self.ident = ident
+        self.typ = typ
+        self.arguments = arguments
+        self.numb_arguments = len(arguments)  # todo error check wrong arguments - Philip
+
+    def __str__(self) -> str:
+        return "(Sys_decl: ident: {0}, type: {1}, arguments: {2})".format(self.ident, self.typ, self.arguments)
+
+    def __repr__(self):
+        return "(Sys_decl: ident: {0}, type: {1}, arguments: {2})".format(self.ident, self.typ, self.arguments)
+
+    def get_uppaal_string(self):
+        arg_com_sep = ','.join(map(str, self.arguments))
+        return "{0} = {1}({2});".format(self.ident, self.typ, arg_com_sep)
+
+
+class UPPAAL_MODEL:
+    def __init__(self, xml_model_file) -> None:
+        self.tree = ET.parse(VERIFYTA_MODELS_PATH / xml_model_file)
+        self.root = self.tree.getroot()
+
+        self.system_decls: [SystemDeclaration]
+        self.system_decls, self.system_line = self._extract_system_decl(self.root)
+
+        print(self.system_decls)
+
+        super().__init__()
+
+    def save_xml_file(self, file_name_xml):
+        global_decl_zone = self.root.find("./system")
+
+        # Create system declarations string to fill out
+        sys_decl_string = ""
+        for sd in self.system_decls:
+            sys_decl_string = sys_decl_string + sd.get_uppaal_string() + "\n"
+        sys_decl_string = sys_decl_string + self.system_line + ";"
+
+        global_decl_zone.text = sys_decl_string
+
+        with open(VERIFYTA_MODELS_PATH / file_name_xml, 'wb') as f:
+            # Include header to let UPPAAL know, it is a UPPAAL file
+            f.write(
+                '<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC \'-//Uppaal Team//DTD Flat System 1.1//EN\' \'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd\'>'.encode(
+                    'utf8'))
+            ET.ElementTree(self.root).write(f, 'utf-8')
+
+    def set_arguments(self, ident: str, arguments: [str]):
+        for sys_decl in self.system_decls:
+            if sys_decl.ident == ident:
+                sys_decl.arguments = arguments
+                return
+
+    def _extract_template_string(self, xml_file_string):
+        pass
+
+    def _extract_global_decl(self, root: ET):
+        global_decl_zone = root.find("./declaration")
+
+        lines = str(global_decl_zone.text).split("\n")
+        for s in lines:
+            s = s.strip()
+
+        # Extract all declarations from the lines
+        decls = []
+        for l in lines:
+            if not l.startswith("//"):
+                ds = l.split(";")
+                for d in ds:
+                    d.replace(' ', "")
+                    if not d == "":
+                        decls.append(d)
+
+        for decl in decls:
+            self._parse_decl(decl)
+
+        return []
+
+    def _extract_system_decl(self, root):
+        system_line = ""
+        system_decls: [SystemDeclaration] = []
+        global_decl_zone = root.find("./system")
+
+        lines = str(global_decl_zone.text).split("\n")
+        for s in lines:
+            s = s.strip()
+
+        # Extract all declarations from the lines
+        decls = []
+        for l in lines:
+            if not l.startswith("//"):
+                ds = l.split(";")
+                for d in ds:
+                    # Don't include empty
+                    if not d.isspace() and d and not d.startswith("system"):
+                        decls.append(d)
+                    if d.startswith("system"):
+                        system_line = d
+
+        for decl in decls:
+            d = self._parse_system_decl(decl)
+            system_decls.append(d)
+
+        return system_decls, system_line
+
+    def _parse_system_decl(self, decl: str) -> SystemDeclaration:
+        # ident, type, arguments: []
+        ident = decl.split("=")[0][0:-1]
+        typ = decl.split("=")[1].replace(" ", "").split("(")[0]
+        arguments = decl.split("=")[1].replace(" ", "").split("(")[1].replace(")", "").split(",")
+        return SystemDeclaration(ident, typ, arguments)
+
+    def _parse_decl(self, decl: str):
+
+        pass
+
+    def _print_tree(self, root):
+        print(ET.tostring(root, encoding='utf8').decode('utf8'))
+
+
+class Template:
+    def __init__(self, ident) -> None:
+        super().__init__()
+        self.ident = ident
+        self.declarations = []
+
+    def get_decl(self, ident):
+        for decl in self.declarations:
+            if decl.ident == ident:
+                return decl
+
+    def __repr__(self) -> str:
+        return "(Template: ident: {0}, declarations: {1})".format(self.ident, self.declarations)
+
+
+class Declaration:
+    # Must be called typ and ident to avoid shadowing of python keywords type and id
+    def __init__(self, typ, ident, val) -> None:
+        super().__init__()
+        self.type = typ
+        self.ident = ident
+        self.val = val
+
+    def __repr__(self) -> str:
+        return "(Declaration: type: {0}, ident: {1}, val: {2})".format(self.type, self.ident, self.val)
+
+# model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
+# model.set_arguments("SeqGirl(constgirl_id_tid)", ["id", "true", "true", "true"])
+# model.save_xml_file("newFile.xml")

@@ -736,7 +736,7 @@ def _parse_hear(text: str, ps: player):
 # [28] = charged, [29] = card
 
 def _parse_body_sense(text: str, ps: player):
-    regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({1})\\).*speed ({0}) ({1})\\)"
+    regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({0})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
     regex_string += ".*movable ({1})\\).*expires ({1})\\).*target ({1}) ({1})\\).*count ({1})\\)\\)"
@@ -757,7 +757,7 @@ def _parse_body_sense(text: str, ps: player):
     ps.body_state.view_mode = matched.group(2)
     ps.body_state.stamina = float(matched.group(3))
     ps.body_state.effort = float(matched.group(4))
-    ps.body_state.capacity = int(matched.group(5))
+    ps.body_state.capacity = float(matched.group(5))
     ps.body_state.speed = float(matched.group(6))
     ps.body_state.direction_of_speed = int(matched.group(7))
     ps.body_state.head_angle = int(matched.group(9))

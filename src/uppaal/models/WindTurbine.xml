@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+int windSpeed = 0; int b = 0;
+int isOn = 0;
+clock time, windTimer;
+hybrid clock power;</declaration>
+	<template>
+		<name x="5" y="5">Template</name>
+		<declaration>// Place local declarations here.
+</declaration>
+		<location id="id0" x="264" y="161">
+			<name x="230" y="170">L0</name>
+			<committed/>
+		</location>
+		<location id="id1" x="408" y="-68">
+			<name x="398" y="-102">L1</name>
+			<committed/>
+		</location>
+		<location id="id2" x="570" y="161">
+			<name x="561" y="178">L2</name>
+			<label kind="invariant" x="561" y="110">windTimer &lt;= 3 &amp;&amp;
+power' == isOn</label>
+		</location>
+		<location id="id3" x="842" y="161">
+			<name x="808" y="110">Destroyed</name>
+			<label kind="invariant" x="808" y="127">power' == 0</label>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="672" y="161">isOn &amp;&amp;
+windSpeed == 5</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="guard" x="357" y="161">windTimer &gt;= 1</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="select" x="468" y="0">switch: int[0,1]</label>
+			<label kind="assignment" x="493" y="17">isOn = switch,
+windTimer = 0</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="select" x="281" y="9">x : int[0,5]</label>
+			<label kind="assignment" x="230" y="26">windSpeed = x</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+WindTurbine = Template();
+// List one or more processes to be composed into a system.
+system WindTurbine;</system>
+	<queries>
+		<query>
+			<formula>strategy safe = control: A[] not(WindTurbine.Destroyed)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy opt = maxE(power) [&lt;=100] : &lt;&gt; time &gt; 99 under safe</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
