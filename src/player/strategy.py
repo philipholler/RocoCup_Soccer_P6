@@ -25,10 +25,15 @@ class Strategy:
 
     def determine_objective(self, player_state, current_objective: Objective):
         if current_objective is None or current_objective.is_achieved():
-            self.conga_count += 1
-            self.conga_count %= 4
-            new_objective = Objective(lambda: actions.jog_towards(player_state, _conga_positions[self.conga_count]),
-                                      lambda: player_state.is_near(_conga_positions[self.conga_count]))
+            if player_state.is_near_ball():
+                new_objective = Objective(lambda: actions.kick_to_goal(player_state),
+                                          lambda: not player_state.is_near_ball())
+                pass
+            else:
+                self.conga_count += 1
+                self.conga_count %= 4
+                new_objective = Objective(lambda: actions.jog_towards_ball(player_state),
+                                          lambda: player_state.is_near_ball())
 
             return new_objective
         return current_objective

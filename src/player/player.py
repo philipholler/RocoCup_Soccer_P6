@@ -37,10 +37,17 @@ class PlayerState:
             return False
 
         # temporary value
-        allowed_delta = 3.0
+        allowed_delta = 0.8
 
         distance = coordinate.euclidean_distance_from(self.position.get_value())
         return distance < allowed_delta
+
+    def is_near_ball(self):
+        minimum_last_update_time = self.now() - 10
+        ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
+        if ball_known:
+            return self.is_near(self.world_view.ball.get_value().coord)
+        return False
 
     def now(self):
         return self.world_view.sim_time

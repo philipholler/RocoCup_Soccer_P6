@@ -3,7 +3,7 @@ import math
 from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle, \
     get_distance_between_coords
 from player.player import PlayerState
-from player.world import Coordinate
+from player.world import Coordinate, Player
 
 
 def jog_towards(player_state: PlayerState, target_position: Coordinate):
@@ -30,25 +30,36 @@ def jog_towards_ball(player_state: PlayerState):
     if not ball_known:
         return orient_self()
 
-    return jog_towards(player_state, player_state.world_view.ball.coord)
+    return jog_towards(player_state, player_state.world_view.ball.get_value().coord)
 
 
-def pass_ball_to(player_passing: PlayerState, player_receiving: PlayerState):
-    minimum_last_update_time = player_passing.now() - 10
-    angle_known = player_passing.player_angle.is_value_known(minimum_last_update_time)
-    position_passing = player_passing.position.is_value_known(minimum_last_update_time)
-    minimum_last_update_time = player_receiving.now() - 10
-    position_receiver = player_receiving.position.is_value_known(minimum_last_update_time)
+def choose_rand_player(player_passing : PlayerState):
+    if len(player_passing.world_view.other_players) != 0:
+        return player_passing.world_view.other_players[0]
+    return None
 
-    if not angle_known or not position_passing or not position_receiver:
+
+def pass_ball_to_random(player_passing: PlayerState):
+    target: Player = choose_rand_player(player_passing)
+    if target is None:
         return orient_self()
+    #position_receiver = target.coord
 
-    direction = calculate_relative_angle(player_passing, player_receiving.position.get_value())
-    power = calculate_power(get_distance_between_coords(player_passing.position.get_value(),
-                                                        player_receiving.position.get_value()))
+    direction = target.direction
+    power = calculate_power(target.distance)
 
     return "(kick " + str(power) + " " + str(direction) + ")"
 
+
+def kick_to_goal(player : PlayerState):
+    if player.team_name == "Team1":
+        target = Coordinate(53.0, 0)
+    else:
+        target = Coordinate(-53.0, 0)
+
+    direction = calculate_relative_angle(player, target)
+
+    return "(kick " + str(160) + " " + str(direction) + ")"
 
 def orient_self():
     return "(turn 45)"
@@ -70,4 +81,4 @@ def calculate_relative_angle(player_state, target_position):
 
 # TODO: find out how to calculate power from distance
 def calculate_power(distance):
-    return 60
+    return 100

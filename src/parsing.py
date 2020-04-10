@@ -649,7 +649,7 @@ def _parse_players(players: [], ps: player.PlayerState):
 
         my_pos: Coordinate = ps.position.get_value()
         other_player_coord = PrecariousData.unknown()
-        if ps.position.is_value_known():
+        if ps.position.is_value_known() and direction is not None: #todo (is not none) = temp fix
             other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
                                                      my_global_angle=float(ps.player_angle.get_value()))
@@ -678,7 +678,7 @@ def _parse_init(msg, ps: player.PlayerState):
 # example: (hear 0 referee kick_off_l)
 # example: (hear 0 self *msg*)
 # Pattern: (hear *time* *degrees* *msg*)
-def _parse_hear(text: str, ps: player):
+def _parse_hear(text: str, ps: PlayerState):
     split_by_whitespaces = re.split('\\s+', text)
     time = split_by_whitespaces[1]
     ps.world_view.sim_time = int(time)  # Update players understanding of time
