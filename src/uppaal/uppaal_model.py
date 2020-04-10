@@ -55,7 +55,7 @@ class UPPAAL_MODEL:
         for sys_decl in self.system_decls:
             if sys_decl.ident == ident:
                 if sys_decl.numb_of_args != len(arguments):
-                    raise Exception("Wrong number of arguments passed for system declaration {0}. Expected {1}, got {2} ".format(ident, sys_decl.numb_of_args, len(arguments)))
+                    raise Exception("Wrong number of arguments parsed for system declaration {0}. Expected {1}, got {2} ".format(ident, sys_decl.numb_of_args, len(arguments)))
                 sys_decl.arguments = arguments
                 return
         raise Exception("{0} not found in system declarations".format(ident))
@@ -90,26 +90,35 @@ class UPPAAL_MODEL:
         system_decls: [SystemDeclaration] = []
         global_decl_zone = root.find("./system")
 
-        lines = str(global_decl_zone.text).split("\n")
-        for s in lines:
-            s = s.strip()
+        # Text from the system declarations part of the UPPAAL file
+        global_decl_text = global_decl_zone.text
+        comment_pat = re.compile('(?://[^\n]*|/\*(?:(?!\*/).)*\*/)', re.DOTALL)
+
+        # Remove all comments
+        if comment_pat.findall(global_decl_text):
+            comments = comment_pat.findall(global_decl_text)
+            for c in comments:
+                global_decl_text = global_decl_text.replace(c, "")
+
+        # Strip trailing or preceding whitespaces and or tabs
+        lines = str(global_decl_text).split("\n")
+        lines = map(str.strip, lines)
 
         # Extract all declarations from the lines
         decls = []
         for l in lines:
-            if not l.startswith("//"):
-                ds = l.split(";")
-                for d in ds:
-                    # Don't include empty
-                    if not d.isspace() and d and not d.startswith("system"):
-                        decls.append(d)
-                    if d.startswith("system"):
-                        system_line = d
+            # Split into statements
+            ds = l.split(";")
+            for d in ds:
+                # Filter out empty spaces and system main system declaration
+                if not d.isspace() and d and not d.startswith("system"):
+                    decls.append(d)
+                if d.startswith("system"):
+                    system_line = d
 
         for decl in decls:
             d = self._parse_system_decl(decl)
             system_decls.append(d)
-
         return system_decls, system_line
 
     def _parse_system_decl(self, decl: str) -> SystemDeclaration:
@@ -154,6 +163,6 @@ class Declaration:
     def __repr__(self) -> str:
         return "(Declaration: type: {0}, ident: {1}, val: {2})".format(self.type, self.ident, self.val)
 
-# model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
-# model.set_arguments("SeqGirl(const girl_id_t id)", ["id", "true", "true", "true"])
-# model.save_xml_file("newFile.xml")
+model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
+model.set_arguments("SeqGirl(const girl_id_t id)", ["id", "true", "true", "true"])
+model.save_xml_file("newFile.xml")
