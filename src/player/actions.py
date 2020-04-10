@@ -1,6 +1,7 @@
 import math
 
-from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle
+from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle, \
+    get_distance_between_coords
 from player.player import PlayerState
 from player.world import Coordinate
 
@@ -31,6 +32,16 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
         return "(dash 60)"
 
 
+def jog_towards_ball(player_state: PlayerState):
+    minimum_last_update_time = player_state.now() - 10
+    ball_known = player_state.world_view.ball.is_value_known(minimum_last_update_time)
+
+    if not ball_known:
+        return orient_self()
+
+    return jog_towards(player_state, player_state.world_view.ball.coord)
+
+
 def pass_ball_to(player_passing: PlayerState, player_receiving: PlayerState):
     minimum_last_update_time = player_passing.now() - 10
     angle_known = player_passing.player_angle.is_value_known(minimum_last_update_time)
@@ -41,7 +52,9 @@ def pass_ball_to(player_passing: PlayerState, player_receiving: PlayerState):
     if not angle_known or not position_passing or not position_receiver:
         return orient_self()
 
-    direction = calculate_relative_angle(player_passing, position_receiver)
+    direction = calculate_relative_angle(player_passing, player_receiving.position.get_value())
+    power = calculate_power(get_distance_between_coords(player_passing.position.get_value(),
+                                                        player_receiving.position.get_value()))
 
     return "(kick " + str(power) + " " + str(direction) + ")"
 
@@ -64,3 +77,6 @@ def calculate_relative_angle(player_state, target_position):
     return rotation
 
 
+# TODO: find out how to calculate power from distance
+def calculate_power(distance):
+    return 60

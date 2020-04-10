@@ -41,6 +41,7 @@ def smallest_angle_difference(a1, a2):
     a = a1 - a2
     return (a + 180) % 360 - 180
 
+
 '''
 - Returns the position of an object.
 object_rel_angle is the relative angle to the observer (0 - 360)
@@ -64,3 +65,10 @@ def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float
     x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
     y = dist_to_obj * - math.sin(math.radians(actual_angle)) + my_y
     return world.Coordinate(x, y)
+
+
+def get_distance_between_coords(c1, c2):
+    x = c2.pos_x - c1.pos_x
+    y = c2.pos_y - c1.pos_y
+
+    return math.sqrt(pow(x, 2) + pow(y, 2))
