@@ -13,7 +13,8 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
     if not angle_known or not position_known:
         return orient_self()
 
-    if not player_state.facing(target_position, 6) and player_state.last_turn_time < player_state.player_angle.last_updated_time:
+    if not player_state.facing(target_position,
+                               6) and player_state.last_turn_time < player_state.player_angle.last_updated_time:
         rotation = calculate_full_circle_origin_angle(target_position, player_state.position.get_value())
         rotation = math.degrees(rotation)
         rotation -= player_state.player_angle.get_value()
@@ -28,6 +29,21 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
         return "(turn " + str(rotation) + ")"
     else:
         return "(dash 60)"
+
+
+def pass_ball_to(player_passing: PlayerState, player_receiving: PlayerState):
+    minimum_last_update_time = player_passing.now() - 10
+    angle_known = player_passing.player_angle.is_value_known(minimum_last_update_time)
+    position_passing = player_passing.position.is_value_known(minimum_last_update_time)
+    minimum_last_update_time = player_receiving.now() - 10
+    position_receiver = player_receiving.position.is_value_known(minimum_last_update_time)
+
+    if not angle_known or not position_passing or not position_receiver:
+        return orient_self()
+
+    direction = calculate_relative_angle(player_passing, position_receiver)
+
+    return "(kick " + str(power) + " " + str(direction) + ")"
 
 
 def orient_self():
