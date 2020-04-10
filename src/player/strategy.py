@@ -29,5 +29,6 @@ class Strategy:
             self.conga_count %= 4
             new_objective = Objective(lambda: actions.jog_towards(player_state, _conga_positions[self.conga_count]),
                                       lambda: player_state.is_near(_conga_positions[self.conga_count]))
+
             return new_objective
         return current_objective
