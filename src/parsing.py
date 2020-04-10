@@ -682,7 +682,7 @@ def _parse_init(msg, ps: player.PlayerState):
 # example: (hear 0 referee kick_off_l)
 # example: (hear 0 self *msg*)
 # Pattern: (hear *time* *degrees* *msg*)
-def _parse_hear(text: str, ps: player):
+def _parse_hear(text: str, ps: PlayerState):
     split_by_whitespaces = re.split('\\s+', text)
     time = split_by_whitespaces[1]
     ps.world_view.sim_time = int(time)  # Update players understanding of time
