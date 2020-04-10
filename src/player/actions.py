@@ -32,3 +32,19 @@ def jog_towards(player_state: PlayerState, target_position: Coordinate):
 
 def orient_self():
     return "(turn 45)"
+
+
+def calculate_relative_angle(player_state, target_position):
+    rotation = calculate_full_circle_origin_angle(target_position, player_state.position.get_value())
+    rotation = math.degrees(rotation)
+    rotation -= player_state.player_angle.get_value()
+
+    # Pick the short way around (<180 degrees)
+    if rotation > 180:
+        rotation -= 360
+    elif rotation < -180:
+        rotation += 360
+
+    return rotation
+
+
