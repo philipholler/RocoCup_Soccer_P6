@@ -42,7 +42,7 @@ soccer_monitor = subprocess.Popen(["rcssmonitor"], shell=True)
 # Register function to kill server, when the program is killed
 atexit.register(shut_down_gracefully)
 
-time.sleep(3)
+time.sleep(2)
 
 for team in TEAM_NAMES:
     for player_num in range(0, NUM_PLAYERS):

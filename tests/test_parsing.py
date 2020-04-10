@@ -5,10 +5,6 @@ from player.world import Coordinate
 
 
 class Test(TestCase):
-    def test_parse_message_update_state(self):
-        ps = PlayerState()
-        self.skipTest("Not finished")
-
     # example: (hear 0 referee kick_off_l)
     def test_parse_hear01(self):
         ps = PlayerState()
