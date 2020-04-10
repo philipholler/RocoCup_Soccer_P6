@@ -13,7 +13,7 @@ class Test(TestCase):
     def test_parse_hear01(self):
         ps = PlayerState()
         parsing._parse_hear("(hear 0 referee kick_off_l)", ps)
-        self.assertEqual(ps.game_state, "kick_off_l", "Game state in the player state should update according to msg")
+        self.assertEqual(ps.world_view.game_state, "kick_off_l", "Game state in the player state should update according to msg")
         self.assertEqual(ps.world_view.sim_time, 0, "Sim time in the player state should update according to msg")
 
     # todo Fix trilateration tests
