@@ -3,7 +3,7 @@ import math
 from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle, \
     get_distance_between_coords
 from player.player import PlayerState
-from player.world import Coordinate, Player
+from player.world import Coordinate, Other_Player
 
 
 def jog_towards(player_state: PlayerState, target_position: Coordinate):
@@ -40,7 +40,7 @@ def choose_rand_player(player_passing : PlayerState):
 
 
 def pass_ball_to_random(player_passing: PlayerState):
-    target: Player = choose_rand_player(player_passing)
+    target: Other_Player = choose_rand_player(player_passing)
     if target is None:
         return orient_self()
     #position_receiver = target.coord

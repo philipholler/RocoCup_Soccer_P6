@@ -9,7 +9,7 @@ from math import sqrt, atan2
 
 from player.player import PlayerState, WorldView
 from player.world import Coordinate
-from player.world import Player, Player_View_Coach, Ball_Online_Coach
+from player.world import Other_Player, Player_View_Coach, Ball_Online_Coach
 from player.world import PrecariousData
 
 __REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
@@ -562,6 +562,10 @@ def _parse_players_online_coach(players: [], wv: WorldView):
         # Todo include pointing direction? - Philip
         split_by_whitespaces = re.split('\\s+', cur_player)
 
+        for s in split_by_whitespaces:
+            if s == "k" or s == "t":
+                split_by_whitespaces.remove(s)
+
         is_goalie_included = 0
         if len(split_by_whitespaces) >= 10:
             is_goalie = True
@@ -623,6 +627,10 @@ def _parse_players(players: [], ps: player.PlayerState):
 
         split_by_whitespaces = re.split('\\s+', cur_player)
 
+        for s in split_by_whitespaces:
+            if s == "t" or s == "k":
+                split_by_whitespaces.remove(s)
+
         # We now have a list of elements like this:
         # Diretion DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
         # ['30', '-41', '0', '0' ]
@@ -658,9 +666,9 @@ def _parse_players(players: [], ps: player.PlayerState):
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
                                                      my_global_angle=float(ps.player_angle.get_value()))
 
-        new_player = Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
-                            , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
-                            , coord=other_player_coord)
+        new_player = Other_Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
+                                  , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
+                                  , coord=other_player_coord)
 
         ps.world_view.other_players.append(new_player)
 

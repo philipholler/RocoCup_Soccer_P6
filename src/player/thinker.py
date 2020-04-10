@@ -69,7 +69,6 @@ class Thinker(threading.Thread):
                 action = self.current_objective.perform_action()
                 if action is not None:
                     self.player_conn.action_queue.put(action)
-                    print(action)
                 can_perform_action = False
 
 

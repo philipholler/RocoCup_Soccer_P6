@@ -61,7 +61,7 @@ class PrecariousData:
 
 
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
-class Player:
+class Other_Player:
     def __init__(self, team, num, distance, direction, dist_chng, dir_chng, body_dir, head_dir, is_goalie,
                  coord) -> None:
         super().__init__()
