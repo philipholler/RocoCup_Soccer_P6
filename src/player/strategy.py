@@ -1,5 +1,5 @@
 from player import actions
-from player.world import Coordinate
+from player.world_objects import Coordinate
 
 
 _conga_positions = [Coordinate(-35, -20), Coordinate(35, -20), Coordinate(35, 20), Coordinate(-35, 20)]

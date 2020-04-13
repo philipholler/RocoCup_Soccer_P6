@@ -1,7 +1,7 @@
 from unittest import TestCase
 import parsing
 from player.player import PlayerState
-from player.world import Coordinate
+from player.world_objects import Coordinate
 
 
 class Test(TestCase):

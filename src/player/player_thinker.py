@@ -1,9 +1,8 @@
-import enum
 import threading
 import queue
 
-from geometry import calculate_smallest_origin_angle_between
-from player import player, client_connection
+from player import player
+import client_connection
 from player.strategy import Objective
 import time
 import parsing

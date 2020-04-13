@@ -1,4 +1,5 @@
-from player import thinker, client_connection
+from player import player_thinker
+import client_connection
 import threading
 import time
 
@@ -10,7 +11,7 @@ class Client(threading.Thread):
         # Init thinker thread
         super().__init__()
         self._stop_event = threading.Event()
-        self.think = thinker.Thinker(team, player_type)
+        self.think = player_thinker.Thinker(team, player_type)
         # Init player connection thread
         self.player_conn = client_connection.Connection(UDP_PORT=UDP_PORT, UDP_IP=UDP_IP, think=self.think)
         # Give reference of connection to thinker thread

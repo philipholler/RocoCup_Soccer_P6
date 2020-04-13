@@ -1,7 +1,7 @@
 import unittest
 from unittest import TestCase
 import geometry
-from player.world import Coordinate
+from player.world_objects import Coordinate
 
 
 class Test(TestCase):

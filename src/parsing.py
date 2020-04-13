@@ -1,16 +1,16 @@
 import math
 import re
-import time
 
-from geometry import angle_between, calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
+from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
     calculate_full_circle_origin_angle
-from player import player, world
-from math import sqrt, atan2
+from player import player, world_objects
+from math import sqrt
 
 from player.player import PlayerState, WorldView
-from player.world import Coordinate
-from player.world import Other_Player, Player_View_Coach, Ball_Online_Coach
-from player.world import PrecariousData
+from player.world_objects import Coordinate
+from player.world_objects import Other_Player
+from player.world_objects import PrecariousData
 
 __REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 __SIGNED_INT_REGEX = "[-0-9]+"
@@ -101,7 +101,7 @@ def _update_time(msg, state: PlayerState):
     state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
 
 
-def parse_message_online_coach(msg: str, team: str):
+def parse_message_online_coach(msg: str, team: str, world_view: WorldViewCoach):
     if msg.startswith("(error"):
         print("Coach for team {0} received error: {1}".format(team, msg))
         return
@@ -115,14 +115,15 @@ def parse_message_online_coach(msg: str, team: str):
             print(msg)
         return
 
-    ps: PlayerState = PlayerState()
     if msg.startswith("(hear"):
-        _parse_hear(msg, ps)
+        _parse_hear_coach(msg, world_view)
     elif msg.startswith("(init"):
-        _parse_init_online_coach(msg, ps.world_view)
+        _parse_init_online_coach(msg, world_view)
     elif msg.startswith("(ok look") or msg.startswith("(see_global"):
-        _parse_ok_look_online_coach(msg, ps.world_view)
-        _update_time(msg, ps)
+        _parse_ok_look_online_coach(msg, world_view)
+        # Update time
+        comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
+        world_view.sim_time = int(re.match(comp_re, msg).group(1))
     elif msg.startswith("(change_player_type"):
         # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
         # changed type. The type is not disclosed by the opponent team.
@@ -137,8 +138,6 @@ def parse_message_online_coach(msg: str, team: str):
         return
     else:
         raise Exception("Unknown message received: " + msg)
-
-    return ps.world_view
 
 
 def parse_message_update_state(msg: str, ps: PlayerState):
@@ -250,7 +249,7 @@ def _parse_line(text: str, ps: PlayerState):
     line_relative_angle = matched.group(3)
 
     # Add information to WorldView
-    new_line = world.Line(line_side=line_side, distance=line_distance, relative_angle=line_relative_angle)
+    new_line = world_objects.Line(line_side=line_side, distance=line_distance, relative_angle=line_relative_angle)
     ps.world_view.lines.append(new_line)
     return matched
 
@@ -263,7 +262,7 @@ def _parse_goals(goals, ps):
 def _parse_goal(text: str, ps: PlayerState):
     # Unknown see object (out of field of view)
     if text.startswith("((G"):
-        return world.Goal(None, None, None)
+        return world_objects.Goal(None, None, None)
 
     goal_regex = "\\(\\(g (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
     regular_expression = re.compile(goal_regex)
@@ -274,7 +273,7 @@ def _parse_goal(text: str, ps: PlayerState):
     goal_relative_angle = matched.group(3)
 
     # Add information to WorldView
-    new_goal = world.Goal(goal_side=goal_side, distance=goal_distance, relative_angle=goal_relative_angle)
+    new_goal = world_objects.Goal(goal_side=goal_side, distance=goal_distance, relative_angle=goal_relative_angle)
     ps.world_view.goals.append(new_goal)
     return matched
 
@@ -417,7 +416,7 @@ def _parse_ball(ball: str, ps: player.PlayerState):
         return
     # Unknown see object (out of field of view)
     if ball.startswith("((B"):
-        return world.Ball(None, None, None, None, None)
+        return world_objects.Ball(None, None, None, None, None)
 
     # Remove ) from the items
     ball = str(ball).replace(")", "")
@@ -453,8 +452,8 @@ def _parse_ball(ball: str, ps: player.PlayerState):
                                                      my_y=pos.pos_y,
                                                      my_global_angle=ps.player_angle.get_value())
 
-    new_ball = world.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
-                          coord=ball_coord)
+    new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
+                                  coord=ball_coord)
 
     ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
 
@@ -510,8 +509,8 @@ def _parse_ball_online_coach(ball, wv):
 
     coord = Coordinate(x, y)
 
-    new_ball = Ball_Online_Coach(coord=coord, delta_x=delta_x, delta_y=delta_y)
-    wv.ball.set_value(new_ball, wv.sim_time)
+    new_ball = BallOnlineCoach(coord=coord, delta_x=delta_x, delta_y=delta_y)
+    wv.ball = new_ball
 
 
 # (ok look 926 ((g r) 52.5 0) ((g l) -52.5 0) ((b) 0 0 0 0) ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0))
@@ -538,8 +537,8 @@ def _parse_ok_look_online_coach(msg, wv: WorldView):
 
 # ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0)
 # ((p "team" num goalie?) X Y DELTAX DELTAY BODYANGLE NECKANGLE [POINTING DIRECTION]
-def _parse_players_online_coach(players: [], wv: WorldView):
-    wv.other_players.clear()
+def _parse_players_online_coach(players: [], wv: WorldViewCoach):
+    wv.players.clear()
     # ((p "Team1" 1) -50 0 0 0 0 0)
     for cur_player in players:
         team = None
@@ -583,10 +582,10 @@ def _parse_players_online_coach(players: [], wv: WorldView):
         neck_angle = split_by_whitespaces[8 + is_goalie_included]
         neck_angle = int(neck_angle) % 360
 
-        other_player = Player_View_Coach(team=team, num=num, coord=coord, delta_x=delta_x, delta_y=delta_y
-                                         , body_angle=body_angle, neck_angle=neck_angle, is_goalie=is_goalie)
+        other_player = PlayerViewCoach(team=team, num=num, coord=coord, delta_x=delta_x, delta_y=delta_y
+                                       , body_angle=body_angle, neck_angle=neck_angle, is_goalie=is_goalie)
 
-        wv.other_players.append(other_player)
+        wv.players.append(other_player)
 
 
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
@@ -685,6 +684,36 @@ def _parse_init(msg, ps: player.PlayerState):
     ps.world_view.side = matched.group(1)
     ps.player_num = int(matched.group(2))
 
+def _parse_hear_coach(text: str, coach_world_view):
+    split_by_whitespaces = re.split('\\s+', text)
+    time = split_by_whitespaces[1]
+    coach_world_view.sim_time = int(time)  # Update players understanding of time
+
+    sender = split_by_whitespaces[2]
+    if sender == "referee":
+        regex_string = "\\(hear ({0}) referee ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+
+        regular_expression = re.compile(regex_string)
+        matched = regular_expression.match(text)
+
+        coach_world_view.game_state = matched.group(2)
+
+        return
+    elif sender == "self":
+        return
+    elif sender == "online_coach_left":
+        return
+    elif sender == "online_coach_right":
+        return
+    elif sender == "coach":
+        return
+    else:
+        regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+
+        regular_expression = re.compile(regex_string)
+        matched = regular_expression.match(text)
+
+        return
 
 # Three different modes
 # example: (hear 0 referee kick_off_l)
@@ -940,7 +969,7 @@ def _find_mean_solution(all_solutions, state):
 
 
 def is_possible_position(new_position: Coordinate, state: PlayerState):
-    if not world.is_inside_field_bounds(new_position):
+    if not world_objects.is_inside_field_bounds(new_position):
         return False
 
     # If no information on previous state exists, then all positions inside the field are possible positions

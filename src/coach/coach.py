@@ -1,7 +1,8 @@
-from player import client_connection
-from player.coach.coachThinker import CoachThinker
+import client_connection
 import threading
 import time
+
+from coach.coachThinker import CoachThinker
 
 
 class Coach(threading.Thread):

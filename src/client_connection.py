@@ -2,7 +2,6 @@ import select
 import socket
 import threading
 import queue
-from player.coach.coachThinker import CoachThinker
 
 
 class Connection(threading.Thread):

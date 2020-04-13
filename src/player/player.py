@@ -1,8 +1,8 @@
 import math
 
 import geometry
-from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle
-from player.world import PrecariousData, World, Other_Player, Coordinate
+from geometry import calculate_full_circle_origin_angle
+from player.world_objects import PrecariousData, Coordinate
 
 MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manual
 
@@ -77,7 +77,7 @@ class BodyState:
 class WorldView:
     def __init__(self, sim_time):
         self.sim_time = sim_time
-        self.other_players = [Other_Player]
+        self.other_players = []
         self.ball: PrecariousData = PrecariousData.unknown()
         self.goals = []
         self.lines = []

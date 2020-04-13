@@ -2,8 +2,8 @@
 import math
 from math import atan2
 
-from player import world
-from player.world import Coordinate
+from player import world_objects
+from player.world_objects import Coordinate
 
 
 def angle_between(c1, c2, c3):
@@ -64,7 +64,7 @@ def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float
     actual_angle = (my_global_angle + object_rel_angle) % 360
     x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
     y = dist_to_obj * - math.sin(math.radians(actual_angle)) + my_y
-    return world.Coordinate(x, y)
+    return world_objects.Coordinate(x, y)
 
 
 def get_distance_between_coords(c1, c2):

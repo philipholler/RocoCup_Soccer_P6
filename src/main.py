@@ -1,12 +1,10 @@
-import threading
-import os
 import time
-import player.client as client
+import player.player_client as client
 import atexit
 import signal
 import subprocess
 
-from player.coach.coach import Coach
+from coach.coach import Coach
 
 
 def shut_down_gracefully():

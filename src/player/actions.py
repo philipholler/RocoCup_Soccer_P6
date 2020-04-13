@@ -3,7 +3,7 @@ import math
 from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle, \
     get_distance_between_coords
 from player.player import PlayerState
-from player.world import Coordinate, Other_Player
+from player.world_objects import Coordinate, Other_Player
 
 
 def jog_towards(player_state: PlayerState, target_position: Coordinate):
