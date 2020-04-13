@@ -1,8 +1,9 @@
 import xml.etree.ElementTree as ET
 import re
 
-from uppaal import VERIFYTA_MODELS_PATH
+from pathlib import Path
 
+from uppaal import VERIFYTA_MODELS_PATH
 
 # Example: SeqGirl(const girl_id_t id) = Girl(id, true, false, false);
 class SystemDeclaration(object):
