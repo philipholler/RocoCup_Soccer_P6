@@ -16,7 +16,7 @@ def generate_strategy(wv: WorldView, xml_file_name: str, queries_file_name: str)
     # Create model
     model = UPPAAL_MODEL(xml_file_name)
     # Update model according to world view
-    update_xml_file(wv, model)
+    udpdate_model(wv, model, xml_file_name)
 
     # Update queries files with the right path
     update_queries_write_path(str(VERIFYTA_QUERIES_PATH / queries_file_name))
@@ -32,10 +32,10 @@ def generate_strategy(wv: WorldView, xml_file_name: str, queries_file_name: str)
     # Wait for uppaal to finish generating and printing strategy
     while verifyta.poll() is None:
         time.sleep(0.001)
-    # 3. Input strategy to coach
-    # todo return strategy??
-    return
 
+    # 3. Input strategy to coach
+    # todo create representation of strategy and input to coach. Maybe return as object? - Philip
+    return
 
 def update_queries_write_path(query_path):
     with open(query_path, 'r') as f:
@@ -46,12 +46,12 @@ def update_queries_write_path(query_path):
                 strat_name = strat.group(0)[1:-1]
                 new_strat_file_name = re.search('/[^/]*"', stripped_line)
                 strat_file_name = new_strat_file_name.group(0)[1:-1]
-                _replace(query_path, l, 'saveStrategy("' + str(VERIFYTA_OUTPUT_DIR_PATH / strat_file_name) + '",' + strat_name + ')')
+                replace_in_file(query_path, l, 'saveStrategy("' + str(VERIFYTA_OUTPUT_DIR_PATH / strat_file_name) + '",' + strat_name + ')')
 
     return
 
 
-def _replace(file_path, pattern, subst):
+def replace_in_file(file_path, pattern, subst):
     #Create temp file
     fh, abs_path = mkstemp()
     with fdopen(fh,'w') as new_file:
@@ -65,8 +65,26 @@ def _replace(file_path, pattern, subst):
     #Move new file
     move(abs_path, file_path)
 
-def update_xml_file(wv, model: UPPAAL_MODEL):
-    pass
+def udpdate_model(wv, model: UPPAAL_MODEL, xml_file_name):
+    '''
+    UPPAAL current setup
+    player0 = TeamPlayer(0, 10, 10, true);
+    player1 = TeamPlayer(1, 15, 15, false);
+    player2 = TeamPlayer(2, 45, 10, false);
+    player3 = TeamPlayer(3, 30, 10, false);
+    player4 = TeamPlayer(4, 60, 10, false);
+    '''
+
+    # Examples of changes
+    # model.set_arguments('player0', ['arg0', 'arg1', 'arg2', 'argn'])
+    # model.set_arguments('player1', ['arg0', 'arg1', 'arg2', 'argn'])
+    # model.set_arguments('player2', ['arg0', 'arg1', 'arg2', 'argn'])
+    # model.set_arguments('player3', ['arg0', 'arg1', 'arg2', 'argn'])
+    # model.set_arguments('player4', ['arg0', 'arg1', 'arg2', 'argn'])
+
+    model.save_xml_file(xml_file_name)
+
+    return
 
 
 # generate_strategy(WorldView(0), 'SimplePassingModel.xml', 'SimplePassingModel.q')
