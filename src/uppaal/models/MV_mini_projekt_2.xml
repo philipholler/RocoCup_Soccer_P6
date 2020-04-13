@@ -95,8 +95,8 @@ bool is_legal_call(int p){
 		</transition>
 	</template>
 	<system>// Place template instantiations here.
-// List one or more processes to be composed into a system.
-SeqGirl(const girl_id_t id) = Girl(id, true, false, false);
+    // List one or more processes to be composed into a system.
+		SeqGirl(const girl_id_t id) = Girl(id, true, false, false);
 Single_Line_Girl(const girl_id_t id) = Girl(id, false, true, false);
 Non_Seq_Girl(const girl_id_t id) = Girl(id, false, false, false);
 Circ_Girl(const girl_id_t id) = Girl(id, false, false, true);

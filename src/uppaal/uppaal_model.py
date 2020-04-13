@@ -1,6 +1,7 @@
-from uppaal.verifyta import VERIFYTA_MODELS_PATH
 import xml.etree.ElementTree as ET
 import re
+
+from uppaal import VERIFYTA_MODELS_PATH
 
 
 # Example: SeqGirl(const girl_id_t id) = Girl(id, true, false, false);
@@ -164,6 +165,6 @@ class Declaration:
     def __repr__(self) -> str:
         return "(Declaration: type: {0}, ident: {1}, val: {2})".format(self.type, self.ident, self.val)
 
-model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
-model.set_arguments("SeqGirl(const girl_id_t id)", ["id", "true", "true", "true"])
-model.save_xml_file("newFile.xml")
+# model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
+# model.set_arguments("SeqGirl(const girl_id_t id)", ["id", "true", "true", "true"])
+# model.save_xml_file("newFile.xml")
