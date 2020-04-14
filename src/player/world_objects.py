@@ -1,9 +1,9 @@
 from math import sqrt
 
 class Coordinate:
-    def __init__(self, pos_x, pos_y):
-        self.pos_x = pos_x
-        self.pos_y = pos_y
+    def __init__(self, pos_x: float, pos_y: float):
+        self.pos_x: float = pos_x
+        self.pos_y: float = pos_y
 
     def __repr__(self):
         return "(" + str(self.pos_x) + ", " + str(self.pos_y) + ")"

@@ -502,10 +502,10 @@ def _parse_ball_online_coach(ball, wv):
     # ['b', '0', '0', '0', '0']
     split_by_whitespaces = re.split('\\s+', my_ball)
 
-    x = split_by_whitespaces[1]
-    y = split_by_whitespaces[2]
-    delta_x = split_by_whitespaces[3]
-    delta_y = split_by_whitespaces[4]
+    x = float(split_by_whitespaces[1])
+    y = float(split_by_whitespaces[2])
+    delta_x = float(split_by_whitespaces[3])
+    delta_y = float(split_by_whitespaces[4])
 
     coord = Coordinate(x, y)
 
@@ -531,8 +531,8 @@ def _parse_ok_look_online_coach(msg, wv: WorldView):
         else:
             raise Exception("Unknown see element: " + str(element))
 
-    _parse_players_online_coach(players, wv)
     _parse_ball_online_coach(ball, wv)
+    _parse_players_online_coach(players, wv)
 
 
 # ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0)
@@ -573,10 +573,10 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
 
         team = split_by_whitespaces[1]
         num = split_by_whitespaces[2]
-        x = split_by_whitespaces[3 + is_goalie_included]
-        y = split_by_whitespaces[4 + is_goalie_included]
-        delta_x = split_by_whitespaces[5 + is_goalie_included]
-        delta_y = split_by_whitespaces[6 + is_goalie_included]
+        x = float(split_by_whitespaces[3 + is_goalie_included])
+        y = float(split_by_whitespaces[4 + is_goalie_included])
+        delta_x = float(split_by_whitespaces[5 + is_goalie_included])
+        delta_y = float(split_by_whitespaces[6 + is_goalie_included])
         coord: Coordinate = Coordinate(x, y)
         body_angle = split_by_whitespaces[7 + is_goalie_included]
         body_angle = int(body_angle) % 360

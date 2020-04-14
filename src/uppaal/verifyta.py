@@ -72,6 +72,8 @@ def parse_passing_strat(wv, path_to_strat_file):
 
     regressors: [] = _extract_regressors(strat_string)
 
+
+
     # Find the opponents that are the closest to our closest players to the ball
 
 
