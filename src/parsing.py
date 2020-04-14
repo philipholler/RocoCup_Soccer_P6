@@ -538,6 +538,7 @@ def _parse_ok_look_online_coach(msg, wv: WorldView):
 # ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0)
 # ((p "team" num goalie?) X Y DELTAX DELTAY BODYANGLE NECKANGLE [POINTING DIRECTION]
 def _parse_players_online_coach(players: [], wv: WorldViewCoach):
+    # Remove old view of players
     wv.players.clear()
     # ((p "Team1" 1) -50 0 0 0 0 0)
     for cur_player in players:
@@ -583,10 +584,20 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
         neck_angle = int(neck_angle) % 360
 
         other_player = PlayerViewCoach(team=team, num=num, coord=coord, delta_x=delta_x, delta_y=delta_y
-                                       , body_angle=body_angle, neck_angle=neck_angle, is_goalie=is_goalie)
+                                       , body_angle=body_angle, neck_angle=neck_angle, is_goalie=is_goalie
+                                       , has_ball=False)
 
         wv.players.append(other_player)
 
+    # Reset possession
+    for play in wv.players:
+        play.has_ball = False
+
+    # Find closest player to ball
+    possessor: PlayerViewCoach = wv.get_closest_players_to_ball(1)[0]
+    # If closest player less than 1 meter away from ball, give possession.
+    if possessor.coord.euclidean_distance_from(wv.ball.coord) < 1:
+        possessor.has_ball = True
 
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
 # ((p "Team1" 5) 30 -41 0 0)

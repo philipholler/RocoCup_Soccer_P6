@@ -11,7 +11,7 @@ class CoachThinker(threading.Thread):
     def __init__(self, team_name: str):
         super().__init__()
         self._stop_event = threading.Event()
-        self.world_view = WorldViewCoach(0)
+        self.world_view = WorldViewCoach(0, team_name)
         self.team = team_name
         # Connection with the server
         self.connection: client_connection.Connection = None

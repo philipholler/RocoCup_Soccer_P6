@@ -6,21 +6,27 @@ from os import fdopen, remove
 from shutil import copymode, move
 from tempfile import mkstemp
 
-from player.player import WorldView
+from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach
 from uppaal.uppaal_model import UPPAAL_MODEL
 from uppaal import VERIFYTA_MODELS_PATH, VERIFYTA_OUTPUT_DIR_PATH, VERIFYTA_QUERIES_PATH, VERIFYTA_PATH
 
 
-def generate_strategy(wv: WorldView, xml_file_name: str, queries_file_name: str):
+def generate_strategy(wv: WorldViewCoach):
+    applicable_strat = find_applicable_strat(wv)
+    if applicable_strat is None:
+        return
+    xml_file_name = applicable_strat + ".xml"
+    queries_file_name = applicable_strat + ".q"
+
     # Create model
     model = UPPAAL_MODEL(xml_file_name)
-    # Update model according to world view
+    # Update model according to world view. Only works for SimplePassingModel currently.
     _update_model(wv, model, xml_file_name)
 
     # Update queries files with the right path
     path_to_strat_file = _update_queries_write_path(str(VERIFYTA_QUERIES_PATH / queries_file_name))
 
-    # Generate command to gererate strategy
+    # Generate command to generate strategy
     # verifyta_path --print-strategies outputdir xml_path queries_dir learning-method?
     command = "{0} {1} {2}".format(VERIFYTA_PATH, VERIFYTA_MODELS_PATH / xml_file_name
                                    , VERIFYTA_QUERIES_PATH / queries_file_name)
@@ -37,6 +43,18 @@ def generate_strategy(wv: WorldView, xml_file_name: str, queries_file_name: str)
     # todo create representation of strategy and input to coach. Maybe return as object? - Philip
     return
 
+
+def find_applicable_strat(wv):
+    # Simple passing model is only applicable if 1 player is in possession of the ball
+    play_in_poss: int = 0
+    for play in wv.players:
+        if play.has_ball:
+            play_in_poss += 1
+
+    if play_in_poss == 1:
+        return "SimplePassingModel"
+
+    return None
 
 def parse_passing_strat(path_to_strat_file):
     strat_string = ""
@@ -94,16 +112,16 @@ def _update_model(wv, model: UPPAAL_MODEL, xml_file_name):
     player4 = TeamPlayer(4, 60, 10, false);
     '''
 
-    # Examples of changes
-    # model.set_arguments('player0', ['arg0', 'arg1', 'arg2', 'argn'])
-    # model.set_arguments('player1', ['arg0', 'arg1', 'arg2', 'argn'])
-    # model.set_arguments('player2', ['arg0', 'arg1', 'arg2', 'argn'])
-    # model.set_arguments('player3', ['arg0', 'arg1', 'arg2', 'argn'])
-    # model.set_arguments('player4', ['arg0', 'arg1', 'arg2', 'argn'])
+    five_closest_players: [PlayerViewCoach] = wv.get_closest_team_players_to_ball(5)
+    # Arguments:
+    # const player_id_t id, const int pos_x, const int pos_y, bool has_ball
+    for play in five_closest_players:
+        if play.has_ball:
+            model.set_arguments(play.num, [play.num, play.coord.pos_x, play.coord.pos_y, 'true'])
+        else:
+            model.set_arguments(play.num, [play.num, play.coord.pos_x, play.coord.pos_y, 'false'])
 
     model.save_xml_file(xml_file_name)
-
-    return
 
 
 def _extract_transition_dict(strat_string):
@@ -139,4 +157,4 @@ def _extract_statevars(strat_string):
     return statevars
 
 
-generate_strategy(WorldView(0), 'SimplePassingModel.xml', 'SimplePassingModel.q')
+generate_strategy(WorldViewCoach(0, "team1"), 'SimplePassingModel.xml', 'SimplePassingModel.q')
