@@ -16,9 +16,9 @@ class PlayerViewCoach:
 
     def __repr__(self) -> str:
         return "(team: {0}, num: {1}, is_goalie: {2}, coord: {3}, delta_x: {4}, delta_y: {5}, body_angle: {6}, " \
-               "neck_angle: {7})".format(self.team, self.num, self.is_goalie, self.coord
+               "neck_angle: {7}, has_ball: {8})".format(self.team, self.num, self.is_goalie, self.coord
                                          , self.delta_x, self.delta_y, self.body_angle
-                                         , self.neck_angle)
+                                         , self.neck_angle, self.has_ball)
 
 
 def distance_to_ball(play: PlayerViewCoach, ball: Coordinate):

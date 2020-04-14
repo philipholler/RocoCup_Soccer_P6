@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'><nta>
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
 	<declaration>clock T = 0.0;
 
 const int team_members = 3;
@@ -31,51 +32,51 @@ int time_to_pass(player_id_t from, player_id_t to){
 		<declaration>clock X;
 int intercept_attempts = 0;</declaration>
 		<location id="id0" x="-3519" y="42">
-			<urgent />
+			<urgent/>
 		</location>
 		<location id="id1" x="-3230" y="170">
 			<name x="-3212" y="161">Free</name>
 		</location>
 		<location id="id2" x="-3807" y="169">
 			<name x="-3917" y="160">InPossesion</name>
-			<urgent />
+			<urgent/>
 		</location>
 		<location id="id3" x="-3561" y="170">
 			<name x="-3587" y="119">Passing</name>
 			<label kind="invariant" x="-3578" y="136">X&lt;=5</label>
 		</location>
-		<init ref="id0" />
+		<init ref="id0"/>
 		<transition controllable="false">
-			<source ref="id3" />
-			<target ref="id1" />
+			<source ref="id3"/>
+			<target ref="id1"/>
 			<label kind="guard" x="-3442" y="187">X == 5</label>
 			<label kind="synchronisation" x="-3485" y="221">receive[pass_target]!</label>
 			<label kind="assignment" x="-3434" y="204">X=0</label>
 		</transition>
 		<transition>
-			<source ref="id1" />
-			<target ref="id2" />
+			<source ref="id1"/>
+			<target ref="id2"/>
 			<label kind="guard" x="-3561" y="323">X==5</label>
 			<label kind="synchronisation" x="-3578" y="357">receive[id]?</label>
 			<label kind="assignment" x="-3663" y="340">X = 0, ball_possesor_x = pos_x</label>
-			<nail x="-3230" y="306" />
-			<nail x="-3808" y="306" />
+			<nail x="-3230" y="306"/>
+			<nail x="-3808" y="306"/>
 		</transition>
 		<transition>
-			<source ref="id2" />
-			<target ref="id3" />
+			<source ref="id2"/>
+			<target ref="id3"/>
 			<label kind="select" x="-3748" y="178">target : player_id_t</label>
 			<label kind="guard" x="-3723" y="195">target != id</label>
 			<label kind="assignment" x="-3765" y="212">pass_target = target</label>
 		</transition>
 		<transition controllable="false">
-			<source ref="id0" />
-			<target ref="id1" />
+			<source ref="id0"/>
+			<target ref="id1"/>
 			<label kind="guard" x="-3425" y="59">!has_ball</label>
 		</transition>
 		<transition controllable="false">
-			<source ref="id0" />
-			<target ref="id2" />
+			<source ref="id0"/>
+			<target ref="id2"/>
 			<label kind="guard" x="-3689" y="68">has_ball</label>
 		</transition>
 	</template>
@@ -94,40 +95,40 @@ int intercept_probability(double dist, double time){
 		</location>
 		<location id="id5" x="-340" y="170">
 			<name x="-485" y="162">InterceptSuccesful</name>
-			<urgent />
+			<urgent/>
 		</location>
 		<location id="id6" x="-153" y="170">
 			<name x="-136" y="162">InterceptFailed</name>
-			<urgent />
+			<urgent/>
 		</location>
 		<branchpoint id="id7" x="-246" y="51">
 		</branchpoint>
-		<init ref="id4" />
+		<init ref="id4"/>
 		<transition controllable="false">
-			<source ref="id5" />
-			<target ref="id6" />
+			<source ref="id5"/>
+			<target ref="id6"/>
 		</transition>
 		<transition controllable="false">
-			<source ref="id6" />
-			<target ref="id4" />
+			<source ref="id6"/>
+			<target ref="id4"/>
 			<label kind="assignment" x="-119" y="-17">X = 0</label>
-			<nail x="-153" y="34" />
+			<nail x="-153" y="34"/>
 		</transition>
 		<transition>
-			<source ref="id7" />
-			<target ref="id6" />
+			<source ref="id7"/>
+			<target ref="id6"/>
 			<label kind="probability" x="-204" y="76">10</label>
 		</transition>
 		<transition>
-			<source ref="id7" />
-			<target ref="id5" />
+			<source ref="id7"/>
+			<target ref="id5"/>
 			<label kind="assignment" x="-484" y="93">possesion = -1,
 ball_possesor_x = pos_x</label>
 			<label kind="probability" x="-544" y="76">intercept_probability(pass_target, X)</label>
 		</transition>
 		<transition controllable="false">
-			<source ref="id4" />
-			<target ref="id7" />
+			<source ref="id4"/>
+			<target ref="id7"/>
 			<label kind="synchronisation" x="-340" y="-25">intercept[id]!</label>
 		</transition>
 	</template>
@@ -136,23 +137,31 @@ ball_possesor_x = pos_x</label>
 		<location id="id8" x="-306" y="-161">
 			<label kind="invariant" x="-501" y="-136">reward'== possesion * (ball_possesor_x * position_factor)</label>
 		</location>
-		<init ref="id8" />
+		<init ref="id8"/>
 	</template>
-	<system>player0 = TeamPlayer(1,0,0,true);
-player1 = TeamPlayer(1,15,15,false);
-player2 = TeamPlayer(2,45,10,false);
-player3 = TeamPlayer(3,30,10,false);
-player4 = TeamPlayer(4,60,10,false);
+	<system>// Place template instantiations here.
+player0 = TeamPlayer(0, 10, 10, true);
+player1 = TeamPlayer(1, 15, 15, false);
+player2 = TeamPlayer(2, 45, 10, false);
+player3 = TeamPlayer(3, 30, 10, false);
+player4 = TeamPlayer(4, 60, 10, false);
+/*
+opponent0 = Opponent(0, 15, 15);
+opponent1 = Opponent(1, 15, 15);
+opponent2 = Opponent(2, 15, 15);
+*/
 ball = Ball();
-system player0, player1, player2, ball;</system>
+// List one or more processes to be composed into a system.
+system player0, player1, player2, ball;
+    </system>
 	<queries>
 		<query>
 			<formula>strategy BestPasses = maxE(reward) [&lt;=15]: &lt;&gt; T == 15</formula>
-			<comment />
+			<comment></comment>
 		</query>
 		<query>
 			<formula>saveStrategy("/home/albot/Desktop/passingstrat",BestPasses)</formula>
-			<comment />
+			<comment></comment>
 		</query>
 	</queries>
 </nta>

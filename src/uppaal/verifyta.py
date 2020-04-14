@@ -1,14 +1,17 @@
 import subprocess
 import time
 import re
+import codecs
 from os import fdopen, remove
 
 from shutil import copymode, move
 from tempfile import mkstemp
 
-from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach
+from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from uppaal.regressor import Regressor
 from uppaal.uppaal_model import UPPAAL_MODEL
 from uppaal import VERIFYTA_MODELS_PATH, VERIFYTA_OUTPUT_DIR_PATH, VERIFYTA_QUERIES_PATH, VERIFYTA_PATH
+from player.world_objects import Coordinate
 
 
 def generate_strategy(wv: WorldViewCoach):
@@ -56,6 +59,7 @@ def find_applicable_strat(wv):
 
     return None
 
+
 def parse_passing_strat(path_to_strat_file):
     strat_string = ""
     with open(path_to_strat_file, 'r') as f:
@@ -66,11 +70,14 @@ def parse_passing_strat(path_to_strat_file):
 
     statevars: [] = _extract_statevars(strat_string)
 
+    regressors: [] = _extract_regressors(strat_string)
+    print(regressors)
+
     return []
 
 
 def _update_queries_write_path(query_path):
-    with open(query_path, 'r') as f:
+    with open(query_path, 'r', encoding='utf8') as f:
         for l in f:
             stripped_line = l.strip()
             if stripped_line.startswith("saveStrategy"):
@@ -90,8 +97,8 @@ def _update_queries_write_path(query_path):
 def _replace_in_file(file_path, pattern, subst):
     # Create temp file
     fh, abs_path = mkstemp()
-    with fdopen(fh, 'w') as new_file:
-        with open(file_path) as old_file:
+    with fdopen(fh, 'w', encoding='utf8') as new_file:
+        with open(file_path, encoding='utf8') as old_file:
             for line in old_file:
                 new_file.write(line.replace(pattern, subst))
     # Copy the file permissions from the old file to the new file
@@ -113,15 +120,48 @@ def _update_model(wv, model: UPPAAL_MODEL, xml_file_name):
     '''
 
     five_closest_players: [PlayerViewCoach] = wv.get_closest_team_players_to_ball(5)
+    sys_decl_names = ["player0", "player1", "player2", "player3", "player4"]
     # Arguments:
     # const player_id_t id, const int pos_x, const int pos_y, bool has_ball
     for play in five_closest_players:
         if play.has_ball:
-            model.set_arguments(play.num, [play.num, play.coord.pos_x, play.coord.pos_y, 'true'])
+            model.set_arguments(sys_decl_names.pop(0), [play.num, play.coord.pos_x, play.coord.pos_y, 'true'])
         else:
-            model.set_arguments(play.num, [play.num, play.coord.pos_x, play.coord.pos_y, 'false'])
+            model.set_arguments(sys_decl_names.pop(0), [play.num, play.coord.pos_x, play.coord.pos_y, 'false'])
 
     model.save_xml_file(xml_file_name)
+
+
+def _extract_regressors(strat_string):
+    final_regressors = []
+    # Get regressors part of strategy
+    regre_text = re.search(r'"regressors":\{.*\}', strat_string, re.DOTALL)
+    # Remove "regressors":{ and }
+    regre_text = regre_text.group(0)[14:-1].strip()
+    # Find each regressor
+    regressors = regre_text.split('},')
+    # Strip all elements from empty spaces
+    regressors = [w.strip() for w in regressors]
+
+    for reg in regressors:
+        # Get statevars value like: "(2,0,1,0,1,0,-1,1,1,0,0,0,0,0)"
+        statevars_vals = re.search(r'"\([-0-9,]*\)"', reg, re.DOTALL).group(0)
+        statevars_vals = statevars_vals.replace("(", "").replace('"', "").replace(")", "")
+        statevars_vals = statevars_vals.split(",")
+        # Get pairs of transitions and values like ['2:89.09999999999999', '0:0']
+        trans_val_text = re.search(r'"regressor":[\t\n]*\{[^}]*\}', reg, re.DOTALL)
+        trans_val_text = trans_val_text.group(0)[13:-1].strip()
+        trans_val_pairs = [w.strip().replace("\n", "").replace("\t", "").replace('"', '').replace('{', "") for w in trans_val_text.split(',')]
+        # The final list of pairs
+        format_trans_val_pairs = []
+        for pair in trans_val_pairs:
+            cur_pair = pair.split(":")
+            format_trans_val_pairs.append((int(cur_pair[0]), float(cur_pair[1])))
+
+        new_regressor = Regressor(statevars_vals, format_trans_val_pairs)
+        final_regressors.append(new_regressor)
+
+    return final_regressors
 
 
 def _extract_transition_dict(strat_string):
@@ -132,7 +172,7 @@ def _extract_transition_dict(strat_string):
     act_text = act_text.group(0)[11:-4].strip()
     # Create list by separating at commas
     act_lines = act_text.split('\n')
-    # Strip all elements from empty spaces and quotes
+    # Strip all elements from empty spaces
     act_lines = [w.strip() for w in act_lines]
 
     for l in act_lines:
@@ -157,4 +197,11 @@ def _extract_statevars(strat_string):
     return statevars
 
 
-generate_strategy(WorldViewCoach(0, "team1"), 'SimplePassingModel.xml', 'SimplePassingModel.q')
+wv = WorldViewCoach(0, "Team1")
+wv.ball = BallOnlineCoach(Coordinate(0, 0), 0, 0)
+p = PlayerViewCoach("Team1", "1", False, Coordinate(0, 0), 0, 0, 0, 0, True)
+wv.players.append(p)
+generate_strategy(wv)
+
+
+
