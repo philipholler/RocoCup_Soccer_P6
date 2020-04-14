@@ -42,7 +42,7 @@ def generate_strategy(wv: WorldViewCoach):
         time.sleep(0.001)
 
     # 3. Input strategy to coach
-    passing_list = parse_passing_strat(path_to_strat_file)
+    passing_list = parse_passing_strat(wv, path_to_strat_file)
     # todo create representation of strategy and input to coach. Maybe return as object? - Philip
     return
 
@@ -60,7 +60,7 @@ def find_applicable_strat(wv):
     return None
 
 
-def parse_passing_strat(path_to_strat_file):
+def parse_passing_strat(wv, path_to_strat_file):
     strat_string = ""
     with open(path_to_strat_file, 'r') as f:
         for l in f:
@@ -68,10 +68,12 @@ def parse_passing_strat(path_to_strat_file):
 
     index_to_transition_dict: {} = _extract_transition_dict(strat_string)
 
-    statevars: [] = _extract_statevars(strat_string)
+    statevar_to_index_dict: {} = _extract_statevars_to_index_dict(strat_string)
 
     regressors: [] = _extract_regressors(strat_string)
-    print(regressors)
+
+    # Find the opponents that are the closest to our closest players to the ball
+
 
     return []
 
@@ -184,7 +186,7 @@ def _extract_transition_dict(strat_string):
     return trans_dict
 
 
-def _extract_statevars(strat_string):
+def _extract_statevars_to_index_dict(strat_string) -> {}:
     # Get statevars part of strategy
     statevars = re.search(r'"statevars":\[[^\]]*\]', strat_string, re.DOTALL)
     # Remove "statevars":[ and ]
@@ -194,7 +196,13 @@ def _extract_statevars(strat_string):
     # Strip all elements from empty spaces and quotes
     statevars = [w.strip()[1:-1] for w in statevars]
 
-    return statevars
+    statevar_name_to_index_dict = {}
+    i = 0
+    for statevar in statevars:
+        statevar_name_to_index_dict[statevar] = i
+        i += 1
+
+    return statevar_name_to_index_dict
 
 
 wv = WorldViewCoach(0, "Team1")
