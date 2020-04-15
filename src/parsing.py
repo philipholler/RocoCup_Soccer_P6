@@ -9,7 +9,7 @@ from math import sqrt
 
 from player.player import PlayerState, WorldView
 from player.world_objects import Coordinate
-from player.world_objects import Other_Player
+from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
 
 __REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
@@ -676,9 +676,9 @@ def _parse_players(players: [], ps: player.PlayerState):
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
                                                      my_global_angle=float(ps.player_angle.get_value()))
 
-        new_player = Other_Player(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
-                                  , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
-                                  , coord=other_player_coord)
+        new_player = ObservedPlayer(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
+                                    , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
+                                    , coord=other_player_coord)
 
         ps.world_view.other_players.append(new_player)
 

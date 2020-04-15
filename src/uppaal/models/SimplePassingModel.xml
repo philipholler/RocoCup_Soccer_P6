@@ -138,11 +138,11 @@ ball_possesor_x = pos_x</label>
 		</location>
 		<init ref="id8" />
 	</template>
-	<system>player0 = TeamPlayer(1,0,0,true);
-player1 = TeamPlayer(1,15,15,false);
-player2 = TeamPlayer(2,45,10,false);
-player3 = TeamPlayer(3,30,10,false);
-player4 = TeamPlayer(4,60,10,false);
+	<system>player0 = TeamPlayer(0,0,0,true);
+player1 = TeamPlayer(4,3,9,false);
+player2 = TeamPlayer(3,12,12,false);
+player3 = TeamPlayer(1,15,30,false);
+player4 = TeamPlayer(2,30,15,false);
 ball = Ball();
 system player0, player1, player2, ball;</system>
 	<queries>

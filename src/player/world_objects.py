@@ -1,5 +1,6 @@
 from math import sqrt
 
+
 class Coordinate:
     def __init__(self, pos_x: float, pos_y: float):
         self.pos_x: float = pos_x
@@ -54,7 +55,7 @@ class PrecariousData:
 
 
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
-class Other_Player:
+class ObservedPlayer:
     def __init__(self, team, num, distance, direction, dist_chng, dir_chng, body_dir, head_dir, is_goalie,
                  coord) -> None:
         super().__init__()
@@ -79,10 +80,6 @@ class Other_Player:
 
 LOWER_FIELD_BOUND = Coordinate(-60, -40)
 UPPER_FIELD_BOUND = Coordinate(60, 40)
-
-
-
-
 
 
 class Ball:

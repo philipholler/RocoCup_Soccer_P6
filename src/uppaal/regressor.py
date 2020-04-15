@@ -24,7 +24,7 @@ class Regressor:
                 highest = pair
         return highest
 
-    def get_regressor_value(self, state_var_name):
+    def get_value(self, state_var_name):
         return self.state_var_values[self.state_vars_to_index_dict[state_var_name]]
 
     def __repr__(self) -> str:

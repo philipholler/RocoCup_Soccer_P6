@@ -5,6 +5,14 @@ from pathlib import Path
 
 from uppaal import VERIFYTA_MODELS_PATH
 
+
+class UppaalStrategy:
+
+    def __init__(self) -> None:
+        super().__init__()
+
+
+
 # Example: SeqGirl(const girl_id_t id) = Girl(id, true, false, false);
 class SystemDeclaration(object):
     def __init__(self, ident, typ, arguments: []):
@@ -24,7 +32,7 @@ class SystemDeclaration(object):
         return "{0} = {1}({2});".format(self.ident, self.typ, arg_com_sep)
 
 
-class UPPAAL_MODEL:
+class UppaalModel:
     def __init__(self, xml_model_file) -> None:
         self.tree = ET.parse(VERIFYTA_MODELS_PATH / xml_model_file)
         self.root = self.tree.getroot()

@@ -1,0 +1,164 @@
+{"version":1.0,"type":"state->regressor","representation":"map","actions":{
+		"0":"player0.InPossesion->player0.Passing { 0 != id, tau, pass_target := 0 }",
+		"1":"player0.InPossesion->player0.Passing { 1 != id, tau, pass_target := 1 }",
+		"2":"player0.InPossesion->player0.Passing { 2 != id, tau, pass_target := 2 }",
+		"3":"player0.InPossesion->player0.Passing { 3 != id, tau, pass_target := 3 }",
+		"4":"player0.InPossesion->player0.Passing { 4 != id, tau, pass_target := 4 }",
+		"5":"player1.InPossesion->player1.Passing { 0 != id, tau, pass_target := 0 }",
+		"6":"player1.InPossesion->player1.Passing { 1 != id, tau, pass_target := 1 }",
+		"7":"player1.InPossesion->player1.Passing { 2 != id, tau, pass_target := 2 }",
+		"8":"player1.InPossesion->player1.Passing { 3 != id, tau, pass_target := 3 }",
+		"9":"player1.InPossesion->player1.Passing { 4 != id, tau, pass_target := 4 }",
+		"10":"player2.InPossesion->player2.Passing { 0 != id, tau, pass_target := 0 }",
+		"11":"player2.InPossesion->player2.Passing { 1 != id, tau, pass_target := 1 }",
+		"12":"player2.InPossesion->player2.Passing { 2 != id, tau, pass_target := 2 }",
+		"13":"player2.InPossesion->player2.Passing { 3 != id, tau, pass_target := 3 }",
+		"14":"player2.InPossesion->player2.Passing { 4 != id, tau, pass_target := 4 }",
+		"15":"player3.InPossesion->player3.Passing { 0 != id, tau, pass_target := 0 }",
+		"16":"player3.InPossesion->player3.Passing { 1 != id, tau, pass_target := 1 }",
+		"17":"player3.InPossesion->player3.Passing { 2 != id, tau, pass_target := 2 }",
+		"18":"player3.InPossesion->player3.Passing { 3 != id, tau, pass_target := 3 }",
+		"19":"player3.InPossesion->player3.Passing { 4 != id, tau, pass_target := 4 }",
+		"20":"player4.InPossesion->player4.Passing { 0 != id, tau, pass_target := 0 }",
+		"21":"player4.InPossesion->player4.Passing { 1 != id, tau, pass_target := 1 }",
+		"22":"player4.InPossesion->player4.Passing { 2 != id, tau, pass_target := 2 }",
+		"23":"player4.InPossesion->player4.Passing { 3 != id, tau, pass_target := 3 }",
+		"24":"player4.InPossesion->player4.Passing { 4 != id, tau, pass_target := 4 }",
+		"25":"WAIT"
+	},"statevars":[
+		"player0.location",
+		"player1.location",
+		"player2.location",
+		"player3.location",
+		"player4.location",
+		"ball.location",
+		"initted_players",
+		"possesion",
+		"ball_possesor_x",
+		"pass_target"
+	],"pointvars":[
+		"#t(0)",
+		"#time",
+		"T",
+		"player0.X",
+		"player1.X",
+		"player2.X",
+		"player3.X",
+		"player4.X"
+	],"locationnames":{
+		"player0.location":{
+			"0":"Free",
+			"1":"InPossesion",
+			"2":"Passing",
+			"3":"_id3",
+			"4":"Start",
+			"5":"_id5",
+			"6":"_id6"
+		},
+		"player1.location":{
+			"0":"Free",
+			"1":"InPossesion",
+			"2":"Passing",
+			"3":"_id3",
+			"4":"Start",
+			"5":"_id5",
+			"6":"_id6"
+		},
+		"player2.location":{
+			"0":"Free",
+			"1":"InPossesion",
+			"2":"Passing",
+			"3":"_id3",
+			"4":"Start",
+			"5":"_id5",
+			"6":"_id6"
+		},
+		"player3.location":{
+			"0":"Free",
+			"1":"InPossesion",
+			"2":"Passing",
+			"3":"_id3",
+			"4":"Start",
+			"5":"_id5",
+			"6":"_id6"
+		},
+		"player4.location":{
+			"0":"Free",
+			"1":"InPossesion",
+			"2":"Passing",
+			"3":"_id3",
+			"4":"Start",
+			"5":"_id5",
+			"6":"_id6"
+		},
+		"ball.location":{
+			"0":"_id8"
+		}
+	},"regressors":{
+		"(1,0,0,0,0,0,0,1,0,0)":
+			{"type":"act->point->val","representation":"simpletree","minimize":0,"regressor":
+				{
+					"2":
+						-21.79816385784357,
+					"4":
+						-26.12289606392677,
+					"1":
+						-32.52502327400343,
+					"3":
+						-27.03294252775869
+				}
+			},
+		"(0,1,0,0,0,0,0,1,16,1)":
+			{"type":"act->point->val","representation":"simpletree","minimize":0,"regressor":
+				{
+					"7":
+						70.30289644727937,
+					"8":
+						84.53756260736559,
+					"9":
+						64.05218187136531,
+					"5":
+						53.04375776582808
+				}
+			},
+		"(0,0,0,0,1,0,0,1,26,4)":
+			{"type":"act->point->val","representation":"simpletree","minimize":0,"regressor":
+				{
+					"20":
+						27.37789710071016,
+					"21":
+						13.56766293757045,
+					"22":
+						9.035156748884013,
+					"23":
+						35.53046053386413
+				}
+			},
+		"(0,0,0,1,0,0,0,1,32,3)":
+			{"type":"act->point->val","representation":"simpletree","minimize":0,"regressor":
+				{
+					"19":
+						-4.144620958385993,
+					"15":
+						35.23580617550402,
+					"16":
+						-13.48434536976158,
+					"17":
+						-25.67426627663805
+				}
+			},
+		"(0,0,1,0,0,0,0,1,26,2)":
+			{"type":"act->point->val","representation":"simpletree","minimize":0,"regressor":
+				{
+					"10":
+						-1.938473165490322,
+					"14":
+						8.160120079952151,
+					"11":
+						6.654352913085177,
+					"13":
+						90.43117044261102
+				}
+			}
+	}
+}
