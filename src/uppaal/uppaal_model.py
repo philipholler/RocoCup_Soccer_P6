@@ -8,9 +8,12 @@ from uppaal import VERIFYTA_MODELS_PATH
 
 class UppaalStrategy:
 
-    def __init__(self) -> None:
+    def __init__(self, location_to_id, index_to_action, statevar_to_index, regressors) -> None:
         super().__init__()
-
+        self.statevar_to_index = statevar_to_index
+        self.index_to_action = index_to_action
+        self.location_to_id = location_to_id
+        self.regressors = regressors
 
 
 # Example: SeqGirl(const girl_id_t id) = Girl(id, true, false, false);

@@ -3,11 +3,11 @@ import queue
 
 from player import player
 import client_connection
-from player.strategy import Objective
+from player.playerstrategy import Objective
 import time
 import parsing
 import random as r
-import player.strategy as strategy
+import player.playerstrategy as strategy
 
 
 class Thinker(threading.Thread):
@@ -27,7 +27,7 @@ class Thinker(threading.Thread):
         self.current_objective: Objective = None
         self.last_action_time = 0
 
-        self.strategy = strategy.Strategy()
+        self.strategy = strategy.PlayerStrategy()
 
         self.my_bool = True
 

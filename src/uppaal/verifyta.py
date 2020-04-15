@@ -8,8 +8,9 @@ from shutil import copymode, move
 from tempfile import mkstemp
 
 from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from player.playerstrategy import PlayerStrategy
 from uppaal.regressor import Regressor
-from uppaal.uppaal_model import UppaalModel
+from uppaal.uppaal_model import UppaalModel, UppaalStrategy
 from uppaal import VERIFYTA_MODELS_PATH, VERIFYTA_OUTPUT_DIR_PATH, VERIFYTA_QUERIES_PATH, VERIFYTA_PATH
 from player.world_objects import Coordinate
 
@@ -43,11 +44,12 @@ def generate_strategy(wv: WorldViewCoach):
     while verifyta.poll() is None:
         time.sleep(0.001)
 
-    # 3. Input strategy to coach
-    passing_list = parse_passing_strategy(wv, model_team_members,
-                                       '/home/albot/PycharmProjects/RocoCup_Soccer_P6/src/uppaal/outputdir/passingstratnew')
-    # todo create representation of strategy and input to coach. Maybe return as object? - Philip
-    return
+    # Create strategy representation
+    strategy = parse_strategy('/home/albot/PycharmProjects/RocoCup_Soccer_P6/src/uppaal/outputdir/passingstratnew')
+    pass_list = extract_passes(strategy, model_team_members)
+
+    for (from_player, to_player) in pass_list:
+        print(str(from_player.num) + " to " + str(to_player.num))
 
 
 def find_applicable_strat(wv):
@@ -99,21 +101,26 @@ def get_pass_target(r, index_to_transition_dict, team_members):
     return team_members[target]
 
 
-def parse_passing_strategy(wv, team_members: [PlayerViewCoach], path_to_strat_file):
-    passes = []
-    strategy = ""
-    with open(path_to_strat_file, 'r') as f:
+def parse_strategy(path_to_strategy_file):
+    strategy_text = ""
+    with open(path_to_strategy_file, 'r') as f:
         for line in f:
-            strategy += line
+            strategy_text += line
 
-    index_to_transition: {} = _extract_transition_dict(strategy)
-    statevar_to_id: {} = _extract_statevars_to_index_dict(strategy)
-    location_to_id: {} = _extract_location_ids(strategy)
-    regressors: [] = _extract_regressors(strategy, statevar_to_id)
+    index_to_transition: {} = _extract_transition_dict(strategy_text)
+    statevar_to_index: {} = _extract_statevars_to_index_dict(strategy_text)
+    location_to_id: {} = _extract_location_ids(strategy_text)
+    regressors: [] = _extract_regressors(strategy_text, statevar_to_index)
 
-    for r in regressors:
-        from_player = get_ball_possessor(r, location_to_id, team_members)
-        to_player = get_pass_target(r, index_to_transition, team_members)
+    return UppaalStrategy(location_to_id, index_to_transition, statevar_to_index, regressors)
+
+
+def extract_passes(strategy: UppaalStrategy, team_members):
+    passes = []
+
+    for r in strategy.regressors:
+        from_player = get_ball_possessor(r, strategy.location_to_id, team_members)
+        to_player = get_pass_target(r, strategy.index_to_action, team_members)
         passes.append((from_player, to_player))
 
     return passes

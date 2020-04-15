@@ -18,7 +18,7 @@ class Objective:
         self.perform_action()
 
 
-class Strategy:
+class PlayerStrategy:
     def __init__(self) -> None:
         super().__init__()
         self.conga_count = -1
