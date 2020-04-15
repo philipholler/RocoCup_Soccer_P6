@@ -69,7 +69,7 @@ def parse_passing_strat(wv, path_to_strat_file):
 
     statevar_to_index_dict: {} = _extract_statevars_to_index_dict(strat_string)
 
-    regressors: [] = _extract_regressors(strat_string)
+    regressors: [] = _extract_regressors(strat_string, statevar_to_index_dict)
 
     for r in regressors:
         print(r)
@@ -134,7 +134,7 @@ def _update_model(wv, model: UPPAAL_MODEL, xml_file_name):
     model.save_xml_file(xml_file_name)
 
 
-def _extract_regressors(strat_string):
+def _extract_regressors(strat_string, state_vars_to_index_dict: {}):
     final_regressors = []
     # Get regressors part of strategy
     regre_text = re.search(r'"regressors":\{.*\}', strat_string, re.DOTALL)
@@ -161,7 +161,7 @@ def _extract_regressors(strat_string):
             cur_pair = pair.split(":")
             format_trans_val_pairs.append((int(cur_pair[0]), float(cur_pair[1])))
 
-        new_regressor = Regressor(statevars_vals, format_trans_val_pairs)
+        new_regressor = Regressor(statevars_vals, format_trans_val_pairs, state_vars_to_index_dict)
         final_regressors.append(new_regressor)
 
     return final_regressors
