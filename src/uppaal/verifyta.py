@@ -59,7 +59,6 @@ def find_applicable_strat(wv):
 
     return None
 
-
 def parse_passing_strat(wv, path_to_strat_file):
     strat_string = ""
     with open(path_to_strat_file, 'r') as f:
@@ -72,9 +71,8 @@ def parse_passing_strat(wv, path_to_strat_file):
 
     regressors: [] = _extract_regressors(strat_string)
 
-
-
-    # Find the opponents that are the closest to our closest players to the ball
+    for r in regressors:
+        print(r)
 
 
     return []
@@ -155,7 +153,8 @@ def _extract_regressors(strat_string):
         # Get pairs of transitions and values like ['2:89.09999999999999', '0:0']
         trans_val_text = re.search(r'"regressor":[\t\n]*\{[^}]*\}', reg, re.DOTALL)
         trans_val_text = trans_val_text.group(0)[13:-1].strip()
-        trans_val_pairs = [w.strip().replace("\n", "").replace("\t", "").replace('"', '').replace('{', "") for w in trans_val_text.split(',')]
+        trans_val_pairs = [w.strip().replace("\n", "").replace("\t", "").replace('"', '').replace('{', "") for w in
+                           trans_val_text.split(',')]
         # The final list of pairs
         format_trans_val_pairs = []
         for pair in trans_val_pairs:
@@ -212,6 +211,3 @@ wv.ball = BallOnlineCoach(Coordinate(0, 0), 0, 0)
 p = PlayerViewCoach("Team1", "1", False, Coordinate(0, 0), 0, 0, 0, 0, True)
 wv.players.append(p)
 generate_strategy(wv)
-
-
-
