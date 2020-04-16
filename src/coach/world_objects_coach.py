@@ -59,6 +59,7 @@ class WorldViewCoach:
             opposing_team_players.remove(closest)
             closest_opponents.append(closest)
 
+        # todo Sort by distance to their respective player in case amount of opponents < amount of team members
         return closest_opponents[:amount]
 
     def get_closest_players_to_ball(self, amount) -> [PlayerViewCoach]:

@@ -16,6 +16,37 @@ class UppaalStrategy:
         self.regressors = regressors
 
 
+class GlobalDeclaration:
+    # Must be called type and ident to avoid shadowing of python keywords type and id
+    def __init__(self, typ, ident, val) -> None:
+        super().__init__()
+        self.typ = typ
+        self.ident = ident
+        self.val = val
+        self.is_ident_only = False
+
+    def __repr__(self) -> str:
+        if self.is_ident_only:
+            return self.ident  # See function_decl method
+        if self.val is not None:
+            return "{0} {1} = {2};".format(self.typ, self.ident, self.val)
+        else:
+            return "{0} {1};".format(self.typ, self.ident)
+
+
+    @classmethod
+    def function_decl(cls, function_string):
+        instance = cls(None, function_string, None)  # Set ident to contain entire function
+        instance.is_ident_only = True
+        return instance
+
+    @classmethod
+    def single_string_decl(cls, string):
+        instance = cls(None, string, None)  # Set ident to contain entire function
+        instance.is_ident_only = True
+        return instance
+
+
 # Example: SeqGirl(const girl_id_t id) = Girl(id, true, false, false);
 class SystemDeclaration(object):
     def __init__(self, ident, typ, arguments: []):
@@ -43,6 +74,9 @@ class UppaalModel:
         self.system_decls: [SystemDeclaration]
         self.system_decls, self.system_line = self._extract_system_decl(self.root)
 
+        self.global_decls: [GlobalDeclaration]
+        self.global_decls = self._extract_global_decl(self.root)
+
         super().__init__()
 
     def save_xml_file(self, file_name_xml):
@@ -64,14 +98,18 @@ class UppaalModel:
                     'utf8'))
             ET.ElementTree(self.root).write(f, 'utf-8')
 
-    def set_arguments(self, ident: str, arguments: [str]):
+    def set_global_declaration_value(self, decl_name, param):
+        self.global_decls
+        pass
+
+    def set_system_decl_arguments(self, identity: str, arguments: [str]):
         for sys_decl in self.system_decls:
-            if sys_decl.ident == ident:
+            if sys_decl.ident == identity:
                 if sys_decl.numb_of_args != len(arguments):
-                    raise Exception("Wrong number of arguments parsed for system declaration {0}. Expected {1}, got {2} ".format(ident, sys_decl.numb_of_args, len(arguments)))
+                    raise Exception("Wrong number of arguments parsed for system declaration {0}. Expected {1}, got {2} ".format(identity, sys_decl.numb_of_args, len(arguments)))
                 sys_decl.arguments = arguments
                 return
-        raise Exception("{0} not found in system declarations".format(ident))
+        raise Exception("{0} not found in system declarations".format(identity))
 
     def _extract_template_string(self, xml_file_string):
         pass
@@ -85,18 +123,31 @@ class UppaalModel:
 
         # Extract all declarations from the lines
         decls = []
-        for l in lines:
-            if not l.startswith("//"):
-                ds = l.split(";")
-                for d in ds:
-                    d.replace(' ', "")
-                    if not d == "":
-                        decls.append(d)
+        i = 0
+        while i < len(lines):
+            l = lines[i]
 
-        for decl in decls:
-            self._parse_decl(decl)
+            if l.endswith("{"): # extract function string
+                function_string = l
+                while not lines[i+1].startswith("}"):
+                    i += 1
+                    l = lines[i]
+                    function_string += "\n" + l
+                function_string += "\n}"
+                i += 1
+                decls.append(GlobalDeclaration.single_string_decl(function_string))
 
-        return []
+            elif not l.startswith("//") and len(l) is not 0:
+                if "typedef" in l:
+                    decls.append(GlobalDeclaration.single_string_decl(l))
+                elif "=" in l:
+                    matches = re.match(r'((?:(?:const|hybrid) )?[^ ]*) ([^ ]*(?:\[.*\])?) = ([^ ]*);', l)
+                    decls.append(GlobalDeclaration(matches.group(1), matches.group(2), matches.group(3)))
+                else:
+                    matches = re.match(r'([^ ]*) ([^ ]*(?:\[.*\])?);', l)
+                    decls.append(GlobalDeclaration(matches.group(1), matches.group(2), None))
+            i += 1
+        return decls
 
     def _extract_system_decl(self, root):
         system_line = ""
@@ -166,16 +217,7 @@ class Template:
         return "(Template: ident: {0}, declarations: {1})".format(self.ident, self.declarations)
 
 
-class Declaration:
-    # Must be called typ and ident to avoid shadowing of python keywords type and id
-    def __init__(self, typ, ident, val) -> None:
-        super().__init__()
-        self.type = typ
-        self.ident = ident
-        self.val = val
 
-    def __repr__(self) -> str:
-        return "(Declaration: type: {0}, ident: {1}, val: {2})".format(self.type, self.ident, self.val)
 
 # model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
 # model.set_arguments("SeqGirl(const girl_id_t id)", ["id", "true", "true", "true"])

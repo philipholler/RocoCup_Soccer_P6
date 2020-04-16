@@ -15,6 +15,11 @@ from uppaal import VERIFYTA_MODELS_PATH, VERIFYTA_OUTPUT_DIR_PATH, VERIFYTA_QUER
 from player.world_objects import Coordinate
 
 SYSTEM_PLAYER_NAMES = ["player0", "player1", "player2", "player3", "player4"]
+PLAYER_POS_DECL_NAME = "player_pos"
+OPPONENT_POS_DECL_NAME = "opponent_pos"
+
+def get_player_system_name(player_num: int):
+    return "player" + str(player_num)
 
 
 def generate_strategy(wv: WorldViewCoach):
@@ -27,7 +32,7 @@ def generate_strategy(wv: WorldViewCoach):
     # Create model
     model = UppaalModel(xml_file_name)
     # Update model according to world view. Only works for SimplePassingModel currently.
-    model_team_members = _update_model(wv, model, xml_file_name)
+    model_team_members = _update_passing_model(wv, model, xml_file_name)
 
     # Update queries files with the right path
     path_to_strat_file = _update_queries_write_path(str(VERIFYTA_QUERIES_PATH / queries_file_name))
@@ -159,7 +164,16 @@ def _replace_in_file(file_path, pattern, subst):
     move(abs_path, file_path)
 
 
-def _update_model(wv, model: UppaalModel, xml_file_name):
+def to_2d_array_decl(players : [PlayerViewCoach]):
+    string = "{"
+    separator = ""
+    for player in players:
+        string += separator + "{" + str(player.coord.pos_x) + ", " + str(player.coord.pos_x) + "}"
+        separator = ","  # Only comma separate after first coordinate
+    return string + "}"
+
+
+def _update_passing_model(wv, model: UppaalModel, xml_file_name):
     '''
     UPPAAL current setup
     player0 = TeamPlayer(0, 10, 10, true);
@@ -168,22 +182,17 @@ def _update_model(wv, model: UppaalModel, xml_file_name):
     player3 = TeamPlayer(3, 30, 10, false);
     player4 = TeamPlayer(4, 60, 10, false);
     '''
-    # todo Modify to match new model
-    five_closest_players: [PlayerViewCoach] = wv.get_closest_team_players_to_ball(5)
+    closest_players: [PlayerViewCoach] = wv.get_closest_team_players_to_ball(5)
+    closest_opponents: [PlayerViewCoach] = wv.get_closest_opponents(closest_players, 3)
 
-    # Arguments:
-    # const player_id_t id, const int pos_x, const int pos_y, bool has_ball
-    i = 0
-    for play in five_closest_players:
-        if play.has_ball:
-            model.set_arguments(SYSTEM_PLAYER_NAMES[i], [play.num, play.coord.pos_x, play.coord.pos_y, 'true'])
-        else:
-            model.set_arguments(SYSTEM_PLAYER_NAMES[i], [play.num, play.coord.pos_x, play.coord.pos_y, 'false'])
-        i += 1
+    for i in range(0, len(closest_players)):
+        model.set_system_decl_arguments(SYSTEM_PLAYER_NAMES[i], i)
 
+    model.set_global_declaration_value(PLAYER_POS_DECL_NAME, to_2d_array_decl(closest_players))
+    model.set_global_declaration_value(OPPONENT_POS_DECL_NAME, to_2d_array_decl(closest_players))
     model.save_xml_file(xml_file_name)
 
-    return five_closest_players
+    return closest_players
 
 
 def _extract_regressors(strat_string, state_vars_to_index_dict: {}):
@@ -258,7 +267,7 @@ def _extract_statevars_to_index_dict(strat_string) -> {}:
     return statevar_name_to_index_dict
 
 
-'''
+
 wv = WorldViewCoach(0, "Team1")
 wv.ball = BallOnlineCoach(Coordinate(0, 0), 0, 0)
 wv.players.append(PlayerViewCoach("Team1", "0", False, Coordinate(0, 0), 0, 0, 0, 0, True))
@@ -267,7 +276,7 @@ wv.players.append(PlayerViewCoach("Team1", "2", False, Coordinate(30, 15), 0, 0,
 wv.players.append(PlayerViewCoach("Team1", "3", False, Coordinate(12, 12), 0, 0, 0, 0, False))
 wv.players.append(PlayerViewCoach("Team1", "4", False, Coordinate(3, 9), 0, 0, 0, 0, False))
 generate_strategy(wv)
-
+'''
 EMPTY_SPACE = " *\n *"
 '"locationnames":{(("[^"]*":{[^}]*})*,?)*}'
 '''
