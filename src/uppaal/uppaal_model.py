@@ -1,19 +1,160 @@
+import time
 import xml.etree.ElementTree as ET
 import re
+import subprocess
+from os import fdopen, remove
 
 from pathlib import Path
+from shutil import copymode, move
+from tempfile import mkstemp
 
-from uppaal import VERIFYTA_MODELS_PATH
+from uppaal import MODELS_PATH, OUTPUT_DIR_PATH, QUERIES_PATH, VERIFYTA_PATH
 
 
 class UppaalStrategy:
 
-    def __init__(self, location_to_id, index_to_action, statevar_to_index, regressors) -> None:
+    def __init__(self, strategy_name : str) -> None:
         super().__init__()
-        self.statevar_to_index = statevar_to_index
-        self.index_to_action = index_to_action
-        self.location_to_id = location_to_id
-        self.regressors = regressors
+        self.path_to_strat_file = OUTPUT_DIR_PATH / strategy_name
+        self.strategy_text = ""
+        with open(self.path_to_strat_file, 'r') as f:
+            for line in f:
+                self.strategy_text += line
+
+        self.index_to_transition: {} = self._extract_transition_dict(self.strategy_text)
+        self.statevar_to_index: {} = self._extract_statevars_to_index_dict(self.strategy_text)
+        self.location_to_id: {} = self._extract_location_ids(self.strategy_text)
+        self.regressors: [] = self._extract_regressors(self.strategy_text, self.statevar_to_index)
+
+    def _extract_location_ids(self, strategy: str):
+        location_name_to_id = {}
+        all_template_pattern = r'"locationnames":\{(.*)\},"r'
+        all_templates = re.search(all_template_pattern, strategy, re.DOTALL).group(1)
+
+        individual_template_pattern = r'"([^"]*)":\{([^\}]*)\}'
+        template_and_mappings = re.findall(individual_template_pattern, all_templates)
+
+        for (template_name, mappings) in template_and_mappings:
+            self.add_location_mappings(location_name_to_id, template_name, mappings)
+
+        return location_name_to_id
+
+    @staticmethod
+    def add_location_mappings(location_to_index, template_name, mappings):
+        index_location_pattern = r'"([0-9]*)":"([^"]*)"'
+        indices_and_locations = re.findall(index_location_pattern, mappings)
+
+        for (index, location) in indices_and_locations:
+            location_to_index[template_name + "." + location] = index
+
+    @staticmethod
+    def _extract_regressors(strat_string, state_vars_to_index_dict: {}):
+        final_regressors = []
+        # Get regressors part of strategy
+        regre_text = re.search(r'"regressors":\{.*\}', strat_string, re.DOTALL)
+        # Remove "regressors":{ and }
+        regre_text = regre_text.group(0)[14:-1].strip()
+        # Find each regressor
+        regressors = regre_text.split('},')
+        # Strip all elements from empty spaces
+        regressors = [w.strip() for w in regressors]
+
+        for reg in regressors:
+            # Get statevars value like: "(2,0,1,0,1,0,-1,1,1,0,0,0,0,0)"
+            statevars_vals = re.search(r'"\([-0-9,]*\)"', reg, re.DOTALL).group(0)
+            statevars_vals = statevars_vals.replace("(", "").replace('"', "").replace(")", "")
+            statevars_vals = statevars_vals.split(",")
+            # Get pairs of transitions and values like ['2:89.09999999999999', '0:0']
+            trans_val_text = re.search(r'"regressor":[\t\n]*\{[^}]*\}', reg, re.DOTALL)
+            trans_val_text = trans_val_text.group(0)[13:-1].strip()
+            trans_val_pairs = [w.strip().replace("\n", "").replace("\t", "").replace('"', '').replace('{', "") for w in
+                               trans_val_text.split(',')]
+            # The final list of pairs
+            format_trans_val_pairs = []
+            for pair in trans_val_pairs:
+                cur_pair = pair.split(":")
+                format_trans_val_pairs.append((int(cur_pair[0]), float(cur_pair[1])))
+
+            new_regressor = Regressor(statevars_vals, format_trans_val_pairs, state_vars_to_index_dict)
+            final_regressors.append(new_regressor)
+
+        return final_regressors
+
+    @staticmethod
+    def _extract_transition_dict(strat_string):
+        trans_dict = {}
+        # Get actions part of strategy
+        act_text = re.search(r'"actions":\{.*\},"s', strat_string, re.DOTALL)
+        # Remove "actions":{ and },"s
+        act_text = act_text.group(0)[11:-4].strip()
+        # Create list by separating at commas
+        act_lines = act_text.split('\n')
+        # Strip all elements from empty spaces
+        act_lines = [w.strip() for w in act_lines]
+
+        for l in act_lines:
+            matches = re.findall(r'"[^\"]*"', l, re.DOTALL)
+            index = str(matches[0]).replace('"', "")
+            value = str(matches[1]).replace('"', "")
+            trans_dict[index] = value
+
+        return trans_dict
+
+    @staticmethod
+    def _extract_statevars_to_index_dict(strategy_string) -> {}:
+        # Get statevars part of strategy
+        statevars = re.search(r'"statevars":\[[^\]]*\]', strategy_string, re.DOTALL)
+        # Remove "statevars":[ and ]
+        statevars = statevars.group(0).split('[')[1].split(']')[0]
+        # Create list by separating at commas
+        statevars = statevars.split(',')
+        # Strip all elements from empty spaces and quotes
+        statevars = [w.strip()[1:-1] for w in statevars]
+
+        statevar_name_to_index_dict = {}
+        i = 0
+        for statevar in statevars:
+            statevar_name_to_index_dict[statevar] = i
+            i += 1
+
+        return statevar_name_to_index_dict
+
+
+class Regressor:
+    def __init__(self, state_var_values: [], trans_val_pairs: [], state_vars_to_index_dict: {}) -> None:
+        self.state_var_values = state_var_values
+        # Tuples of (transition, value)
+        self.trans_val_pairs = trans_val_pairs
+        self.state_vars_to_index_dict = state_vars_to_index_dict
+        super().__init__()
+
+    def get_lowest_val_trans(self):
+        lowest = None
+        for pair in self.trans_val_pairs:
+            if lowest is None:
+                lowest = pair
+            elif lowest[1] > pair[1]:
+                lowest = pair
+        return lowest
+
+    def get_highest_val_trans(self):
+        highest = None
+        for pair in self.trans_val_pairs:
+            if highest is None:
+                highest = pair
+            elif highest[1] < pair[1]:
+                highest = pair
+        return highest
+
+    def get_value(self, state_var_name):
+        return self.state_var_values[self.state_vars_to_index_dict[state_var_name]]
+
+    def __repr__(self) -> str:
+        return "(State_var_values: {0}, trans_val_pairs {1})".format(self.state_var_values, self.trans_val_pairs)
+
+    def __str__(self) -> str:
+        return "(State_var_values: {0}, trans_val_pairs {1})".format(self.state_var_values, self.trans_val_pairs)
+
 
 
 class GlobalDeclaration:
@@ -66,8 +207,11 @@ class SystemDeclaration(object):
 
 
 class UppaalModel:
-    def __init__(self, xml_model_file) -> None:
-        self.tree = ET.parse(VERIFYTA_MODELS_PATH / xml_model_file)
+    def __init__(self, strategy_name) -> None:
+        self.strategy_name = strategy_name
+        self.xml_file_name = strategy_name + ".xml"
+        self.queries_file_name = strategy_name + ".q"
+        self.tree = ET.parse(MODELS_PATH / self.xml_file_name)
         self.root = self.tree.getroot()
 
         self.system_decls: [SystemDeclaration]
@@ -78,7 +222,7 @@ class UppaalModel:
 
         super().__init__()
 
-    def save_xml_file(self, file_name_xml):
+    def save_xml_file(self):
         system_decl_zone = self.root.find("./system")
 
         # Create system declarations string and fill out
@@ -96,7 +240,7 @@ class UppaalModel:
             global_decl_string += gd.get_uppaal_string() + "\n"
         global_decl_zone.text = global_decl_string
 
-        with open(VERIFYTA_MODELS_PATH / file_name_xml, 'wb') as f:
+        with open(MODELS_PATH / self.xml_file_name, 'wb') as f:
             # Include header to let UPPAAL know, the xml file is a UPPAAL file
             f.write(
                 '<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC \'-//Uppaal Team//DTD Flat System 1.1//EN\' \'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd\'>'.encode(
@@ -232,7 +376,52 @@ class Template:
         return "(Template: ident: {0}, declarations: {1})".format(self.ident, self.declarations)
 
 
+def _update_queries_write_path(model: UppaalModel):
+    query_path = QUERIES_PATH / model.queries_file_name
+    with open(query_path, 'r', encoding='utf8') as f:
+        for l in f:
+            stripped_line = l.strip()
+            if stripped_line.startswith("saveStrategy"):
+                strat = re.search(',.*\)', stripped_line)
+                strat_name = strat.group(0)[1:-1]
+                strat_file_name = model.strategy_name
+                newline = 'saveStrategy("' + str(
+                    OUTPUT_DIR_PATH / strat_file_name) + '",' + strat_name + ')' + '\n'
+                _replace_in_file(query_path, l, newline)
+                # This does not work for more than one saveStrategy call
+                break
 
+    return str(OUTPUT_DIR_PATH / strat_file_name)
+
+
+def _replace_in_file(file_path, pattern, subst):
+    # Create temp file
+    fh, abs_path = mkstemp()
+    with fdopen(fh, 'w', encoding='utf8') as new_file:
+        with open(file_path, encoding='utf8') as old_file:
+            for line in old_file:
+                new_file.write(line.replace(pattern, subst))
+    # Copy the file permissions from the old file to the new file
+    copymode(file_path, abs_path)
+    # Remove original file
+    remove(file_path)
+    # Move new file
+    move(abs_path, file_path)
+
+
+def execute_verifyta(model: UppaalModel):
+    model.save_xml_file()
+    _update_queries_write_path(model)
+    # verifyta_path --print-strategies outputdir xml_path queries_dir learning-method?
+    command = "{0} {1} {2}".format(VERIFYTA_PATH, MODELS_PATH / model.xml_file_name
+                                   , QUERIES_PATH / model.queries_file_name)
+
+    # Run uppaal verifyta command line tool
+    verifyta = subprocess.Popen(command, shell=True)
+
+    # Wait for uppaal to finish generating and printing strategy
+    while verifyta.poll() is None:
+        time.sleep(0.001)
 
 # model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
 # model.set_arguments("SeqGirl(const girl_id_t id)", ["id", "true", "true", "true"])
