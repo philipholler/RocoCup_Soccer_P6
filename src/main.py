@@ -43,7 +43,7 @@ atexit.register(shut_down_gracefully)
 time.sleep(2)
 
 for team in TEAM_NAMES:
-    for player_num in range(0, NUM_PLAYERS):
+    for player_num in range(NUM_PLAYERS):
         if player_num == 0:
             t = client.Client(team, UDP_PORT, UDP_IP, "goalie")
         else:

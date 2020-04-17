@@ -305,7 +305,8 @@ def create_flags(flag_strings):
     directions = _extract_flag_directions(known_flags_strings)
 
     flags = []
-    for i in range(0, len(known_flags_strings)):
+
+    for i in range(len(known_flags_strings)):
         flags.append(Flag(ids[i], coords[i], float(distances[i]), float(directions[i])))
 
     return flags
@@ -330,11 +331,9 @@ def find_mean_angle(angles):
     cluster_size_best_solution = 0
     best_cluster = []
 
-    for i in range(0, len(angles) - 1):
-        first_angle = angles[i]
-        cluster = [angles[i]]
-        for j in range(i + 1, len(angles)):
-            other_angle = angles[j]
+    for i, first_angle in enumerate(angles):
+        cluster = [first_angle]
+        for other_angle in angles[i+1:]:
             # Handle wrap-around 360 degrees
             if first_angle < 0 + acceptable_variance:
                 if other_angle > 360 - acceptable_variance:
@@ -871,15 +870,11 @@ def _extract_flag_coordinates(flag_ids):
 
 
 def _zip_flag_coords_distance(flags):
-    coords_zipped_distance = []
     flag_ids = _extract_flag_identifiers(flags)
     flag_coords = _extract_flag_coordinates(flag_ids)
     flag_distances = _extract_flag_distances(flags)
 
-    for i in range(0, len(flag_ids)):
-        coords_zipped_distance.append((flag_coords[i], flag_distances[i]))
-
-    return coords_zipped_distance
+    return zip(flag_coords, flag_distances)
 
 
 def _calculate_distance(coord1, coord2):
@@ -923,6 +918,7 @@ def _get_all_combinations(original_list):
     for i in range(0, len(original_list) - 1):
         for j in range(i + 1, len(original_list)):
             combinations.append((original_list[i], original_list[j]))
+            print(original_list[i], original_list[j])
 
     return combinations
 
@@ -997,12 +993,12 @@ def furthest_flag_distance_and_index(flags: [Flag]):
     furthest_dist = furthest_flag.relative_distance
     furthest_index = 0
 
-    for index in range(1, len(flags)):
-        flag = flags[index]
+    for i, flag in enumerate(flags[1:]):
         dist = flag.relative_distance
         if dist > furthest_dist:
-            furthest_index = index
+            furthest_index = i
             furthest_dist = dist
+
     return furthest_dist, furthest_index
 
 

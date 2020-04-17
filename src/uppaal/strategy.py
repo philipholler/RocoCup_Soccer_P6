@@ -1,3 +1,4 @@
+import functools
 import re
 from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 
@@ -10,35 +11,44 @@ PLAYER_POS_DECL_NAME = "player_pos[team_members][2]"
 OPPONENT_POS_DECL_NAME = "opponent_pos[opponents][2]"
 
 
+class StrategyGenerator:
+
+    def __init__(self, strategy_name, model_modifier, strategy_parser) -> None:
+        super().__init__()
+        self.strategy_name = strategy_name
+        self.strategy_parser = strategy_parser
+        self.model_modifier = model_modifier
+
+
 def generate_strategy(wv: WorldViewCoach):
-    applicable_strat = find_applicable_strat(wv)
-    if applicable_strat is None:
+    strategy_generator = find_applicable_strat(wv)
+    if strategy_generator is None:
         return
 
     # Create model
-    model = UppaalModel(applicable_strat)
+    model = UppaalModel(strategy_generator)
 
     # Update model data in accordance with chosen strategy
     model_team_members = _update_passing_model(wv, model)
     execute_verifyta(model)
 
-    uppaal_strategy = UppaalStrategy(applicable_strat)
+    uppaal_strategy = UppaalStrategy(strategy_generator.strategy_name)
 
-    pass_list = extract_passes(uppaal_strategy, model_team_members)
+    strat_result = strategy_generator.strategy_parser(model)
 
-    for (from_player, to_player) in pass_list:
+    for (from_player, to_player) in strat_result:
         print(str(from_player.num) + " to " + str(to_player.num))
 
 
-def find_applicable_strat(wv):
+def find_applicable_strat(world_view) -> StrategyGenerator:
     # Simple passing model is only applicable if 1 player is in possession of the ball
     play_in_poss: int = 0
-    for play in wv.players:
+    for play in world_view.players:
         if play.has_ball:
             play_in_poss += 1
 
     if play_in_poss == 1:
-        return "PassingModel"
+        return StrategyGenerator("PassingModel", _update_passing_model, extract_passes)
 
     return None
 
@@ -55,7 +65,7 @@ def _update_passing_model(wv, model: UppaalModel):
     closest_players: [PlayerViewCoach] = wv.get_closest_team_players_to_ball(5)
     closest_opponents: [PlayerViewCoach] = wv.get_closest_opponents(closest_players, 5)
 
-    for i in range(0, len(closest_players)):
+    for i in range(len(closest_players)):
         model.set_system_decl_arguments(SYSTEM_PLAYER_NAMES[i], [i])
 
     model.set_global_declaration_value(PLAYER_POS_DECL_NAME, to_2d_array_decl(closest_players))
@@ -65,11 +75,11 @@ def _update_passing_model(wv, model: UppaalModel):
 
 
 def get_ball_possessor(regressor: Regressor, locations, team_members):
-    for i in range(0, len(team_members)):
+    for i, player in enumerate(team_members):
         state_name = SYSTEM_PLAYER_NAMES[i] + ".location"
-        possesion_location_id = locations[state_name + ".InPossesion"]
-        if int(regressor.get_value(state_name)) == int(possesion_location_id):
-            return team_members[i]
+        possession_location_id = locations[state_name + ".InPossesion"]
+        if int(regressor.get_value(state_name)) == int(possession_location_id):
+            return player
     return -1
 
 
@@ -99,8 +109,7 @@ def to_2d_array_decl(players : [PlayerViewCoach]):
     return string + "}"
 
 
-
-
+"""
 wv = WorldViewCoach(0, "Team1")
 wv.ball = BallOnlineCoach(Coordinate(0, 0), 0, 0)
 wv.players.append(PlayerViewCoach("Team1", "0", False, Coordinate(6, 10), 0, 0, 0, 0, True))
@@ -113,7 +122,7 @@ wv.players.append(PlayerViewCoach("Team2", "1", False, Coordinate(28, 18), 0, 0,
 wv.players.append(PlayerViewCoach("Team2", "2", False, Coordinate(14, 12), 0, 0, 0, 0, False))
 wv.players.append(PlayerViewCoach("Team2", "3", False, Coordinate(28, 18), 0, 0, 0, 0, False))
 wv.players.append(PlayerViewCoach("Team2", "4", False, Coordinate(14, 22), 0, 0, 0, 0, False))
-generate_strategy(wv)
+generate_strategy(wv)"""
 '''
 EMPTY_SPACE = " *\n *"
 '"locationnames":{(("[^"]*":{[^}]*})*,?)*}'
