@@ -25,14 +25,13 @@ class GlobalDeclaration:
         self.val = val
         self.is_ident_only = False
 
-    def __repr__(self) -> str:
+    def get_uppaal_string(self) -> str:
         if self.is_ident_only:
             return self.ident  # See function_decl method
         if self.val is not None:
             return "{0} {1} = {2};".format(self.typ, self.ident, self.val)
         else:
             return "{0} {1};".format(self.typ, self.ident)
-
 
     @classmethod
     def function_decl(cls, function_string):
@@ -80,7 +79,7 @@ class UppaalModel:
         super().__init__()
 
     def save_xml_file(self, file_name_xml):
-        global_decl_zone = self.root.find("./system")
+        system_decl_zone = self.root.find("./system")
 
         # Create system declarations string and fill out
         sys_decl_string = ""
@@ -89,7 +88,13 @@ class UppaalModel:
         sys_decl_string = sys_decl_string + self.system_line + ";"
 
         # Set text inside the xml file
-        global_decl_zone.text = sys_decl_string
+        system_decl_zone.text = sys_decl_string
+
+        global_decl_zone = self.root.find("./declaration")
+        global_decl_string = ""
+        for gd in self.global_decls:
+            global_decl_string += gd.get_uppaal_string() + "\n"
+        global_decl_zone.text = global_decl_string
 
         with open(VERIFYTA_MODELS_PATH / file_name_xml, 'wb') as f:
             # Include header to let UPPAAL know, the xml file is a UPPAAL file
@@ -98,9 +103,12 @@ class UppaalModel:
                     'utf8'))
             ET.ElementTree(self.root).write(f, 'utf-8')
 
-    def set_global_declaration_value(self, decl_name, param):
-        self.global_decls
-        pass
+    def set_global_declaration_value(self, decl_name, new_value):
+        for decl in self.global_decls:
+            if decl.ident == decl_name:
+                decl.val = new_value
+                return
+        raise NameError(new_value)
 
     def set_system_decl_arguments(self, identity: str, arguments: [str]):
         for sys_decl in self.system_decls:
@@ -117,37 +125,50 @@ class UppaalModel:
     def _extract_global_decl(self, root: ET):
         global_decl_zone = root.find("./declaration")
 
-        lines = str(global_decl_zone.text).split("\n")
-        for s in lines:
-            s = s.strip()
+        all_lines = str(self.remove_comments(global_decl_zone.text)).split("\n")
+        code_lines = []
+        for line in all_lines:
+            # Filter out empty spaces and system main system declaration
+            if not line.isspace() and line:
+                code_lines.append(line)
 
         # Extract all declarations from the lines
         decls = []
         i = 0
-        while i < len(lines):
-            l = lines[i]
+        while i < len(code_lines):
+            line = code_lines[i]
 
-            if l.endswith("{"): # extract function string
-                function_string = l
-                while not lines[i+1].startswith("}"):
+            if line.endswith("{"): # extract function string
+                function_string = line
+                while not code_lines[i+1].startswith("}"):
                     i += 1
-                    l = lines[i]
-                    function_string += "\n" + l
+                    line = code_lines[i]
+                    function_string += "\n" + line
                 function_string += "\n}"
                 i += 1
                 decls.append(GlobalDeclaration.single_string_decl(function_string))
+            elif "typedef" in line:
+                decls.append(GlobalDeclaration.single_string_decl(line))
+            elif "=" in line:
+                matches = re.match(r'((?:(?:const|hybrid) )?[^ ]*) ([^ ]*(?:\[.*\])?) = (.*);', line)
+                decls.append(GlobalDeclaration(matches.group(1), matches.group(2), matches.group(3)))
+            else:
+                matches = re.match(r'([^ ]*) ([^ ]*(?:\[.*\])?);', line)
+                decls.append(GlobalDeclaration(matches.group(1), matches.group(2), None))
 
-            elif not l.startswith("//") and len(l) is not 0:
-                if "typedef" in l:
-                    decls.append(GlobalDeclaration.single_string_decl(l))
-                elif "=" in l:
-                    matches = re.match(r'((?:(?:const|hybrid) )?[^ ]*) ([^ ]*(?:\[.*\])?) = ([^ ]*);', l)
-                    decls.append(GlobalDeclaration(matches.group(1), matches.group(2), matches.group(3)))
-                else:
-                    matches = re.match(r'([^ ]*) ([^ ]*(?:\[.*\])?);', l)
-                    decls.append(GlobalDeclaration(matches.group(1), matches.group(2), None))
             i += 1
         return decls
+
+    def remove_comments(self, text):
+        comment_pat = re.compile('(?://[^\n]*|/\*(?:(?!\*/).)*\*/)', re.DOTALL)
+
+        # Remove all comments
+        if comment_pat.findall(text):
+            comments = comment_pat.findall(text)
+            for c in comments:
+                text = text.replace(c, "")
+
+        return text
 
     def _extract_system_decl(self, root):
         system_line = ""
@@ -156,13 +177,7 @@ class UppaalModel:
 
         # Text from the system declarations part of the UPPAAL file
         global_decl_text = global_decl_zone.text
-        comment_pat = re.compile('(?://[^\n]*|/\*(?:(?!\*/).)*\*/)', re.DOTALL)
-
-        # Remove all comments
-        if comment_pat.findall(global_decl_text):
-            comments = comment_pat.findall(global_decl_text)
-            for c in comments:
-                global_decl_text = global_decl_text.replace(c, "")
+        global_decl_text = self.remove_comments(global_decl_text)
 
         # Strip trailing or preceding whitespaces and or tabs
         lines = str(global_decl_text).split("\n")

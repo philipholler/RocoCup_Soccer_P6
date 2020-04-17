@@ -15,11 +15,8 @@ from uppaal import VERIFYTA_MODELS_PATH, VERIFYTA_OUTPUT_DIR_PATH, VERIFYTA_QUER
 from player.world_objects import Coordinate
 
 SYSTEM_PLAYER_NAMES = ["player0", "player1", "player2", "player3", "player4"]
-PLAYER_POS_DECL_NAME = "player_pos"
-OPPONENT_POS_DECL_NAME = "opponent_pos"
-
-def get_player_system_name(player_num: int):
-    return "player" + str(player_num)
+PLAYER_POS_DECL_NAME = "player_pos[team_members][2]"
+OPPONENT_POS_DECL_NAME = "opponent_pos[opponents][2]"
 
 
 def generate_strategy(wv: WorldViewCoach):
@@ -50,7 +47,9 @@ def generate_strategy(wv: WorldViewCoach):
         time.sleep(0.001)
 
     # Create strategy representation
-    strategy = parse_strategy('/home/albot/PycharmProjects/RocoCup_Soccer_P6/src/uppaal/outputdir/passingstratnew')
+    strategy = parse_strategy(VERIFYTA_OUTPUT_DIR_PATH / path_to_strat_file)
+
+
     pass_list = extract_passes(strategy, model_team_members)
 
     for (from_player, to_player) in pass_list:
@@ -65,7 +64,7 @@ def find_applicable_strat(wv):
             play_in_poss += 1
 
     if play_in_poss == 1:
-        return "SimplePassingModel"
+        return "PassingModel"
 
     return None
 
@@ -73,7 +72,8 @@ def find_applicable_strat(wv):
 def get_ball_possessor(regressor: Regressor, locations, team_members):
     for i in range(0, len(team_members)):
         state_name = SYSTEM_PLAYER_NAMES[i] + ".location"
-        if int(regressor.get_value(state_name)) == locations[state_name + ".InPossesion"]:
+        possesion_location_id = locations[state_name + ".InPossesion"]
+        if int(regressor.get_value(state_name)) == int(possesion_location_id):
             return team_members[i]
     return -1
 
@@ -88,8 +88,8 @@ def add_location_mappings(location_to_index, template_name, mappings):
 
 def _extract_location_ids(strategy: str):
     location_name_to_id = {}
-    all_template_pattern = r'"locationnames":\{(("[^"]*":\{([^\}])*\},?)*)\}'
-    all_templates = re.match(all_template_pattern, strategy).group(1)
+    all_template_pattern = r'"locationnames":\{(.*)\},"r'
+    all_templates = re.search(all_template_pattern, strategy, re.DOTALL).group(1)
 
     individual_template_pattern = r'"([^"]*)":\{([^\}]*)\}'
     template_and_mappings = re.findall(individual_template_pattern, all_templates)
@@ -168,7 +168,7 @@ def to_2d_array_decl(players : [PlayerViewCoach]):
     string = "{"
     separator = ""
     for player in players:
-        string += separator + "{" + str(player.coord.pos_x) + ", " + str(player.coord.pos_x) + "}"
+        string += separator + "{" + str(player.coord.pos_x) + ", " + str(player.coord.pos_y) + "}"
         separator = ","  # Only comma separate after first coordinate
     return string + "}"
 
@@ -183,13 +183,13 @@ def _update_passing_model(wv, model: UppaalModel, xml_file_name):
     player4 = TeamPlayer(4, 60, 10, false);
     '''
     closest_players: [PlayerViewCoach] = wv.get_closest_team_players_to_ball(5)
-    closest_opponents: [PlayerViewCoach] = wv.get_closest_opponents(closest_players, 3)
+    closest_opponents: [PlayerViewCoach] = wv.get_closest_opponents(closest_players, 5)
 
     for i in range(0, len(closest_players)):
-        model.set_system_decl_arguments(SYSTEM_PLAYER_NAMES[i], i)
+        model.set_system_decl_arguments(SYSTEM_PLAYER_NAMES[i], [i])
 
     model.set_global_declaration_value(PLAYER_POS_DECL_NAME, to_2d_array_decl(closest_players))
-    model.set_global_declaration_value(OPPONENT_POS_DECL_NAME, to_2d_array_decl(closest_players))
+    model.set_global_declaration_value(OPPONENT_POS_DECL_NAME, to_2d_array_decl(closest_opponents))
     model.save_xml_file(xml_file_name)
 
     return closest_players
@@ -266,15 +266,18 @@ def _extract_statevars_to_index_dict(strat_string) -> {}:
 
     return statevar_name_to_index_dict
 
-
-
 wv = WorldViewCoach(0, "Team1")
 wv.ball = BallOnlineCoach(Coordinate(0, 0), 0, 0)
-wv.players.append(PlayerViewCoach("Team1", "0", False, Coordinate(0, 0), 0, 0, 0, 0, True))
-wv.players.append(PlayerViewCoach("Team1", "1", False, Coordinate(15, 30), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team1", "2", False, Coordinate(30, 15), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team1", "3", False, Coordinate(12, 12), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team1", "4", False, Coordinate(3, 9), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team1", "0", False, Coordinate(6, 10), 0, 0, 0, 0, True))
+wv.players.append(PlayerViewCoach("Team1", "1", False, Coordinate(10, 22), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team1", "2", False, Coordinate(26, 18), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team1", "3", False, Coordinate(32, 18), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team1", "4", False, Coordinate(26, 12), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team2", "0", False, Coordinate(16, 20), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team2", "1", False, Coordinate(28, 18), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team2", "2", False, Coordinate(14, 12), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team2", "3", False, Coordinate(28, 18), 0, 0, 0, 0, False))
+wv.players.append(PlayerViewCoach("Team2", "4", False, Coordinate(14, 22), 0, 0, 0, 0, False))
 generate_strategy(wv)
 '''
 EMPTY_SPACE = " *\n *"

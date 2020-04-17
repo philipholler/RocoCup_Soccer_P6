@@ -52,6 +52,7 @@ class WorldViewCoach:
         opposing_team_players: [PlayerViewCoach] = list(filter(lambda x: (x.team != self.team), self.players))
         closest_opponents = []
         for team_member in team_players:
+
             opponents_sorted: [PlayerViewCoach] = sorted(opposing_team_players,
                                                          key=lambda opponent: opponent.coord.euclidean_distance_from(
                                                              team_member.coord))
