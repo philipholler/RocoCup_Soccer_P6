@@ -26,7 +26,7 @@ class _StrategyGenerator:
 
         # Update model data in accordance with chosen strategy and execute verifyta
         model_data = self._model_modifier(wv, model)
-        #execute_verifyta(model)
+        execute_verifyta(model)
 
         # Extract strategy
         uppaal_strategy = UppaalStrategy(self.strategy_name)
@@ -47,10 +47,11 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
     # Simple passing model is only applicable if 1 player is in possession of the ball
     play_in_poss: int = 0
     for play in world_view.players:
-        if play.has_ball:
+        if play.has_ball and play.team == world_view.team:
             play_in_poss += 1
 
     if play_in_poss == 1:
+        print("PassingMODEL ;)!!!")
         return _StrategyGenerator("PassingModel", _update_passing_model, _extract_passes)
 
     return None
@@ -71,8 +72,8 @@ def _update_passing_model(wv, model: UppaalModel):
     for i in range(len(closest_players)):
         model.set_system_decl_arguments(SYSTEM_PLAYER_NAMES[i], [i])
 
-    model.set_global_declaration_value(PLAYER_POS_DECL_NAME, _to_2d_array_decl(closest_players))
-    model.set_global_declaration_value(OPPONENT_POS_DECL_NAME, _to_2d_array_decl(closest_opponents))
+    model.set_global_declaration_value(PLAYER_POS_DECL_NAME, _to_2d_int_array_decl(closest_players))
+    model.set_global_declaration_value(OPPONENT_POS_DECL_NAME, _to_2d_int_array_decl(closest_opponents))
 
     return closest_players
 
@@ -98,35 +99,16 @@ def _extract_passes(strategy: UppaalStrategy, team_members):
     for r in strategy.regressors:
         from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
         to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
-        passes.append((from_player.num, to_player.num))
+        passes.append("(" + str(from_player.num) + " pass " + str(to_player.num) + ")")
 
     return passes
 
 
-def _to_2d_array_decl(players : [PlayerViewCoach]):
+def _to_2d_int_array_decl(players : [PlayerViewCoach]):
     string = "{"
     separator = ""
     for player in players:
-        string += separator + "{" + str(player.coord.pos_x) + ", " + str(player.coord.pos_y) + "}"
+        string += separator + "{" + str(round(player.coord.pos_x)) + ", " + str(round(player.coord.pos_y)) + "}"
         separator = ","  # Only comma separate after first coordinate
     return string + "}"
 
-
-
-wv = WorldViewCoach(0, "Team1")
-wv.ball = BallOnlineCoach(Coordinate(0, 0), 0, 0)
-wv.players.append(PlayerViewCoach("Team1", "0", False, Coordinate(6, 10), 0, 0, 0, 0, True))
-wv.players.append(PlayerViewCoach("Team1", "1", False, Coordinate(10, 22), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team1", "2", False, Coordinate(26, 18), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team1", "3", False, Coordinate(32, 18), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team1", "4", False, Coordinate(26, 12), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team2", "0", False, Coordinate(16, 20), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team2", "1", False, Coordinate(28, 18), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team2", "2", False, Coordinate(14, 12), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team2", "3", False, Coordinate(28, 18), 0, 0, 0, 0, False))
-wv.players.append(PlayerViewCoach("Team2", "4", False, Coordinate(14, 22), 0, 0, 0, 0, False))
-print(generate_strategy(wv))
-'''
-EMPTY_SPACE = " *\n *"
-'"locationnames":{(("[^"]*":{[^}]*})*,?)*}'
-'''

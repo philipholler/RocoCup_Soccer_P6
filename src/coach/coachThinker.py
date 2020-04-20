@@ -5,6 +5,7 @@ import parsing
 from coach.world_objects_coach import WorldViewCoach
 
 import client_connection
+from uppaal import strategy
 
 
 class CoachThinker(threading.Thread):
@@ -52,5 +53,10 @@ class CoachThinker(threading.Thread):
         self._stop_event.set()
 
     def update_strategy(self):
+        strat = strategy.generate_strategy(self.world_view)
+        if strat is not None:
+            print(' '.join(strat))
+            self.say(' '.join(strat))
 
-        pass
+    def say(self, msg):
+        self.connection.action_queue.put('(say (freeform "{0}"))'.format(msg))

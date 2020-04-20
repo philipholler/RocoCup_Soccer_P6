@@ -142,7 +142,7 @@ def parse_message_online_coach(msg: str, team: str, world_view: WorldViewCoach):
 
 def parse_message_update_state(msg: str, ps: PlayerState):
     if msg.startswith("(error"):
-        print("Player num {0}, team {1}, received error: {2}".format(ps.player_num, ps.team_name, msg))
+        print("Player num {0}, team {1}, received error: {2}".format(ps.num, ps.team_name, msg))
         return
 
 
@@ -224,7 +224,7 @@ def _parse_see(msg, ps: player.PlayerState):
     flags = create_flags(flag_strings)
 
     _approx_position(flags, ps)
-    _approx_glob_angle(flags, ps)
+    _approx_body_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
@@ -359,7 +359,7 @@ def find_mean_angle(angles):
     return average(best_cluster) % 360
 
 
-def _approx_glob_angle(flags: [Flag], ps):
+def _approx_body_angle(flags: [Flag], ps):
     if not ps.position.is_value_known():  # todo Make time dependent? (Magnus)
         return
 
@@ -369,14 +369,14 @@ def _approx_glob_angle(flags: [Flag], ps):
     player_coord = ps.position.get_value()
     for flag in flags:
         radians_between_flag_player = calculate_full_circle_origin_angle(flag.coordinate, player_coord)
-        player_angle = float(radians_between_flag_player) - math.radians(float(flag.relative_direction))
-        estimated_player_angle = math.degrees(player_angle) % 360
+        global_angle = float(radians_between_flag_player) - math.radians(float(flag.relative_direction))
+        estimated_body_angle = math.degrees(global_angle - ps.body_state.neck_angle) % 360
 
-        estimated_angles.append(estimated_player_angle)
+        estimated_angles.append(estimated_body_angle)
 
     mean_angle = find_mean_angle(estimated_angles)
     if mean_angle is not None:
-        ps.player_angle.set_value(mean_angle, ps.now())
+        ps.body_angle.set_value(mean_angle, ps.now())
 
 
 
@@ -410,12 +410,9 @@ def _extract_flag_directions(flag_strings):
 # Or B
 # distance, direction, dist_change, dir_change
 def _parse_ball(ball: str, ps: player.PlayerState):
-    # If ball is not present at all
-    if ball is None:
+    # If ball is not present at all or only seen behind the player
+    if ball is None or ball.startswith("((B"):
         return
-    # Unknown see object (out of field of view)
-    if ball.startswith("((B"):
-        return world_objects.Ball(None, None, None, None, None)
 
     # Remove ) from the items
     ball = str(ball).replace(")", "")
@@ -444,17 +441,16 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     #                                                                                            dir_chng))
     ball_coord = None
     # The position of the ball can only be calculated, if the position of the player is known
-    if ps.position.is_value_known():
+    if ps.position.is_value_known() and ps.get_global_angle().is_value_known():
         pos: Coordinate = ps.position.get_value()
         ball_coord: Coordinate = get_object_position(object_rel_angle=int(direction), dist_to_obj=float(distance),
                                                      my_x=pos.pos_x,
                                                      my_y=pos.pos_y,
-                                                     my_global_angle=ps.player_angle.get_value())
+                                                     my_global_angle=ps.get_global_angle().get_value())
 
-    new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
-                                  coord=ball_coord)
-
-    ps.world_view.ball.set_value(new_ball, ps.world_view.sim_time)
+        new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
+                                      coord=ball_coord)
+        ps.world_view.ball.set_value(new_ball, ps.get_global_angle().last_updated_time)
 
 
 # Parse this: (p "team"? num? goalie?)
@@ -673,7 +669,7 @@ def _parse_players(players: [], ps: player.PlayerState):
         if ps.position.is_value_known():
             other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
-                                                     my_global_angle=float(ps.player_angle.get_value()))
+                                                     my_global_angle=float(ps.body_angle.get_value()))
 
         new_player = ObservedPlayer(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
                                     , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
@@ -692,7 +688,7 @@ def _parse_init(msg, ps: player.PlayerState):
     regex = re.compile("\\(init ([lr]) ([0-9]*)")
     matched = regex.match(msg)
     ps.world_view.side = matched.group(1)
-    ps.player_num = int(matched.group(2))
+    ps.num = int(matched.group(2))
 
 def _parse_hear_coach(text: str, coach_world_view):
     split_by_whitespaces = re.split('\\s+', text)
@@ -811,7 +807,7 @@ def _parse_body_sense(text: str, ps: player):
     ps.body_state.capacity = float(matched.group(5))
     ps.body_state.speed = float(matched.group(6))
     ps.body_state.direction_of_speed = int(matched.group(7))
-    ps.body_state.head_angle = int(matched.group(9))
+    ps.body_state.neck_angle = int(matched.group(8))
     ps.body_state.arm_movable_cycles = int(matched.group(17))
     ps.body_state.arm_expire_cycles = int(matched.group(18))
     ps.body_state.distance = float(matched.group(19))
@@ -918,7 +914,6 @@ def _get_all_combinations(original_list):
     for i in range(0, len(original_list) - 1):
         for j in range(i + 1, len(original_list)):
             combinations.append((original_list[i], original_list[j]))
-            print(original_list[i], original_list[j])
 
     return combinations
 

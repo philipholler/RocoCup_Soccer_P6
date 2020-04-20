@@ -20,7 +20,7 @@ def shut_down_gracefully():
     soccer_monitor.send_signal(signal.SIGINT)
 
 TEAM_NAMES = ["Team1", "Team2"]
-NUM_PLAYERS = 11
+NUM_PLAYERS = 5
 
 player_threads = []
 coach_1: Coach
@@ -32,7 +32,7 @@ UDP_PORT = 6000
 # server::say_coach_cnt_max=-1
 # server::freeform_send_period=1
 # server::freeform_wait_period=0
-soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1"], shell=True)
+soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true"], shell=True)
 # Use soccerwindow2: soccerwindow2 --kill-server
 # Use regular monitor: rcssmonitor
 soccer_monitor = subprocess.Popen(["rcssmonitor"], shell=True)
@@ -55,4 +55,4 @@ coach_1 = Coach(TEAM_NAMES[0], 6002, UDP_IP)
 coach_1.start()
 
 coach_2 = Coach(TEAM_NAMES[1], 6002, UDP_IP)
-coach_2.start()
+#coach_2.start()

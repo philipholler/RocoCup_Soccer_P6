@@ -11,33 +11,37 @@ class PlayerState:
 
     def __init__(self):
         self.team_name = ""
-        self.player_num = -1
+        self.num = -1
         self.player_type = None
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
-        self.player_angle: PrecariousData = PrecariousData.unknown()
-        self.last_turn_time = 0
+        self.body_angle: PrecariousData = PrecariousData.unknown()
+        self.action_history = ActionHistory()
         self.body_state = BodyState()
         super().__init__()
 
     def __str__(self) -> str:
         return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name
-                                                                                  , self.player_num, self.position)
+                                                                                  , self.num, self.position)
 
-    def facing(self, coordinate, delta):
-        if not self.player_angle.is_value_known() or not self.position.is_value_known():
+    def get_global_angle(self):
+        if self.body_angle.is_value_known():
+            neck_angle = self.body_state.neck_angle
+            return PrecariousData(self.body_angle.get_value() + neck_angle, self.body_angle.last_updated_time)
+        else:
+            return PrecariousData.unknown()
+
+    def body_facing(self, coordinate, delta):
+        if not self.body_angle.is_value_known() or not self.position.is_value_known():
             # should this return unknown?(None?)
             return False
 
         expected_angle = math.degrees(calculate_full_circle_origin_angle(coordinate, self.position.get_value()))
-        return abs(geometry.smallest_angle_difference(expected_angle, self.player_angle.get_value())) < delta
+        return abs(geometry.smallest_angle_difference(expected_angle, self.body_angle.get_value())) < delta
 
-    def is_near(self, coordinate: Coordinate):
+    def is_near(self, coordinate: Coordinate, allowed_delta=0.5):
         if not self.position.is_value_known():
             return False
-
-        # temporary value
-        allowed_delta = 0.8
 
         distance = coordinate.euclidean_distance_from(self.position.get_value())
         return distance < allowed_delta
@@ -46,11 +50,17 @@ class PlayerState:
         minimum_last_update_time = self.now() - 10
         ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
         if ball_known:
-            return self.is_near(self.world_view.ball.get_value().coord)
+            return self.is_near(self.world_view.ball.get_value().coord, 1.0)
         return False
 
     def now(self):
         return self.world_view.sim_time
+
+
+class ActionHistory:
+    def __init__(self) -> None:
+        self.last_turn_time = 0
+        self.last_orientation_action = 0
 
 
 class BodyState:
@@ -62,7 +72,7 @@ class BodyState:
         self.capacity = 0
         self.speed = 0
         self.direction_of_speed = 0
-        self.head_angle = 0
+        self.neck_angle = 0
         self.arm_movable_cycles = 0
         self.arm_expire_cycles = 0
         self.distance = 0
@@ -86,6 +96,9 @@ class WorldView:
 
     def __repr__(self) -> str:
         return super().__repr__()
+
+    def ticks_ago(self, ticks):
+        return self.sim_time - ticks
 
 
 
