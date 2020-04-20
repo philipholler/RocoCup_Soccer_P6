@@ -26,7 +26,7 @@ class _StrategyGenerator:
 
         # Update model data in accordance with chosen strategy and execute verifyta
         model_data = self._model_modifier(wv, model)
-        execute_verifyta(model)
+        #execute_verifyta(model)
 
         # Extract strategy
         uppaal_strategy = UppaalStrategy(self.strategy_name)
@@ -51,7 +51,6 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
             play_in_poss += 1
 
     if play_in_poss == 1:
-        print("PassingMODEL ;)!!!")
         return _StrategyGenerator("PassingModel", _update_passing_model, _extract_passes)
 
     return None

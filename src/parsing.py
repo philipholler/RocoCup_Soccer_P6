@@ -729,7 +729,6 @@ def _parse_hear(text: str, ps: PlayerState):
     split_by_whitespaces = re.split('\\s+', text)
     time = split_by_whitespaces[1]
     ps.world_view.sim_time = int(time)  # Update players understanding of time
-
     sender = split_by_whitespaces[2]
     if sender == "referee":
         regex_string = "\\(hear ({0}) referee ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
@@ -743,7 +742,10 @@ def _parse_hear(text: str, ps: PlayerState):
     elif sender == "self":
         return
     elif sender == "online_coach_left":
-        return  # todo Handle incoming messages from online coach
+        if ps.world_view.side == "l":
+            coach_command_pattern = '.*"(.*)".*'
+            matches = re.match(coach_command_pattern, text)
+            print(matches.group(1))
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":

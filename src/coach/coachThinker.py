@@ -44,7 +44,8 @@ class CoachThinker(threading.Thread):
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
             parsing.parse_message_online_coach(msg, self.team, self.world_view)
-            self.update_strategy()
+
+        self.update_strategy()
 
         # USE THIS FOR SENDING MESSAGES TO PLAYERS
         # self.connection.action_queue.put('(say (freeform "MSG"))')
@@ -55,8 +56,7 @@ class CoachThinker(threading.Thread):
     def update_strategy(self):
         strat = strategy.generate_strategy(self.world_view)
         if strat is not None:
-            print(' '.join(strat))
             self.say(' '.join(strat))
 
     def say(self, msg):
-        self.connection.action_queue.put('(say (freeform "{0}"))'.format(msg))
+        self.connection.action_queue.put('(say (freeform "{0}"))'.format(msg, self.world_view.sim_time))
