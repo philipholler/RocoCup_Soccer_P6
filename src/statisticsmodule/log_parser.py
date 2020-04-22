@@ -13,8 +13,8 @@ ACTION_LOG_PATTERN = '*.rcl'
 
 def parse_logs():
     game = statistics.Game()
-    parse_log_name(get_newest_server_log(), game)
-    log_name = str(get_newest_server_log())
+    log_name = get_newest_server_log()
+    parse_log_name(log_name, game)
 
     file = open(Path(__file__).parent.parent / log_name, 'r')
 

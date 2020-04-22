@@ -8,6 +8,7 @@ from coaches.coach.coach import Coach
 from coaches.trainer.trainer_client import Trainer
 from statisticsmodule import log_parser
 
+
 def shut_down_gracefully():
     print("Shutting down...")
     for player in player_threads:
@@ -22,6 +23,7 @@ def shut_down_gracefully():
         trainer.join()
     soccer_sim.send_signal(signal.SIGINT)
     soccer_monitor.send_signal(signal.SIGINT)
+
 
 TEAM_NAMES = ["Team1", "Team2"]
 NUM_PLAYERS = 5
@@ -40,9 +42,13 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH = 6000, 6001, 6002
 # server::freeform_send_period=1
 # server::freeform_wait_period=0
 if trainer_mode:
-    soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true server::clang_mess_delay = 0"], shell=True)
+    soccer_sim = subprocess.Popen([
+                                      "rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true server::clang_mess_delay = 0"],
+                                  shell=True)
 else:
-    soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0"], shell=True)
+    soccer_sim = subprocess.Popen([
+                                      "rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0"],
+                                  shell=True)
 
 # Use soccerwindow2: soccerwindow2 --kill-server
 # Use regular monitor: rcssmonitor
@@ -65,7 +71,6 @@ for team in TEAM_NAMES:
             t = client.Client(team, UDP_PORT_PLAYER, UDP_IP, "NaN")
             t.start()
         player_threads.append(t)
-
 
 if trainer_mode:
     trainer = Trainer(UDP_PORT_TRAINER, UDP_IP)
