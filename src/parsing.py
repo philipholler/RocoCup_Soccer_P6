@@ -604,6 +604,7 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
     if possessor.coord.euclidean_distance_from(wv.ball.coord) < 1:
         possessor.has_ball = True
 
+
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)
 # ((p "Team1" 5) 30 -41 0 0)
 # 1: (ObjName Distance Direction DistChange DirChange BodyFacingDir HeadFacingDir [PointDir] [t] [k]])
@@ -611,7 +612,7 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
 # 3: (ObjName Distance Direction)
 # 4: (ObjName Direction)
 def _parse_players(players: [], ps: player.PlayerState):
-    ps.world_view.other_players.clear()
+
     for cur_player in players:
         # Unknown see object (out of field of view)
         if cur_player.startswith("((P"):
@@ -656,36 +657,36 @@ def _parse_players(players: [], ps: player.PlayerState):
             continue
         # If only distance and direction
         elif len(split_by_whitespaces) == 2:
-            distance = split_by_whitespaces[0]
-            direction = split_by_whitespaces[1]
+            distance = float(split_by_whitespaces[0])
+            direction = float(split_by_whitespaces[1])
         # If Distance Direction DistChange DirChange
         elif len(split_by_whitespaces) == 4:
-            distance = split_by_whitespaces[0]
-            direction = split_by_whitespaces[1]
+            distance = float(split_by_whitespaces[0])
+            direction = float(split_by_whitespaces[1])
             dist_chng = split_by_whitespaces[2]
             dir_chng = split_by_whitespaces[3]
         # If Distance Direction DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
         elif len(split_by_whitespaces) >= 6:
-            distance = split_by_whitespaces[0]
-            direction = split_by_whitespaces[1]
+            distance = float(split_by_whitespaces[0])
+            direction = float(split_by_whitespaces[1])
             dist_chng = split_by_whitespaces[2]
             dir_chng = split_by_whitespaces[3]
-            body_dir = split_by_whitespaces[4]
-            head_dir = split_by_whitespaces[5]
+            body_dir = float(split_by_whitespaces[4])
+            head_dir = float(split_by_whitespaces[5])
 
         my_pos: Coordinate = ps.position.get_value()
         other_player_coord = PrecariousData.unknown()
 
         if ps.position.is_value_known():
-            other_player_coord = get_object_position(object_rel_angle=float(direction), dist_to_obj=float(distance),
+            other_player_coord = get_object_position(object_rel_angle=direction, dist_to_obj=distance,
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
-                                                     my_global_angle=float(ps.body_angle.get_value()))
+                                                     my_global_angle=ps.body_angle.get_value())
 
         new_player = ObservedPlayer(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
                                     , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
                                     , coord=other_player_coord)
 
-        ps.world_view.other_players.append(new_player)
+        ps.world_view.update_player_view(new_player)
 
 
 def _parse_init_online_coach(msg, wv: WorldView):

@@ -21,7 +21,7 @@ def shut_down_gracefully():
 
 
 TEAM_NAMES = ["Team1", "Team2"]
-NUM_PLAYERS = 2
+NUM_PLAYERS = 4
 
 player_threads = []
 coach_1: Coach

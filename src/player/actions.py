@@ -27,9 +27,6 @@ def jog_towards(state: PlayerState, target_position: Coordinate):
         return orient_self(state)
 
     if not state.body_facing(target_position, 6) and history.last_turn_time < state.body_angle.last_updated_time:
-        if state.team_name == "Team1" and state.num == 2:
-            print(str(state.body_angle.get_value()))
-
         rotation = calculate_relative_angle(state, target_position)
 
         history.last_turn_time = state.now()
@@ -51,15 +48,17 @@ def jog_towards_ball(state: PlayerState):
     return jog_towards(state, state.world_view.ball.get_value().coord)
 
 
-def choose_rand_player(player_passing : PlayerState):
+def choose_rand_player(player_passing: PlayerState):
     if len(player_passing.world_view.other_players) != 0:
         return player_passing.world_view.other_players[0]
     return None
 
 
-def get_player(target_player_num, team_name, state: PlayerState):
-    for p in state.world_view.other_players:
-        if p.num is not None and int(p.num) == target_player_num and p.team == team_name:
+def get_player(target_player_num, state: PlayerState):
+    team_players = state.world_view.get_teammates(state.team_name, max_data_age=4)
+    for p in team_players:
+        if p.num is not None and int(p.num) == int(target_player_num):
+            print(p.num)
             return p
 
 
@@ -69,9 +68,9 @@ def pass_ball_to(target_player_num, state: PlayerState):
     if world.ball.is_value_known(world.ticks_ago(5)) and state.position.is_value_known(world.ticks_ago(5)):
         ball = world.ball.get_value()
         if ball.coord.euclidean_distance_from(state.position.get_value()) < MAXIMUM_KICK_DISTANCE:
-            target = get_player(target_player_num, state.team_name, state)
+            target = get_player(target_player_num, state)
             if target is not None:
-                return "(kick " + str(calculate_power(target.distance)) + " " + str(target.direction) + ")"
+                return "(kick " + str(calculate_power(target.distance)) + " " + str(target.direction - state.body_state.neck_angle) + ")"
             else:
                 return orient_self(state)
         else:

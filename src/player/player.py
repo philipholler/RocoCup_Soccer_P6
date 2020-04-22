@@ -2,7 +2,7 @@ import math
 
 import geometry
 from geometry import calculate_full_circle_origin_angle
-from player.world_objects import PrecariousData, Coordinate
+from player.world_objects import PrecariousData, Coordinate, ObservedPlayer
 
 MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manual
 
@@ -88,7 +88,7 @@ class BodyState:
 class WorldView:
     def __init__(self, sim_time):
         self.sim_time = sim_time
-        self.other_players = []
+        self.other_players: [PrecariousData] = []
         self.ball: PrecariousData = PrecariousData.unknown()
         self.goals = []
         self.lines = []
@@ -101,7 +101,17 @@ class WorldView:
     def ticks_ago(self, ticks):
         return self.sim_time - ticks
 
-    def get_teammates(self, team):
-        return list(filter(lambda x: (x.team == team), self.other_players))
+    def get_teammates(self, team, max_data_age):
+        precarious_filtered = filter(lambda x: (x.is_value_known(self.sim_time - max_data_age)
+                                                and x.get_value().team == team), self.other_players)
+        return list(map(lambda x: x.get_value(), precarious_filtered))
 
+    def update_player_view(self, observed_player: ObservedPlayer):
+        for i, data_point in enumerate(self.other_players):
+            p = data_point.get_value()
+            if p.num == observed_player.num:
+                self.other_players[i].set_value(observed_player, self.sim_time)
+                return
+        # Add new data point if player does not already exist in list
+        self.other_players.append(PrecariousData(observed_player, self.sim_time))
 

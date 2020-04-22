@@ -37,7 +37,6 @@ def determine_objective(state: PlayerState, current_objective: Objective):
 
     if state.is_near_ball():
         pass_target = _find_pass_target(state)
-
         if pass_target is None:
             return orient_objective(state)
 
@@ -79,7 +78,7 @@ def _find_pass_target(state: PlayerState):
                 if state.num == pair[0]:
                     return pair[1]
 
-    team_members = state.world_view.get_teammates(state.team_name)
+    team_members = state.world_view.get_teammates(state.team_name, max_data_age=4)
     if len(team_members) is 0:
         return None
     return choice(team_members).num
