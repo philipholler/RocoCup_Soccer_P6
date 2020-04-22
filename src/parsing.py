@@ -103,7 +103,7 @@ def _update_time(msg, state: PlayerState):
 
 def parse_message_trainer(msg: str, world_view: WorldViewCoach):
     if msg.startswith("(error"):
-        print("Trainer received error: {1}".format(msg))
+        print("Trainer received error: {0}".format(msg))
         return
     # The server_param and player_param files do not contain a time stamp
     # Can be used to get the configuration of the server and player
