@@ -71,8 +71,8 @@ if trainer_mode:
     trainer = Trainer(UDP_PORT_TRAINER, UDP_IP)
     trainer.start()
 
-coach_1 = Coach(TEAM_NAMES[0], 6002, UDP_IP)
+coach_1 = Coach(TEAM_NAMES[0], UDP_PORT_COACH, UDP_IP)
 coach_1.start()
 
-coach_2 = Coach(TEAM_NAMES[1], 6002, UDP_IP)
+coach_2 = Coach(TEAM_NAMES[1], UDP_PORT_COACH, UDP_IP)
 coach_2.start()
