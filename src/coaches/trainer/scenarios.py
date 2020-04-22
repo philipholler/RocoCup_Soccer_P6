@@ -20,7 +20,6 @@ passing_strat = [
     "(move (player Team1 3) 26 18))",
     "(move (player Team1 4) 32 18))",
     "(move (player Team1 5) 26 12))",
-
     "(move (player Team2 1) 16 20))",
     "(move (player Team2 2) 28 18))",
     "(move (player Team2 3) 25 0))",
