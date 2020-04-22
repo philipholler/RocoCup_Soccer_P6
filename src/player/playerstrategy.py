@@ -49,11 +49,7 @@ def determine_objective(state: PlayerState, current_objective: Objective):
             return Objective(lambda: actions.jog_towards_ball(state),
                              lambda: state.is_near_ball())
 
-    if state.team_name == "Team1":
-        target_position = starting_player_pos[0][state.num - 1]
-    else:
-        target_position = starting_player_pos[1][state.num - 1]
-    target_position = Coordinate(target_position[0], target_position[1])
+    target_position = state.get_global_play_pos()
 
     if state.is_near(target_position):
         new_objective = orient_objective(state)

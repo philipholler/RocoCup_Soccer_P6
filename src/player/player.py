@@ -27,6 +27,18 @@ class PlayerState:
         return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name
                                                                                   , self.num, self.position)
 
+    def get_global_start_pos(self):
+        if self.world_view.side == "l":
+            return Coordinate(self.starting_position.pos_x, -self.starting_position.pos_y)
+        else:
+            return Coordinate(-self.starting_position.pos_x, self.starting_position.pos_y)
+
+    def get_global_play_pos(self):
+        if self.world_view.side == "l":
+            return Coordinate(self.playing_position.pos_x, -self.playing_position.pos_y)
+        else:
+            return Coordinate(-self.playing_position.pos_x, self.playing_position.pos_y)
+
     def get_global_angle(self):
         if self.body_angle.is_value_known():
             neck_angle = self.body_state.neck_angle
