@@ -2,7 +2,7 @@ import queue
 import threading
 import time
 import parsing
-from coach.world_objects_coach import WorldViewCoach
+from coaches.world_objects_coach import WorldViewCoach
 
 import client_connection
 from uppaal import strategy

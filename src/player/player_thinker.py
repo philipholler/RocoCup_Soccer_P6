@@ -8,6 +8,8 @@ import time
 import parsing
 import random as r
 from player.playerstrategy import determine_objective
+import player.playerstrategy as strategy
+from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 
 
 class Thinker(threading.Thread):
@@ -24,8 +26,8 @@ class Thinker(threading.Thread):
         self.input_queue = queue.Queue()
         self.current_objective: Objective = None
         self.last_action_time = 0
-
-        self.my_bool = True
+        self.strategy = strategy.PlayerStrategy()
+        self.is_positioned = False
 
     def start(self) -> None:
         super().start()
@@ -38,9 +40,7 @@ class Thinker(threading.Thread):
     def run(self) -> None:
         super().run()
         # Wait for client connection thread to receive the correct new port
-        time.sleep(1)
-        self.position_player()
-        time.sleep(0.5)
+        time.sleep(1.5)
         # Set accepted coach language versions
         self.player_conn.action_queue.put("(clang (ver 8 8))")
         self.think()
@@ -58,8 +58,10 @@ class Thinker(threading.Thread):
                     can_perform_action = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
+            if not self.is_positioned:
+                self.position_player()
             # Update current objective in accordance to the player's strategy
-            if can_perform_action: # and self.player_state.num == 1 and self.player_state.team_name == "Team1":
+            if can_perform_action: #
                 self.current_objective = determine_objective(self.player_state, self.current_objective)
                 action = self.current_objective.perform_action()
                 if action is not None:
@@ -73,13 +75,48 @@ class Thinker(threading.Thread):
             time.sleep(0.01)
 
     def position_player(self):
-        x = r.randint(-20, 20)
-        y = r.randint(-20, 20)
-        move_action = "(move " + str(x) + " " + str(y) + ")"
-        if self.player_state.team_name == "Team1" and self.player_state.num == 2:
-            move_action = "(move -5 -5)"
+        if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:
+            raise Exception("Too many startup positions given. Expected < 12, got: " + str(len(goalie_pos)
+                                                                                           + len(defenders_pos)
+                                                                                           + len(midfielders_pos)
+                                                                                           + len(strikers_pos)))
+
+        self.assign_position()
         if self.player_state.player_type == "goalie":
-            move_action = "(move -50 0)"
-        if self.player_state.num == 10:
-            move_action = "(move 0 0)"
+            if len(goalie_pos) > 1:
+                raise Exception("Only 1 goalie / goalie position allowed")
+            pos = goalie_pos[0]
+            move_action = "(move {0} {1})".format(pos[0], pos[1])
+        elif self.player_state.player_type == "defender":
+            index = self.player_state.num - 1 - len(goalie_pos)
+            pos = defenders_pos[index]
+            move_action = "(move {0} {1})".format(pos[0], pos[1])
+        elif self.player_state.player_type == "midfield":
+            index = self.player_state.num - 1 - len(goalie_pos) - len(defenders_pos)
+            pos = midfielders_pos[index]
+            move_action = "(move {0} {1})".format(pos[0], pos[1])
+        elif self.player_state.player_type == "striker":
+            index = self.player_state.num - 1 - len(goalie_pos) - len(defenders_pos) - len(midfielders_pos)
+            pos = strikers_pos[index]
+            move_action = "(move {0} {1})".format(pos[0], pos[1])
+        else:
+            raise Exception("Could not position player: " + str(self.player_state))
         self.player_conn.action_queue.put(move_action)
+        self.is_positioned = True
+
+    def assign_position(self):
+        if self.player_state.num == 1:
+            if self.player_state.player_type != "goalie":
+                raise Exception("Goalie is not player num 1")
+            else:
+                return
+        if 1 < self.player_state.num <= 1 + len(defenders_pos):
+            self.player_state.player_type = "defender"
+        elif 1 + len(defenders_pos) < self.player_state.num <= 1 + len(defenders_pos) + len(midfielders_pos):
+            self.player_state.player_type = "midfield"
+        elif 1 + len(defenders_pos) + len(midfielders_pos) < self.player_state.num <= 1 + len(defenders_pos) \
+                + len(midfielders_pos) + len(strikers_pos):
+            self.player_state.player_type = "striker"
+        else:
+            raise Exception("Could not assign position. Unum unknown. Expected unum between 1-11, got: "
+                            + str(self.player_state.num) + " for player " + str(self.player_state))

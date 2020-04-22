@@ -1,7 +1,7 @@
 import math
 import re
 
-from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
     calculate_full_circle_origin_angle
 from player import player, world_objects
@@ -110,6 +110,45 @@ def _update_time(msg, state: PlayerState):
     comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
     state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
 
+
+def parse_message_trainer(msg: str, world_view: WorldViewCoach):
+    if msg.startswith("(error"):
+        print("Trainer received error: {0}".format(msg))
+        return
+    # The server_param and player_param files do not contain a time stamp
+    # Can be used to get the configuration of the server and player
+    # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
+    # player_param: General parameters of players, like max substitutions etc.
+    # player_type: The current player type and its stats, like max_speed, kick power etc.
+    if msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
+        if msg.startswith("(server_param"):
+            print(msg)
+        return
+
+    if msg.startswith("(hear"):
+        _parse_hear_coach(msg, world_view)
+    elif msg.startswith("(init"):
+        # Init contains no information for trainer
+        return
+    elif msg.startswith("(ok look") or msg.startswith("(see_global"):
+        _parse_ok_look_online_coach(msg, world_view)
+        # Update time
+        comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
+        world_view.sim_time = int(re.match(comp_re, msg).group(1))
+    elif msg.startswith("(change_player_type"):
+        # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
+        # changed type. The type is not disclosed by the opponent team.
+        return
+    elif msg.startswith("(clang"):
+        # The players tell the coach which versions of commands they support.
+        # Example: (clang (ver (p "Team1" 6) 7 16))
+        return
+    elif msg.startswith("(ok eye") or msg.startswith("(ok"):
+        # (ok for general confirmations
+        # Simple confirmation, that vision mode was changed
+        return
+    else:
+        raise Exception("Unknown message received: " + msg)
 
 def parse_message_online_coach(msg: str, team: str, world_view: WorldViewCoach):
     if msg.startswith("(error"):
@@ -523,7 +562,7 @@ def _parse_ball_online_coach(ball, wv):
 
 
 # (ok look 926 ((g r) 52.5 0) ((g l) -52.5 0) ((b) 0 0 0 0) ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0))
-def _parse_ok_look_online_coach(msg, wv: WorldView):
+def _parse_ok_look_online_coach(msg, wv: WorldViewCoach):
     regex2 = re.compile(__SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
@@ -695,7 +734,7 @@ def _parse_players(players: [], ps: player.PlayerState):
         ps.world_view.update_player_view(new_player)
 
 
-def _parse_init_online_coach(msg, wv: WorldView):
+def _parse_init_online_coach(msg, wv: WorldViewCoach):
     regex = re.compile("\\(init ([lr]) .*\\)")
     matched = regex.match(msg)
     wv.side = matched.group(1)
