@@ -27,13 +27,13 @@ class PlayerStrategy:
         super().__init__()
         self.conga_count = -1
 
-    def determine_objective(self, player_state : PlayerState, current_objective: Objective):
+    def determine_objective(self, player_state: PlayerState, current_objective: Objective):
         if current_objective is None or current_objective.is_achieved():
 
             if player_state.team_name == "Team1":
-                target_position = _player_positions[player_state.num - 1]
+                target_position = _player_positions[(player_state.num - 1) % 5] # Temp fix
             else:
-                target_position = _opponent_positions[player_state.num - 1]
+                target_position = _opponent_positions[(player_state.num - 1) % 5] # Temp fix
             target_position = Coordinate(target_position[0], target_position[1])
 
             if player_state.num == 1 and player_state.team_name == "Team1":
