@@ -1033,6 +1033,9 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
     if not world_objects.is_inside_field_bounds(new_position):
         return False
 
+    if state.position.last_updated_time == state.now():
+        return True
+
     # If no information on previous state exists, then all positions inside the field are possible positions
     if not state.position.is_value_known(state.world_view.sim_time - 5):
         return True

@@ -8,6 +8,7 @@ import time
 import parsing
 from player.playerstrategy import determine_objective
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
+from player.world_objects import Coordinate
 
 
 class Thinker(threading.Thread):
@@ -98,6 +99,7 @@ class Thinker(threading.Thread):
             move_action = "(move {0} {1})".format(pos[0], pos[1])
         else:
             raise Exception("Could not position player: " + str(self.player_state))
+
         self.player_conn.action_queue.put(move_action)
         self.is_positioned = True
 
