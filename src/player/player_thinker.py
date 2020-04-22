@@ -24,7 +24,8 @@ class Thinker(threading.Thread):
         # Non processed inputs from server
         self.input_queue = queue.Queue()
         self.current_objective: Objective = None
-        self.last_action_time = 0
+        self.last_measured_time = 0
+        self.time_since_last_tick = 0
         self.is_positioned = False
 
     def start(self) -> None:
@@ -48,7 +49,10 @@ class Thinker(threading.Thread):
 
     def think(self):
         can_perform_action = False
+        self.time_since_last_tick = 0
+        self.last_measured_time = time.time()
         while not self._stop_event.is_set():
+
             while not self.input_queue.empty():
                 # Parse message and update player state / world view
                 msg: str = self.input_queue.get()
@@ -59,7 +63,13 @@ class Thinker(threading.Thread):
             if not self.is_positioned:
                 self.position_player()
             # Update current objective in accordance to the player's strategy
-            if can_perform_action: #
+            cur_time = time.time()
+            self.time_since_last_tick += cur_time - self.last_measured_time
+            self.last_measured_time = cur_time
+            if self.time_since_last_tick >= 0.1:
+                self.time_since_last_tick -= 0.1
+                self.time_since_last_tick %= 0.1  # discard extra time if we fall more than tick behind
+                self.last_measured_time = time.time()
                 self.current_objective = determine_objective(self.player_state, self.current_objective)
                 action = self.current_objective.perform_action()
                 if action is not None:
@@ -68,9 +78,9 @@ class Thinker(threading.Thread):
                     else:
                         for msg in action:
                             self.player_conn.action_queue.put(msg)
-                can_perform_action = False
 
             time.sleep(0.01)
+
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:

@@ -101,10 +101,13 @@ def kick_to_goal(player : PlayerState):
 
 
 def orient_self(state: PlayerState):
+    if state.action_history.last_turn_time > state.position.last_updated_time:
+        return ""
     history = state.action_history
     action = ORIENTATION_ACTIONS[history.last_orientation_action]
     history.last_orientation_action += 1
     history.last_orientation_action %= len(ORIENTATION_ACTIONS)
+    history.last_turn_time = state.now()
     return action
 
 
