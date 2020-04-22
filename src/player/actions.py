@@ -7,6 +7,7 @@ from player.world_objects import Coordinate, ObservedPlayer
 
 MAXIMUM_KICK_DISTANCE = 1
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
+NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn_neck 90)"]
 
 VIEW_RESET = "(change_view normal high)"
 
@@ -16,7 +17,7 @@ def reset_neck(state):
 
 
 def jog_towards(state: PlayerState, target_position: Coordinate):
-    actions = [VIEW_RESET, reset_neck(state)]
+    actions = []
     history = state.action_history
     minimum_last_update_time = state.now() - 10
     angle_known = state.body_angle.is_value_known(minimum_last_update_time)
@@ -26,6 +27,9 @@ def jog_towards(state: PlayerState, target_position: Coordinate):
         return orient_self(state)
 
     if not state.body_facing(target_position, 6) and history.last_turn_time < state.body_angle.last_updated_time:
+        if state.team_name == "Team1" and state.num == 2:
+            print(str(state.body_angle.get_value()))
+
         rotation = calculate_relative_angle(state, target_position)
 
         history.last_turn_time = state.now()
@@ -33,7 +37,7 @@ def jog_towards(state: PlayerState, target_position: Coordinate):
     else:
         actions.append("(dash 60)")
 
-    state.action_history.last_orientation_action = 0
+    actions.append(orient_self_neck_only(state))
     return actions
 
 
@@ -59,7 +63,7 @@ def get_player(target_player_num, team_name, state: PlayerState):
             return p
 
 
-def pass_ball_to(target_player_num, state : PlayerState):
+def pass_ball_to(target_player_num, state: PlayerState):
     world = state.world_view
 
     if world.ball.is_value_known(world.ticks_ago(5)) and state.position.is_value_known(world.ticks_ago(5)):
@@ -80,7 +84,6 @@ def pass_ball_to_random(player_passing: PlayerState):
     target: ObservedPlayer = choose_rand_player(player_passing)
     if target is None:
         return orient_self(player_passing)
-    #position_receiver = target.coord
 
     direction = target.direction
     power = calculate_power(target.distance)
@@ -104,6 +107,18 @@ def orient_self(state: PlayerState):
     action = ORIENTATION_ACTIONS[history.last_orientation_action]
     history.last_orientation_action += 1
     history.last_orientation_action %= len(ORIENTATION_ACTIONS)
+    return action
+
+
+def orient_self_neck_only(state: PlayerState):
+    history = state.action_history
+    if history.last_orientation_action >= len(NECK_ORIENTATION_ACTIONS):
+        # Reset neck position
+        history.last_orientation_action = 0
+        return reset_neck(state)
+
+    action = NECK_ORIENTATION_ACTIONS[history.last_orientation_action]
+    history.last_orientation_action += 1
     return action
 
 

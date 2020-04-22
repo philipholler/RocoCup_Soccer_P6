@@ -7,7 +7,7 @@ from player.playerstrategy import Objective
 import time
 import parsing
 import random as r
-import player.playerstrategy as strategy
+from player.playerstrategy import determine_objective
 
 
 class Thinker(threading.Thread):
@@ -24,8 +24,6 @@ class Thinker(threading.Thread):
         self.input_queue = queue.Queue()
         self.current_objective: Objective = None
         self.last_action_time = 0
-
-        self.strategy = strategy.PlayerStrategy()
 
         self.my_bool = True
 
@@ -62,7 +60,7 @@ class Thinker(threading.Thread):
 
             # Update current objective in accordance to the player's strategy
             if can_perform_action: # and self.player_state.num == 1 and self.player_state.team_name == "Team1":
-                self.current_objective = self.strategy.determine_objective(self.player_state, self.current_objective)
+                self.current_objective = determine_objective(self.player_state, self.current_objective)
                 action = self.current_objective.perform_action()
                 if action is not None:
                     if isinstance(action, str):

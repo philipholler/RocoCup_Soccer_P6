@@ -18,6 +18,7 @@ class PlayerState:
         self.body_angle: PrecariousData = PrecariousData.unknown()
         self.action_history = ActionHistory()
         self.body_state = BodyState()
+        self.coach_command = PrecariousData.unknown()
         super().__init__()
 
     def __str__(self) -> str:
@@ -46,11 +47,11 @@ class PlayerState:
         distance = coordinate.euclidean_distance_from(self.position.get_value())
         return distance < allowed_delta
 
-    def is_near_ball(self):
+    def is_near_ball(self, delta=1.0):
         minimum_last_update_time = self.now() - 10
         ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
         if ball_known:
-            return self.is_near(self.world_view.ball.get_value().coord, 1.0)
+            return self.is_near(self.world_view.ball.get_value().coord, delta)
         return False
 
     def now(self):
@@ -100,6 +101,7 @@ class WorldView:
     def ticks_ago(self, ticks):
         return self.sim_time - ticks
 
-
+    def get_teammates(self, team):
+        return list(filter(lambda x: (x.team == team), self.other_players))
 
 

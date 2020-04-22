@@ -96,6 +96,16 @@ __FLAG_COORDS = {
 }
 
 
+def parse_pass_command(command):
+    pass_pairs = []
+    pass_pattern = r'(([0-9]*) pass ([0-9]*))'
+    matches = re.findall(pass_pattern, command)
+    for m in matches:
+        pass_pairs.append((int(m[1]), int(m[2])))
+
+    return pass_pairs
+
+
 def _update_time(msg, state: PlayerState):
     comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
     state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
@@ -359,24 +369,24 @@ def find_mean_angle(angles):
     return average(best_cluster) % 360
 
 
-def _approx_body_angle(flags: [Flag], ps):
-    if not ps.position.is_value_known():  # todo Make time dependent? (Magnus)
+def _approx_body_angle(flags: [Flag], state):
+    if not state.position.is_value_known():  # todo Make time dependent? (Magnus)
         return
 
     estimated_angles = []
     # angle between c1 and c2, with c3 offsetting to make 0 degrees in some direction
     # For this purpose x+ = east, -x = west etc.
-    player_coord = ps.position.get_value()
+    player_coord = state.position.get_value()
     for flag in flags:
         radians_between_flag_player = calculate_full_circle_origin_angle(flag.coordinate, player_coord)
         global_angle = float(radians_between_flag_player) - math.radians(float(flag.relative_direction))
-        estimated_body_angle = math.degrees(global_angle - ps.body_state.neck_angle) % 360
+        estimated_body_angle = (math.degrees(global_angle) - state.body_state.neck_angle) % 360
 
         estimated_angles.append(estimated_body_angle)
 
     mean_angle = find_mean_angle(estimated_angles)
     if mean_angle is not None:
-        ps.body_angle.set_value(mean_angle, ps.now())
+        state.body_angle.set_value(mean_angle, state.position.last_updated_time)
 
 
 
@@ -721,14 +731,15 @@ def _parse_hear_coach(text: str, coach_world_view):
 
         return
 
+
 # Three different modes
 # example: (hear 0 referee kick_off_l)
 # example: (hear 0 self *msg*)
 # Pattern: (hear *time* *degrees* *msg*)
 def _parse_hear(text: str, ps: PlayerState):
     split_by_whitespaces = re.split('\\s+', text)
-    time = split_by_whitespaces[1]
-    ps.world_view.sim_time = int(time)  # Update players understanding of time
+    time = int(split_by_whitespaces[1])
+    ps.world_view.sim_time = time  # Update players understanding of time
     sender = split_by_whitespaces[2]
     if sender == "referee":
         regex_string = "\\(hear ({0}) referee ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
@@ -745,7 +756,7 @@ def _parse_hear(text: str, ps: PlayerState):
         if ps.world_view.side == "l":
             coach_command_pattern = '.*"(.*)".*'
             matches = re.match(coach_command_pattern, text)
-            print(matches.group(1))
+            ps.coach_command.set_value(matches.group(1), time)
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":

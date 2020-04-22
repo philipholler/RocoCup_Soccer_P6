@@ -11,6 +11,14 @@ PLAYER_POS_DECL_NAME = "player_pos[team_members][2]"
 OPPONENT_POS_DECL_NAME = "opponent_pos[opponents][2]"
 
 
+def generate_strategy(wv: WorldViewCoach):
+    strategy_generator = _find_applicable_strat(wv)
+    if strategy_generator is None:
+        return
+
+    return strategy_generator.generate_strategy(wv)
+
+
 class _StrategyGenerator:
 
     def __init__(self, strategy_name, model_modifier, strategy_parser) -> None:
@@ -26,21 +34,14 @@ class _StrategyGenerator:
 
         # Update model data in accordance with chosen strategy and execute verifyta
         model_data = self._model_modifier(wv, model)
-        #execute_verifyta(model)
+
+        execute_verifyta(model)
 
         # Extract strategy
         uppaal_strategy = UppaalStrategy(self.strategy_name)
 
         # Interpret strategy and produce coach /say output
         return self._strategy_parser(uppaal_strategy, model_data)
-
-
-def generate_strategy(wv: WorldViewCoach):
-    strategy_generator = _find_applicable_strat(wv)
-    if strategy_generator is None:
-        return
-
-    return strategy_generator.generate_strategy(wv)
 
 
 def _find_applicable_strat(world_view) -> _StrategyGenerator:
@@ -77,6 +78,17 @@ def _update_passing_model(wv, model: UppaalModel):
     return closest_players
 
 
+def _extract_passes(strategy: UppaalStrategy, team_members):
+    passes = []
+
+    for r in strategy.regressors:
+        from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
+        to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
+        passes.append("(" + str(from_player.num) + " pass " + str(to_player.num) + ")")
+
+    return passes
+
+
 def _get_ball_possessor(regressor: Regressor, locations, team_members):
     for i, player in enumerate(team_members):
         state_name = SYSTEM_PLAYER_NAMES[i] + ".location"
@@ -90,17 +102,6 @@ def _get_pass_target(r, index_to_transition_dict, team_members):
     action = index_to_transition_dict[str(r.get_highest_val_trans()[0])]
     target = int(re.search("pass_target := ([0-4])", action).group(1))
     return team_members[target]
-
-
-def _extract_passes(strategy: UppaalStrategy, team_members):
-    passes = []
-
-    for r in strategy.regressors:
-        from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
-        to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
-        passes.append("(" + str(from_player.num) + " pass " + str(to_player.num) + ")")
-
-    return passes
 
 
 def _to_2d_int_array_decl(players : [PlayerViewCoach]):
