@@ -718,7 +718,7 @@ def _parse_players(players: [], ps: player.PlayerState):
         my_pos: Coordinate = ps.position.get_value()
         other_player_coord = PrecariousData.unknown()
 
-        direction -= ps.body_state.direction  # Accommodates non-zero neck-angles
+        direction += ps.body_state.neck_angle  # Accommodates non-zero neck-angles
 
         if ps.position.is_value_known():
             other_player_coord = get_object_position(object_rel_angle=direction, dist_to_obj=distance,

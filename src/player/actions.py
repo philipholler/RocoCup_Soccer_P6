@@ -26,7 +26,7 @@ def jog_towards(state: PlayerState, target_position: Coordinate):
     if not angle_known or not position_known:
         return orient_self(state)
 
-    if not state.body_facing(target_position, 6) and history.last_turn_time < state.body_angle.last_updated_time:
+    if not state.body_facing(target_position, 15) and history.last_turn_time < state.body_angle.last_updated_time:
         rotation = calculate_relative_angle(state, target_position)
 
         history.last_turn_time = state.now()
