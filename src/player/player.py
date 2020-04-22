@@ -79,6 +79,7 @@ class ActionHistory:
     def __init__(self) -> None:
         self.last_turn_time = 0
         self.last_orientation_action = 0
+        self.last_orientation_time = 0
 
 
 class BodyState:

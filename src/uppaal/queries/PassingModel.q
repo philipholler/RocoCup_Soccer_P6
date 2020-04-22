@@ -8,4 +8,4 @@ strategy BestPasses = maxE(reward) [<=10]: <> T == 10
 /*
 
 */
-saveStrategy("/Users/philipholler/PycharmProjects/RocoCup_Soccer_P6/src/uppaal/outputdir/PassingModel",BestPasses)
+saveStrategy("/home/albot/PycharmProjects/RocoCup_Soccer_P6/src/uppaal/outputdir/PassingModel",BestPasses)
