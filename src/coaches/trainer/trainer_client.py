@@ -1,27 +1,28 @@
-import client_connection
+import queue
 import threading
 import time
 
-from coach.coachThinker import CoachThinker
+import client_connection
+from coaches.world_objects_coach import WorldViewCoach
+from coaches.trainer.trainer_thinker import TrainerThinker
 
 
-class Coach(threading.Thread):
+class Trainer(threading.Thread):
 
     # Start up the player
-    def __init__(self, team: str, UDP_PORT, UDP_IP) -> None:
-        # Init thinker thread
+    def __init__(self, UDP_PORT, UDP_IP) -> None:
         super().__init__()
         self._stop_event = threading.Event()
-        self.think: CoachThinker = CoachThinker(team_name=team)
+        self.think: TrainerThinker = TrainerThinker()
         # Init player connection thread
-        self.coach_conn = client_connection.Connection(UDP_PORT=UDP_PORT, UDP_IP=UDP_IP, think=self.think)
+        self.connection = client_connection.Connection(UDP_PORT=UDP_PORT, UDP_IP=UDP_IP, think=self.think)
         # Give reference of connection to thinker thread
-        self.think.connection = self.coach_conn
+        self.think.connection = self.connection
 
     def start(self) -> None:
         super().start()
         # Connect to server with team name from thinker
-        self.coach_conn.start()
+        self.connection.start()
         # Start thinking
         self.think.start()
 
@@ -34,7 +35,7 @@ class Coach(threading.Thread):
 
     def stop(self) -> None:
         self._stop_event.set()
-        self.coach_conn.stop()
-        self.coach_conn.join()
+        self.connection.stop()
+        self.connection.join()
         self.think.stop()
         self.think.join()
