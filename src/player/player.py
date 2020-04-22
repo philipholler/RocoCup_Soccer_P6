@@ -57,6 +57,9 @@ class PlayerState:
     def now(self):
         return self.world_view.sim_time
 
+    def is_test_player(self):
+        return self.num == 2 and self.team_name == "Team1"
+
 
 class ActionHistory:
     def __init__(self) -> None:

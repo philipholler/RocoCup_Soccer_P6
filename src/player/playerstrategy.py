@@ -13,10 +13,10 @@ Målmand: (-50, 0)
 """
 
 starting_player_pos = [[]] * 2
-starting_player_pos[1] = [(50, 0), (-36, 10), (-36, 20), (-36, -10), (-36, -20), (-23, 10), (-23, 20), (-23, -10),
+starting_player_pos[0] = [(-50, 0), (-36, 10), (-36, 20), (-36, -10), (-36, -20), (-23, 10), (-23, 20), (-23, -10),
                           (-23, -20), (-9, 10), (-9, -10)]
 # Inverse x-positions for team 2
-starting_player_pos[0] = list(map(lambda c: (-c[0], c[1]), starting_player_pos[1]))
+starting_player_pos[1] = list(map(lambda c: (-c[0], c[1]), starting_player_pos[0]))
 
 
 class Objective:

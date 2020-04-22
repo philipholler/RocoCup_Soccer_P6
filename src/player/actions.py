@@ -7,7 +7,7 @@ from player.world_objects import Coordinate, ObservedPlayer
 
 MAXIMUM_KICK_DISTANCE = 1
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
-NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn_neck 90)"]
+NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
 VIEW_RESET = "(change_view normal high)"
 
@@ -58,7 +58,6 @@ def get_player(target_player_num, state: PlayerState):
     team_players = state.world_view.get_teammates(state.team_name, max_data_age=4)
     for p in team_players:
         if p.num is not None and int(p.num) == int(target_player_num):
-            print(p.num)
             return p
 
 
@@ -70,7 +69,7 @@ def pass_ball_to(target_player_num, state: PlayerState):
         if ball.coord.euclidean_distance_from(state.position.get_value()) < MAXIMUM_KICK_DISTANCE:
             target = get_player(target_player_num, state)
             if target is not None:
-                return "(kick " + str(calculate_power(target.distance)) + " " + str(target.direction - state.body_state.neck_angle) + ")"
+                return "(kick " + str(calculate_power(target.distance)) + " " + str(target.direction) + ")"
             else:
                 return orient_self(state)
         else:

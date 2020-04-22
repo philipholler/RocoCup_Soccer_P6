@@ -175,6 +175,8 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     elif msg.startswith("(see "):
         _update_time(msg, ps)
         _parse_see(msg, ps)
+        if ps.is_test_player() and ps.world_view.ball.is_value_known():
+            print(str(ps.world_view.ball.get_value().coord))
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
@@ -231,7 +233,7 @@ def _parse_see(msg, ps: player.PlayerState):
         else:
             raise Exception("Unknown see element: " + str(element))
 
-    flags = create_flags(flag_strings)
+    flags = create_flags(flag_strings, ps)
 
     _approx_position(flags, ps)
     _approx_body_angle(flags, ps)
@@ -294,14 +296,14 @@ class Flag:
         self.identifier = identifier
         self.coordinate = coordinate
         self.relative_distance = distance
-        self.relative_direction = direction
+        self.body_relative_direction = direction
 
     def __repr__(self) -> str:
         return "Flag " + self.identifier + " : " + str(self.coordinate) + ", dist: " + str(self.relative_distance) + \
-               ", direction: " + str(self.relative_direction)
+               ", direction: " + str(self.body_relative_direction)
 
 
-def create_flags(flag_strings):
+def create_flags(flag_strings, state: PlayerState):
     known_flags_strings = []
 
     # Remove flags out of field of view
@@ -312,7 +314,7 @@ def create_flags(flag_strings):
     ids = _extract_flag_identifiers(known_flags_strings)
     coords = _extract_flag_coordinates(ids)
     distances = _extract_flag_distances(known_flags_strings)
-    directions = _extract_flag_directions(known_flags_strings)
+    directions = _extract_flag_directions(known_flags_strings, state.body_state.neck_angle)
 
     flags = []
 
@@ -370,7 +372,7 @@ def find_mean_angle(angles):
 
 
 def _approx_body_angle(flags: [Flag], state):
-    if not state.position.is_value_known():  # todo Make time dependent? (Magnus)
+    if not state.position.is_value_known():
         return
 
     estimated_angles = []
@@ -379,8 +381,8 @@ def _approx_body_angle(flags: [Flag], state):
     player_coord = state.position.get_value()
     for flag in flags:
         radians_between_flag_player = calculate_full_circle_origin_angle(flag.coordinate, player_coord)
-        global_angle = float(radians_between_flag_player) - math.radians(float(flag.relative_direction))
-        estimated_body_angle = (math.degrees(global_angle) - state.body_state.neck_angle) % 360
+        flag_body_angle = float(radians_between_flag_player) - math.radians(float(flag.body_relative_direction))
+        estimated_body_angle = math.degrees(flag_body_angle) % 360
 
         estimated_angles.append(estimated_body_angle)
 
@@ -389,11 +391,10 @@ def _approx_body_angle(flags: [Flag], state):
         state.body_angle.set_value(mean_angle, state.position.last_updated_time)
 
 
-
 # ((flag g r b) 99.5 -5)
 # ((flag p l c) 27.1 10 -0 0)
 # distance, direction, dist_change, dir_change
-def _extract_flag_directions(flag_strings):
+def _extract_flag_directions(flag_strings, neck_angle):
     flag_directions = []
     for flag_string in flag_strings:
         # Remove the first part of the string *((flag p l c)*
@@ -408,9 +409,10 @@ def _extract_flag_directions(flag_strings):
         # We now have a list of elements like this:
         # ['13.5', '-31', '2', '-5']
 
-        direction = split_by_whitespaces[1]
+        direction = float(split_by_whitespaces[1])
+        direction += neck_angle
+        direction %= 360
         flag_directions.append(direction)
-
 
     return flag_directions
 
@@ -436,7 +438,9 @@ def _parse_ball(ball: str, ps: player.PlayerState):
 
     # These are always included
     distance = split_by_whitespaces[1]
-    direction = split_by_whitespaces[2]
+    direction = float(split_by_whitespaces[2])
+    # direction += ps.body_state.neck_angle # Accommodates non-zero neck angles
+    # direction %= 360
     # These might be included depending on the distance and view of the player
     distance_chng = None
     dir_chng = None
@@ -676,6 +680,8 @@ def _parse_players(players: [], ps: player.PlayerState):
 
         my_pos: Coordinate = ps.position.get_value()
         other_player_coord = PrecariousData.unknown()
+
+        direction -= ps.body_state.direction  # Accommodates non-zero neck-angles
 
         if ps.position.is_value_known():
             other_player_coord = get_object_position(object_rel_angle=direction, dist_to_obj=distance,
