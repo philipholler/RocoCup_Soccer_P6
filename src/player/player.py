@@ -47,7 +47,7 @@ class PlayerState:
         distance = coordinate.euclidean_distance_from(self.position.get_value())
         return distance < allowed_delta
 
-    def is_near_ball(self, delta=1.0):
+    def is_near_ball(self, delta=0.6):
         minimum_last_update_time = self.now() - 10
         ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
         if ball_known:

@@ -1,7 +1,7 @@
 import functools
 import re
-from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 
+from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
 
 from player.world_objects import Coordinate

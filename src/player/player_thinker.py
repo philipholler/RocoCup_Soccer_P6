@@ -6,9 +6,7 @@ import client_connection
 from player.playerstrategy import Objective
 import time
 import parsing
-import random as r
 from player.playerstrategy import determine_objective
-import player.playerstrategy as strategy
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 
 
@@ -26,7 +24,6 @@ class Thinker(threading.Thread):
         self.input_queue = queue.Queue()
         self.current_objective: Objective = None
         self.last_action_time = 0
-        self.strategy = strategy.PlayerStrategy()
         self.is_positioned = False
 
     def start(self) -> None:
