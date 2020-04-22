@@ -56,8 +56,6 @@ class Thinker(threading.Thread):
             while not self.input_queue.empty():
                 # Parse message and update player state / world view
                 msg: str = self.input_queue.get()
-                if msg.startswith("(see"):
-                    can_perform_action = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
             if not self.is_positioned:
@@ -74,10 +72,12 @@ class Thinker(threading.Thread):
                 action = self.current_objective.perform_action()
                 if action is not None:
                     if isinstance(action, str):
-                        self.player_conn.action_queue.put(action)
+                        if len(action) != 0:
+                            self.player_conn.action_queue.put(action)
                     else:
                         for msg in action:
-                            self.player_conn.action_queue.put(msg)
+                            if len(msg) != 0:
+                                self.player_conn.action_queue.put(msg)
 
             time.sleep(0.01)
 

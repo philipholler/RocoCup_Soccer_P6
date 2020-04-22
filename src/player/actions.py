@@ -112,6 +112,10 @@ def orient_self(state: PlayerState):
 
 
 def orient_self_neck_only(state: PlayerState):
+    if state.action_history.last_turn_time > state.position.last_updated_time:
+        return ""
+    state.action_history.last_turn_time = state.now()
+
     history = state.action_history
     if history.last_orientation_action >= len(NECK_ORIENTATION_ACTIONS):
         # Reset neck position
