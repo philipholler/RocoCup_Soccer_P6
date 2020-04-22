@@ -1,5 +1,6 @@
 import fnmatch
 import re
+from pathlib import Path
 
 from statisticsmodule import SERVER_LOG_PATH, ACTIONS_LOG_PATH
 from statisticsmodule.statistics import Game, Team
@@ -13,6 +14,16 @@ ACTION_LOG_PATTERN = '*.rcl'
 def parse_logs():
     game = statistics.Game()
     parse_log_name(get_newest_server_log(), game)
+    log_name = str(get_newest_server_log())
+
+    file = open(Path(__file__).parent.parent / log_name, 'r')
+
+    for line in file:
+        if line.startswith("(show "):
+            parse_line(line, game)
+        else:
+            continue
+
 
 
 def get_newest_server_log():
@@ -32,8 +43,8 @@ def parse_log_name(log_name, game: Game):
     regular_expression = re.compile(id_regex)
     matched = regular_expression.match(log_name)
 
-    team1 = statistics.Team()
-    team2 = statistics.Team()
+    team1 = Team()
+    team2 = Team()
 
     game.gameID = matched.group(1)
     team1.name = matched.group(2)
@@ -46,3 +57,9 @@ def parse_log_name(log_name, game: Game):
 
     print(game.gameID)
 
+def parse_line(txt, game: Game):
+
+    regex_string = "\\(show ({0}) (\\(\\(.*\\)\\)) ".format(__SIGNED_INT_REGEX)
+    regular_expression = re.compile(regex_string)
+    matched = regular_expression.match(txt)
+    print(matched.groups())

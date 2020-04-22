@@ -6,7 +6,7 @@ import subprocess
 
 from coaches.coach.coach import Coach
 from coaches.trainer.trainer_client import Trainer
-
+from statisticsmodule import log_parser
 
 def shut_down_gracefully():
     print("Shutting down...")
@@ -76,3 +76,5 @@ coach_1.start()
 
 coach_2 = Coach(TEAM_NAMES[1], UDP_PORT_COACH, UDP_IP)
 coach_2.start()
+
+log_parser.parse_logs()
