@@ -6,6 +6,7 @@ from random import random, randint
 import client_connection
 import parsing
 from coaches.world_objects_coach import WorldViewCoach
+from coaches.trainer.scenarios import passing_strat
 
 
 class TrainerThinker(threading.Thread):
@@ -18,7 +19,7 @@ class TrainerThinker(threading.Thread):
         self.connection: client_connection.Connection = None
         # Non processed inputs from server
         self.input_queue = queue.Queue()
-
+        self.is_scenario_set = False
 
     def start(self) -> None:
         super().start()
@@ -34,6 +35,7 @@ class TrainerThinker(threading.Thread):
 
     def run(self) -> None:
         super().run()
+        time.sleep(4)
         while True:
             if self._stop_event.is_set():
                 return
@@ -45,14 +47,20 @@ class TrainerThinker(threading.Thread):
             msg: str = self.input_queue.get()
             parsing.parse_message_trainer(msg, self.world_view)
 
-        x = randint(-20, 20)
-        y = randint(-20, 20)
+        if not self.is_scenario_set:
+            for msg in passing_strat:
+                self.say_command(msg)
+            self.is_scenario_set = True
 
-        command = "(move (ball) {0} {1} 0 0 0)".format(x, y)
-        self.say_command(command)
 
     def stop(self) -> None:
         self._stop_event.set()
 
     def say_command(self, cmd):
+        '''
+        Example commands:
+        (move (ball) -47 -9.16 0 0 0)   ---   (move (ball) *x* *y* *direction* *delta_x* *delta_y*)
+        (move (player Team1 4) {0} {1} 0 0 0))   ---  (move (player *team* *unum*) *x* *y* *direction* *delta_x* *delta_y*)
+        :param cmd: Command to send to server
+        '''
         self.connection.action_queue.put(cmd)
