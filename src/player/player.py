@@ -19,6 +19,8 @@ class PlayerState:
         self.action_history = ActionHistory()
         self.body_state = BodyState()
         self.coach_command = PrecariousData.unknown()
+        self.starting_position: Coordinate = None
+        self.playing_position: Coordinate = None
         super().__init__()
 
     def __str__(self) -> str:

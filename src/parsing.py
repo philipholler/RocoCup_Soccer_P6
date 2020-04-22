@@ -214,8 +214,6 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     elif msg.startswith("(see "):
         _update_time(msg, ps)
         _parse_see(msg, ps)
-        if ps.is_test_player() and ps.world_view.ball.is_value_known():
-            print(str(ps.world_view.ball.get_value().coord))
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
