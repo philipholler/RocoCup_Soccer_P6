@@ -1,19 +1,19 @@
 import queue
 import threading
 import time
-import parsing
-from coach.world_objects_coach import WorldViewCoach
+from random import random, randint
 
 import client_connection
-from uppaal import strategy
+import parsing
+from coaches.world_objects_coach import WorldViewCoach
 
 
-class CoachThinker(threading.Thread):
-    def __init__(self, team_name: str):
+class TrainerThinker(threading.Thread):
+    def __init__(self):
         super().__init__()
         self._stop_event = threading.Event()
-        self.world_view = WorldViewCoach(0, team_name)
-        self.team = team_name
+        self.team = "TRAINER"
+        self.world_view = WorldViewCoach(0, self.team)
         # Connection with the server
         self.connection: client_connection.Connection = None
         # Non processed inputs from server
@@ -23,8 +23,8 @@ class CoachThinker(threading.Thread):
     def start(self) -> None:
         super().start()
 
-        # (init TEAMNAME (version VERSION))
-        init_string = "(init " + self.team + " (version 16))"
+        # (init (version VERSION))
+        init_string = "(init (version 16))"
         self.connection.action_queue.put(init_string)
 
         time.sleep(1)
@@ -43,20 +43,16 @@ class CoachThinker(threading.Thread):
         time.sleep(0.1)
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
-            parsing.parse_message_online_coach(msg, self.team, self.world_view)
+            parsing.parse_message_trainer(msg, self.world_view)
 
-        self.update_strategy()
+        x = randint(-20, 20)
+        y = randint(-20, 20)
 
-        # USE THIS FOR SENDING MESSAGES TO PLAYERS
-        # self.connection.action_queue.put('(say (freeform "MSG"))')
+        command = "(move (ball) {0} {1} 0 0 0)".format(x, y)
+        self.say_command(command)
 
     def stop(self) -> None:
         self._stop_event.set()
 
-    def update_strategy(self):
-        strat = strategy.generate_strategy(self.world_view)
-        if strat is not None:
-            self.say(' '.join(strat))
-
-    def say(self, msg):
-        self.connection.action_queue.put('(say (freeform "{0}"))'.format(msg, self.world_view.sim_time))
+    def say_command(self, cmd):
+        self.connection.action_queue.put(cmd)

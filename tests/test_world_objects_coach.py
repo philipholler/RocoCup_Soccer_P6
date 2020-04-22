@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from coach.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 from player.world_objects import Coordinate
 
 
