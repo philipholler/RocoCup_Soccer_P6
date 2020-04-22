@@ -104,15 +104,16 @@ class Thinker(threading.Thread):
         elif self.player_state.player_type == "midfield":
             index = self.player_state.num - 1 - len(goalie_pos) - len(defenders_pos)
             pos = midfielders_pos[index]
-            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1] + 10)
+            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1])
             move_action = "(move {0} {1})".format(pos[0], pos[1])
         elif self.player_state.player_type == "striker":
             index = self.player_state.num - 1 - len(goalie_pos) - len(defenders_pos) - len(midfielders_pos)
             pos = strikers_pos[index]
-            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1] + 10)
+            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1])
             move_action = "(move {0} {1})".format(pos[0], pos[1])
         else:
             raise Exception("Could not position player: " + str(self.player_state))
+        self.player_state.starting_position = Coordinate(pos[0], pos[1])
         self.player_conn.action_queue.put(move_action)
         self.is_positioned = True
 
