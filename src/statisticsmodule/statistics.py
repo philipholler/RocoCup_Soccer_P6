@@ -14,7 +14,6 @@ class Team:
         self.side = ""
         self.name = ""
         self.goals = 0
-        self.kicks = 0
 
 
 class Stage:
@@ -22,8 +21,13 @@ class Stage:
     def __init__(self):
         self.ball = Ball()
         self.players = []
+        self.team_l_kicks = 0
+        self.team_r_kicks = 0
 
     def print_stage(self):
+
+        print("team l kicks: " + str(self.team_l_kicks) + "\nteam r kicks: " + str(self.team_r_kicks))
+
         self.ball.print_ball()
 
         for player in self.players:
@@ -50,9 +54,10 @@ class Player:
         self.no = 0
         self.x_coord = 0
         self.y_coord = 0
+        self.kicks = 0
 
     def print_player(self):
         print("player side: " + self.side + " no: " + str(self.no) +
-              " player coords: " + str(self.x_coord) + " " + str(self.y_coord))
+              " player coords: " + str(self.x_coord) + " " + str(self.y_coord) + "kick count: " + str(self.kicks))
 
 

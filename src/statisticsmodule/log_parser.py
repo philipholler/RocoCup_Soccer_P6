@@ -27,6 +27,10 @@ def parse_logs():
         else:
             continue
 
+    for stage in game.show_time:
+        print(game.show_time.index(stage))
+        print(stage.print_stage())
+
 
 # Gets the newest server log ".rcg"
 def get_newest_server_log():
@@ -52,6 +56,9 @@ def parse_log_name(log_name, game: Game):
 
     team1 = Team()
     team2 = Team()
+
+    team1.side = "l"
+    team2.side = "r"
 
     game.gameID = matched.group(1)
     team1.name = matched.group(2)
@@ -82,6 +89,12 @@ def parse_show_line(txt, game: Game):
         parse_player(player, stage)
 
     # Inserts the stage in the correct array slot (tick)
+    for player in stage.players:
+        if player.side == "l":
+            stage.team_l_kicks += player.kicks
+        if player.side == "r":
+            stage.team_r_kicks += player.kicks
+
     game.show_time.insert(tick, stage)
 
 
@@ -98,13 +111,15 @@ def parse_ball(txt, stage: Stage):
 
 
 # Examples:
+# ((Side unum) playertype goalkeeper_bool x_coord y_coord delta_x delta_y body_angle neck_angle
+# (view high narrow/normal(90)/wide) stamina (etc etc) counts ? dash turn ? move turn_neck ? ? ? ? ?
 # ((l 1) 0 0x9 -50 0 0 0 35.618 -90 (v h 90) (s 8000 1 1 130300) (c 0 5 4 0 1 17 0 0 0 0 0))
 # ((r 10) 0 0 30 -37 0 0 0 0 (v h 90) (s 8000 1 1 130600) (c 0 0 0 0 0 0 0 0 0 0 0))
 
-# Parses a player from show msg TODO: find out what rest of string means
+# Parses a player from show msg
 def parse_player(txt, stage: Stage):
-    regex_string = "\\(\\((l|r) ({0})\\) ({0}) ({2}|0) ({1}) ({1})".format(__SIGNED_INT_REGEX, __REAL_NUM_REGEX,
-                                                                           __HEX_REGEX)
+    regex_string = "\\(\\((l|r) ({0})\\) ({0}) ({2}|0) ({1}) ({1}) ({1}) ({1}) ({1}) ({1}) \\(v [h|l] {0}\\) \\(s " \
+            "{1} {1} {1} {1}\\) \\(c ({0}) ".format(__SIGNED_INT_REGEX, __REAL_NUM_REGEX, __HEX_REGEX)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(txt)
 
@@ -113,5 +128,6 @@ def parse_player(txt, stage: Stage):
     player.no = int(matched.group(2))
     player.x_coord = float(matched.group(5))
     player.y_coord = float(matched.group(6))
+    player.kicks = int(matched.group(11))
 
     stage.players.append(player)

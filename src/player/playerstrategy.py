@@ -48,6 +48,9 @@ def determine_objective(state: PlayerState, current_objective: Objective):
         if state.is_near_ball(10.0):
             return Objective(lambda: actions.jog_towards_ball(state),
                              lambda: state.is_near_ball())
+        if state.is_near_ball(0.8):
+            return Objective(lambda: actions.kick_to_goal(state),
+                             lambda: state.is_near_ball())
 
     target_position = state.get_global_play_pos()
 
