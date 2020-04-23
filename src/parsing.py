@@ -852,10 +852,13 @@ def _parse_body_sense(text: str, ps: player):
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
 
+    '''
     if matched.group(23) is None: # todo Does not not work when no groups are present
+        print(text)
         unum = "none"
     else:
         unum = int(matched.group(23))
+    '''
 
     ps.body_state.time = int(matched.group(1))
     ps.body_state.view_mode = matched.group(2)

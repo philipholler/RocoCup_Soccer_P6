@@ -105,11 +105,16 @@ def orient_self(state: PlayerState):
     action = ORIENTATION_ACTIONS[history.last_orientation_action]
     history.last_orientation_action += 1
     history.last_orientation_action %= len(ORIENTATION_ACTIONS)
+
     return action
 
 
 def orient_self_neck_only(state: PlayerState):
     history = state.action_history
+    if history.last_orientation_time > state.position.last_updated_time:
+        return ""  # Don't do anything if no vision update has been received from the server since last turn command
+    history.last_orientation_time = state.now()
+
     if history.last_orientation_action >= len(NECK_ORIENTATION_ACTIONS):
         # Reset neck position
         history.last_orientation_action = 0

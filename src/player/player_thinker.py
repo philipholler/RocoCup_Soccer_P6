@@ -24,7 +24,8 @@ class Thinker(threading.Thread):
         # Non processed inputs from server
         self.input_queue = queue.Queue()
         self.current_objective: Objective = None
-        self.last_action_time = 0
+        self.last_measured_time = 0
+        self.time_since_last_tick = 0
         self.is_positioned = False
 
     def start(self) -> None:
@@ -48,29 +49,38 @@ class Thinker(threading.Thread):
 
     def think(self):
         can_perform_action = False
+        self.time_since_last_tick = 0
+        self.last_measured_time = time.time()
         while not self._stop_event.is_set():
+
             while not self.input_queue.empty():
                 # Parse message and update player state / world view
                 msg: str = self.input_queue.get()
-                if msg.startswith("(see"):
-                    can_perform_action = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
             if not self.is_positioned:
                 self.position_player()
             # Update current objective in accordance to the player's strategy
-            if can_perform_action: #
+            cur_time = time.time()
+            self.time_since_last_tick += cur_time - self.last_measured_time
+            self.last_measured_time = cur_time
+            if self.time_since_last_tick >= 0.1:
+                self.time_since_last_tick -= 0.1
+                self.time_since_last_tick %= 0.1  # discard extra time if we fall more than tick behind
+                self.last_measured_time = time.time()
                 self.current_objective = determine_objective(self.player_state, self.current_objective)
                 action = self.current_objective.perform_action()
                 if action is not None:
                     if isinstance(action, str):
-                        self.player_conn.action_queue.put(action)
+                        if len(action) != 0:
+                            self.player_conn.action_queue.put(action)
                     else:
                         for msg in action:
-                            self.player_conn.action_queue.put(msg)
-                can_perform_action = False
+                            if len(msg) != 0:
+                                self.player_conn.action_queue.put(msg)
 
             time.sleep(0.01)
+
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:
@@ -94,15 +104,16 @@ class Thinker(threading.Thread):
         elif self.player_state.player_type == "midfield":
             index = self.player_state.num - 1 - len(goalie_pos) - len(defenders_pos)
             pos = midfielders_pos[index]
-            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1] + 10)
+            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1])
             move_action = "(move {0} {1})".format(pos[0], pos[1])
         elif self.player_state.player_type == "striker":
             index = self.player_state.num - 1 - len(goalie_pos) - len(defenders_pos) - len(midfielders_pos)
             pos = strikers_pos[index]
-            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1] + 10)
+            self.player_state.playing_position = Coordinate(pos[0] + 10, pos[1])
             move_action = "(move {0} {1})".format(pos[0], pos[1])
         else:
             raise Exception("Could not position player: " + str(self.player_state))
+        self.player_state.starting_position = Coordinate(pos[0], pos[1])
         self.player_conn.action_queue.put(move_action)
         self.is_positioned = True
 
