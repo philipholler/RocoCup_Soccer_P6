@@ -1,11 +1,12 @@
 import fnmatch
 import re
 from pathlib import Path
+import os
 
-from statisticsmodule import SERVER_LOG_PATH, ACTIONS_LOG_PATH
 from statisticsmodule.statistics import Game, Team, Stage, Player
 from statisticsmodule import statistics
 from parsing import __ROBOCUP_MSG_REGEX, __SIGNED_INT_REGEX, __REAL_NUM_REGEX
+
 
 SERVER_LOG_PATTERN = '*.rcg'
 ACTION_LOG_PATTERN = '*.rcl'
@@ -29,14 +30,16 @@ def parse_logs():
 
 # Gets the newest server log ".rcg"
 def get_newest_server_log():
-    server_log_names = fnmatch.filter(SERVER_LOG_PATH, SERVER_LOG_PATTERN)
+    server_log_path = os.listdir('.')
+    server_log_names = fnmatch.filter(server_log_path, SERVER_LOG_PATTERN)
     server_log_names.sort(reverse=True)
     return server_log_names[0]
 
 
 # Gets the newest action log ".rcl"
 def get_newest_action_log():
-    action_logs = fnmatch.filter(ACTIONS_LOG_PATH, ACTION_LOG_PATTERN)
+    actions_log_path = os.listdir('.')
+    action_logs = fnmatch.filter(actions_log_path, ACTION_LOG_PATTERN)
     action_logs.sort(reverse=True)
     return action_logs[0]
 
@@ -58,6 +61,8 @@ def parse_log_name(log_name, game: Game):
 
     game.teams.append(team1)
     game.teams.append(team2)
+
+    print(matched.group(1))
 
 
 # Parses the lines of the server log starting with "((show"

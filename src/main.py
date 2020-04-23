@@ -21,8 +21,11 @@ def shut_down_gracefully():
     if trainer_mode:
         trainer.stop()
         trainer.join()
-    soccer_sim.send_signal(signal.SIGINT)
     soccer_monitor.send_signal(signal.SIGINT)
+    soccer_monitor.wait(3)
+    soccer_sim.send_signal(signal.SIGINT)
+    soccer_sim.wait(3)
+    log_parser.parse_logs()
 
 
 TEAM_NAMES = ["Team1", "Team2"]
@@ -81,5 +84,3 @@ coach_1.start()
 
 coach_2 = Coach(TEAM_NAMES[1], UDP_PORT_COACH, UDP_IP)
 coach_2.start()
-
-log_parser.parse_logs()
