@@ -1,10 +1,10 @@
 import math
-
 import geometry
 from geometry import calculate_full_circle_origin_angle
 from player.world_objects import PrecariousData, Coordinate, ObservedPlayer
 
 MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manual
+APPROA_GOAL_DISTANCE = 30
 
 
 class PlayerState:
@@ -28,6 +28,15 @@ class PlayerState:
     def __str__(self) -> str:
         return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name
                                                                                   , self.num, self.position)
+
+    def is_approaching_goal(self):
+        if self.position.is_value_known():
+            pos: Coordinate = self.position.get_value()
+            if self.world_view.side == "l" and pos.euclidean_distance_from(Coordinate(52.5, 0)) < APPROA_GOAL_DISTANCE:
+                return True
+            if self.world_view.side == "r" and pos.euclidean_distance_from(Coordinate(-52.5, 0)) < APPROA_GOAL_DISTANCE:
+                return True
+        return False
 
     def get_global_start_pos(self):
         if self.world_view.side == "l":

@@ -24,6 +24,15 @@ def determine_objective(state: PlayerState, current_objective: Objective):
         return current_objective
 
     if state.is_near_ball(actions.MAXIMUM_KICK_DISTANCE):
+        # If close to goal, dribble closer
+        if state.is_approaching_goal():
+            if state.world_view.side == "l":
+                goal_pos = parsing._FLAG_COORDS.get("gr")
+                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])), time_out=5)
+            if state.world_view.side == "r":
+                goal_pos = parsing._FLAG_COORDS.get("gl")
+                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])), time_out=5)
+
         pass_target = _find_pass_target(state)
         if pass_target is None:
             if state.is_near_goal():

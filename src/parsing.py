@@ -7,21 +7,21 @@ from geometry import calculate_smallest_origin_angle_between, rotate_coordinate,
 from player import player, world_objects
 from math import sqrt
 
-from player.player import PlayerState, WorldView
+from player.player import PlayerState
 from player.world_objects import Coordinate
 from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
 
-__REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
-__SIGNED_INT_REGEX = "[-0-9]+"
-__ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
-__SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
-__TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
+_REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
+_SIGNED_INT_REGEX = "[-0-9]+"
+_ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
+_SEE_MSG_REGEX = "\\(\\([^\\)]*\\)[^\\)]*\\)"
+_TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
 
 # Introduced to reduce calculation time
 MAX_FLAGS_FOR_POSITION_ESTIMATE = 10
 
-__FLAG_COORDS = {
+_FLAG_COORDS = {
     # perimiter flags
     "tl50": (-50, 39),
     "tl40": (-40, 39),
@@ -107,7 +107,7 @@ def parse_pass_command(command):
 
 
 def _update_time(msg, state: PlayerState):
-    comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
+    comp_re = re.compile("\\([^(]* ({0})".format(_SIGNED_INT_REGEX))
     state.world_view.sim_time = int(re.match(comp_re, msg).group(1))
 
 
@@ -133,7 +133,7 @@ def parse_message_trainer(msg: str, world_view: WorldViewCoach):
     elif msg.startswith("(ok look") or msg.startswith("(see_global"):
         _parse_ok_look_online_coach(msg, world_view)
         # Update time
-        comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
+        comp_re = re.compile("\\([^(]* ({0})".format(_SIGNED_INT_REGEX))
         world_view.sim_time = int(re.match(comp_re, msg).group(1))
     elif msg.startswith("(change_player_type"):
         # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
@@ -171,7 +171,7 @@ def parse_message_online_coach(msg: str, team: str, world_view: WorldViewCoach):
     elif msg.startswith("(ok look") or msg.startswith("(see_global"):
         _parse_ok_look_online_coach(msg, world_view)
         # Update time
-        comp_re = re.compile("\\([^(]* ({0})".format(__SIGNED_INT_REGEX))
+        comp_re = re.compile("\\([^(]* ({0})".format(_SIGNED_INT_REGEX))
         world_view.sim_time = int(re.match(comp_re, msg).group(1))
     elif msg.startswith("(change_player_type"):
         # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
@@ -249,7 +249,7 @@ New protocol 7-16:
 
 
 def _parse_see(msg, ps: player.PlayerState):
-    regex2 = re.compile(__SEE_MSG_REGEX)
+    regex2 = re.compile(_SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
     flag_strings = []
@@ -289,7 +289,7 @@ def _parse_lines(lines, ps):
 
 
 def _parse_line(text: str, ps: PlayerState):
-    line_regex = "\\(\\(l (r|l|b|t)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+    line_regex = "\\(\\(l (r|l|b|t)\\)\\s({0}) ({1})".format(_REAL_NUM_REGEX, _SIGNED_INT_REGEX)
     regular_expression = re.compile(line_regex)
     matched = regular_expression.match(text)
 
@@ -313,7 +313,7 @@ def _parse_goal(text: str, ps: PlayerState):
     if text.startswith("((G"):
         return world_objects.Goal(None, None, None)
 
-    goal_regex = "\\(\\(g (r|l)\\)\\s({0}) ({1})".format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX)
+    goal_regex = "\\(\\(g (r|l)\\)\\s({0}) ({1})".format(_REAL_NUM_REGEX, _SIGNED_INT_REGEX)
     regular_expression = re.compile(goal_regex)
     matched = regular_expression.match(text)
 
@@ -456,7 +456,7 @@ def _extract_flag_directions(flag_strings, neck_angle):
 
 # Input ((b) 13.5 -31 0 0)
 # or ((b) 44.7 -20)
-# Or B
+# Or ((B) distance direction)
 # distance, direction, dist_change, dir_change
 def _parse_ball(ball: str, ps: player.PlayerState):
     # If ball is not present at all or only seen behind the player
@@ -499,8 +499,17 @@ def _parse_ball(ball: str, ps: player.PlayerState):
                                                      my_y=pos.pos_y,
                                                      my_global_angle=ps.get_global_angle().get_value())
 
+        # Save old ball information
+        last_pos_2 = PrecariousData.unknown()
+        last_pos_1 = PrecariousData.unknown()
+        if ps.world_view.ball.is_value_known():
+            old_ball = ps.world_view.ball.get_value()
+            old_ball_time = ps.world_view.ball.last_updated_time
+            if old_ball.last_position.is_value_known():
+                last_pos_2 = old_ball.last_position
+            last_pos_1.set_value(old_ball.coord, old_ball_time)
         new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
-                                      coord=ball_coord)
+                                      coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2)
         ps.world_view.ball.set_value(new_ball, ps.get_global_angle().last_updated_time)
 
 
@@ -561,7 +570,7 @@ def _parse_ball_online_coach(ball, wv):
 
 # (ok look 926 ((g r) 52.5 0) ((g l) -52.5 0) ((b) 0 0 0 0) ((p "Team1" 1 goalie) 33.9516 -18.3109 -0.0592537 0.00231559 -180 0) ((p "Team2" 1 goalie) 50 0 0 0 0 0))
 def _parse_ok_look_online_coach(msg, wv: WorldViewCoach):
-    regex2 = re.compile(__SEE_MSG_REGEX)
+    regex2 = re.compile(_SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
     players = []
@@ -752,7 +761,7 @@ def _parse_hear_coach(text: str, coach_world_view):
 
     sender = split_by_whitespaces[2]
     if sender == "referee":
-        regex_string = "\\(hear ({0}) referee ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+        regex_string = "\\(hear ({0}) referee ({1})\\)".format(_SIGNED_INT_REGEX, _ROBOCUP_MSG_REGEX)
 
         regular_expression = re.compile(regex_string)
         matched = regular_expression.match(text)
@@ -769,7 +778,7 @@ def _parse_hear_coach(text: str, coach_world_view):
     elif sender == "coach":
         return
     else:
-        regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+        regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(_SIGNED_INT_REGEX, _ROBOCUP_MSG_REGEX)
 
         regular_expression = re.compile(regex_string)
         matched = regular_expression.match(text)
@@ -787,7 +796,7 @@ def _parse_hear(text: str, ps: PlayerState):
     ps.world_view.sim_time = time  # Update players understanding of time
     sender = split_by_whitespaces[2]
     if sender == "referee":
-        regex_string = "\\(hear ({0}) referee ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+        regex_string = "\\(hear ({0}) referee ({1})\\)".format(_SIGNED_INT_REGEX, _ROBOCUP_MSG_REGEX)
 
         regular_expression = re.compile(regex_string)
         matched = regular_expression.match(text)
@@ -807,7 +816,7 @@ def _parse_hear(text: str, ps: PlayerState):
     elif sender == "coach":
         return  # todo handle trainer input
     else:
-        regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(__SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+        regex_string = "\\(hear ({0}) ({0}) ({1})\\)".format(_SIGNED_INT_REGEX, _ROBOCUP_MSG_REGEX)
 
         regular_expression = re.compile(regex_string)
         matched = regular_expression.match(text)
@@ -849,7 +858,7 @@ def _parse_body_sense(text: str, ps: player):
     regex_string += ".*target (none|l|r)( {1})?\\).*count ({1})\\)\\)"
     regex_string += ".*expires ({1})\\).*count ({1})\\)"
     regex_string += ".*collision (none|{2})\\).*charged ({1})\\).*card (red|yellow|none)\\)\\)\\)"
-    regex_string = regex_string.format(__REAL_NUM_REGEX, __SIGNED_INT_REGEX, __ROBOCUP_MSG_REGEX)
+    regex_string = regex_string.format(_REAL_NUM_REGEX, _SIGNED_INT_REGEX, _ROBOCUP_MSG_REGEX)
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
@@ -887,7 +896,7 @@ def _parse_body_sense(text: str, ps: player):
 #           ((f p r b) 27.9 21) ((f p r c) 27.9 -21 0 0) ((P) 1 -179) ((p Team2 2) 1 0 0 0)
 #           ((P) 0.5 151) ((p Team2 4) 0.5 -28 0 0) ((l r) 42.5 90))
 def _parse_flags(text):
-    flag_regex = "\\(f [^)]*\\) {0} {0}".format(__REAL_NUM_REGEX)
+    flag_regex = "\\(f [^)]*\\) {0} {0}".format(_REAL_NUM_REGEX)
     return re.findall(flag_regex, text)
 
 
@@ -911,7 +920,7 @@ def _extract_flag_identifiers(flags):
 
 
 def _extract_flag_distances(flags):
-    flag_distance_regex = ".*\\(f [^\\)]*\\) ({0}) ".format(__REAL_NUM_REGEX)
+    flag_distance_regex = ".*\\(f [^\\)]*\\) ({0}) ".format(_REAL_NUM_REGEX)
     flag_distances = []
     for flag in flags:
         m = _match(flag_distance_regex, flag)
@@ -922,7 +931,7 @@ def _extract_flag_distances(flags):
 def _extract_flag_coordinates(flag_ids):
     coords = []
     for flag_id in flag_ids:
-        coord_pair = __FLAG_COORDS.get(flag_id)
+        coord_pair = _FLAG_COORDS.get(flag_id)
         coords.append(Coordinate(coord_pair[0], coord_pair[1]))
     return coords
 

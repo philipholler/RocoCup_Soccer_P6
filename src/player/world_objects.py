@@ -53,6 +53,18 @@ class PrecariousData:
     def set_value_unknown(self):
         self._value = None
 
+    def __str__(self) -> str:
+        if self.is_value_known():
+            return "(Precarious_data: value= {0}, last_updated_time= {1})".format(self.get_value(), self.last_updated_time)
+        else:
+            return "(Precarious_data: unknown value)"
+
+    def __repr__(self) -> str:
+        if self.is_value_known():
+            return "(Precarious_data: value= {0}, last_updated_time= {1})".format(str(self._value), str(self.last_updated_time))
+        else:
+            return "(Precarious_data: unknown value)"
+
 
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
 class ObservedPlayer:
@@ -83,17 +95,29 @@ UPPER_FIELD_BOUND = Coordinate(60, 40)
 
 
 class Ball:
-    def __init__(self, distance: float, direction: int, dist_chng, dir_chng, coord) -> None:
+    def __init__(self, distance: float, direction: int, dist_chng, dir_chng, coord, last_pos: PrecariousData
+                 , last_pos_2: PrecariousData) -> None:
         super().__init__()
         self.distance = distance
         self.direction = direction
         self.dist_chng = dir_chng
         self.dir_chng = dist_chng
         self.coord: Coordinate = coord
+        self.last_position: PrecariousData = PrecariousData.unknown()
+        self.last_position_2: PrecariousData = PrecariousData.unknown()
+
+        if last_pos.is_value_known():
+            self.last_position = last_pos
+        if last_pos_2.is_value_known():
+            self.last_position_2 = last_pos_2
 
     def __repr__(self) -> str:
-        return "(distance=" + str(self.distance) + ", direction=" + str(self.direction) + ", dist_chng=" + \
-               str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) + ")"
+        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
+                                                                       , self.last_position, self.last_position_2)
+
+    def __str__(self) -> str:
+        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
+                                                        , self.last_position, self.last_position_2)
 
 
 class Goal:
