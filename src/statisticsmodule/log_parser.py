@@ -5,7 +5,7 @@ import os
 
 from statisticsmodule.statistics import Game, Team, Stage, Player
 from statisticsmodule import statistics
-from parsing import __ROBOCUP_MSG_REGEX, __SIGNED_INT_REGEX, __REAL_NUM_REGEX
+from parsing import _ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX, _REAL_NUM_REGEX
 
 
 SERVER_LOG_PATTERN = '*.rcg'
@@ -50,7 +50,7 @@ def get_newest_action_log():
 
 # Parses log name (game id, team names and goals)
 def parse_log_name(log_name, game: Game):
-    id_regex = "({1})\\-({0})\\_({1})\\-.*\\-({0})\\_({1})\\.".format(__ROBOCUP_MSG_REGEX, __SIGNED_INT_REGEX)
+    id_regex = "({1})\\-({0})\\_({1})\\-.*\\-({0})\\_({1})\\.".format(_ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX)
     regular_expression = re.compile(id_regex)
     matched = regular_expression.match(log_name)
 
@@ -74,7 +74,7 @@ def parse_log_name(log_name, game: Game):
 
 # Parses the lines of the server log starting with "((show"
 def parse_show_line(txt, game: Game):
-    regex_string = "\\(show ({0}) (\\(\\([^\\)]*\\)[^\\)]*\\)) (.*)".format(__SIGNED_INT_REGEX)
+    regex_string = "\\(show ({0}) (\\(\\([^\\)]*\\)[^\\)]*\\)) (.*)".format(_SIGNED_INT_REGEX)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(txt)
 
@@ -100,7 +100,7 @@ def parse_show_line(txt, game: Game):
 
 # Parses ball from show msg
 def parse_ball(txt, stage: Stage):
-    regex_string = "\\(\\(b\\) ({0}) ({0}) ({0}) ({0})".format(__REAL_NUM_REGEX)
+    regex_string = "\\(\\(b\\) ({0}) ({0}) ({0}) ({0})".format(_REAL_NUM_REGEX)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(txt)
 
@@ -119,7 +119,7 @@ def parse_ball(txt, stage: Stage):
 # Parses a player from show msg
 def parse_player(txt, stage: Stage):
     regex_string = "\\(\\((l|r) ({0})\\) ({0}) ({2}|0) ({1}) ({1}) ({1}) ({1}) ({1}) ({1}) \\(v [h|l] {0}\\) \\(s " \
-            "{1} {1} {1} {1}\\) \\(c ({0}) ".format(__SIGNED_INT_REGEX, __REAL_NUM_REGEX, __HEX_REGEX)
+            "{1} {1} {1} {1}\\) \\(c ({0}) ".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX, __HEX_REGEX)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(txt)
 

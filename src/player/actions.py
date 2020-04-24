@@ -5,7 +5,7 @@ from geometry import calculate_smallest_origin_angle_between, calculate_full_cir
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer
 
-MAXIMUM_KICK_DISTANCE = 0.9
+MAXIMUM_KICK_DISTANCE = 0.8
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
@@ -16,6 +16,22 @@ VIEW_WIDE = "(change_view wide high)"
 
 def reset_neck(state):
     return "(turn_neck " + str(-state.body_state.neck_angle) + ")"
+
+
+def dribble_towards(state: PlayerState, target_position: Coordinate):
+    minimum_last_update_time = state.now() - 3
+    angle_known = state.body_angle.is_value_known(minimum_last_update_time)
+    position_known = state.position.is_value_known(minimum_last_update_time)
+
+    if not angle_known or not position_known:
+        return orient_self(state)
+
+    if state.is_near_ball():
+        direction = calculate_relative_angle(state, target_position)
+        return ["(kick {0} {1})".format(calculate_power(3), direction)]
+    else:
+        return jog_towards_ball(state)
+
 
 
 def jog_towards(state: PlayerState, target_position: Coordinate):
