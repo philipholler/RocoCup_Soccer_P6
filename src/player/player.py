@@ -70,6 +70,16 @@ class PlayerState:
             return float(self.world_view.ball.get_value().distance) <= delta
         return False
 
+    def is_near_goal(self, delta=10.0):
+
+        if self.world_view.goals[0] is not None and self.world_view.side != self.world_view.goals[0].goal_side:
+            return float(self.world_view.goals[0].distance) <= delta
+
+        if self.world_view.goals[1] is not None and self.world_view.side != self.world_view.goals[1].goal_side:
+            return float(self.world_view.goals[1].distance) <= delta
+
+        return False
+
     def now(self):
         return self.world_view.sim_time
 
@@ -146,4 +156,3 @@ class WorldView:
                 return
         # Add new data point if player does not already exist in list
         self.other_players.append(PrecariousData(observed_player, self.sim_time))
-

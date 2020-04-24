@@ -7,7 +7,6 @@ from statisticsmodule.statistics import Game, Team, Stage, Player
 from statisticsmodule import statistics
 from parsing import __ROBOCUP_MSG_REGEX, __SIGNED_INT_REGEX, __REAL_NUM_REGEX
 
-
 SERVER_LOG_PATTERN = '*.rcg'
 ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
@@ -27,9 +26,20 @@ def parse_logs():
         else:
             continue
 
+    log_directory = Path(__file__).parent.parent / game.gameID
+    os.makedirs(log_directory)
+
+    file_left = open(os.path.join(log_directory, "%s_%s_leftkicks.txt" % (game.gameID, game.teams[0].name)), "w")
+    file_right = open(os.path.join(log_directory, "%s_%s_rightkicks.txt" % (game.gameID, game.teams[1].name)), "w")
+
     for stage in game.show_time:
         print(game.show_time.index(stage))
         print(stage.print_stage())
+        file_left.write(str(game.show_time.index(stage)) + " " + str(stage.team_l_kicks) + "\n")
+        file_right.write(str(game.show_time.index(stage)) + " " + str(stage.team_r_kicks) + "\n")
+
+    file_left.close()
+    file_right.close()
 
 
 # Gets the newest server log ".rcg"
@@ -90,10 +100,14 @@ def parse_show_line(txt, game: Game):
 
     # Inserts the stage in the correct array slot (tick)
     for player in stage.players:
-        if player.side == "l":
-            stage.team_l_kicks += player.kicks
-        if player.side == "r":
-            stage.team_r_kicks += player.kicks
+        if player.side == "l" and player.kicks != 0:
+            # print(str(stage.team_l_kicks) + " + " + str(player.kicks))
+            stage.team_l_kicks = stage.team_l_kicks + player.kicks
+            # print(str(stage.team_l_kicks))
+        if player.side == "r" and player.kicks != 0:
+            # print(str(stage.team_r_kicks) + " + " + str(player.kicks))
+            stage.team_r_kicks = stage.team_r_kicks + player.kicks
+            # print(str(stage.team_r_kicks))
 
     game.show_time.insert(tick, stage)
 
@@ -119,7 +133,7 @@ def parse_ball(txt, stage: Stage):
 # Parses a player from show msg
 def parse_player(txt, stage: Stage):
     regex_string = "\\(\\((l|r) ({0})\\) ({0}) ({2}|0) ({1}) ({1}) ({1}) ({1}) ({1}) ({1}) \\(v [h|l] {0}\\) \\(s " \
-            "{1} {1} {1} {1}\\) \\(c ({0}) ".format(__SIGNED_INT_REGEX, __REAL_NUM_REGEX, __HEX_REGEX)
+                   "{1} {1} {1} {1}\\) \\(c ({0}) ".format(__SIGNED_INT_REGEX, __REAL_NUM_REGEX, __HEX_REGEX)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(txt)
 

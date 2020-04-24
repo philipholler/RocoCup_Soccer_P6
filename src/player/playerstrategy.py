@@ -26,6 +26,8 @@ def determine_objective(state: PlayerState, current_objective: Objective):
     if state.is_near_ball(actions.MAXIMUM_KICK_DISTANCE):
         pass_target = _find_pass_target(state)
         if pass_target is None:
+            if state.is_near_goal():
+                return Objective(lambda: actions.kick_to_goal(state))
             return orient_objective(state)
 
         return Objective(lambda: actions.pass_ball_to(pass_target, state), time_out=1)
