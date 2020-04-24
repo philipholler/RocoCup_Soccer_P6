@@ -18,6 +18,7 @@ class PlayerState:
         self.body_angle: PrecariousData = PrecariousData.unknown()
         self.action_history = ActionHistory()
         self.body_state = BodyState()
+        self.players_close_behind = 0
         self.coach_command = PrecariousData.unknown()
         self.starting_position: Coordinate = None
         self.playing_position: Coordinate = None

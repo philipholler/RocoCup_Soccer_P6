@@ -460,7 +460,7 @@ def _extract_flag_directions(flag_strings, neck_angle):
 # distance, direction, dist_change, dir_change
 def _parse_ball(ball: str, ps: player.PlayerState):
     # If ball is not present at all or only seen behind the player
-    if ball is None or ball.startswith("((B"):
+    if ball is None:
         return
 
     # Remove ) from the items
@@ -474,13 +474,13 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     # ['b', '13.5', '-31', '2', '-5']
 
     # These are always included
-    distance = split_by_whitespaces[1]
-    direction = float(split_by_whitespaces[2])
+    distance = float(split_by_whitespaces[1])
+    direction = int(split_by_whitespaces[2])
     # direction += ps.body_state.neck_angle # Accommodates non-zero neck angles
     # direction %= 360
     # These might be included depending on the distance and view of the player
-    distance_chng = None
-    dir_chng = None
+    distance_chng = PrecariousData.unknown()
+    dir_chng = PrecariousData.unknown()
 
     # If we also know dist_change and dir_change
     if len(split_by_whitespaces) > 3:
@@ -653,10 +653,11 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
 # 3: (ObjName Distance Direction)
 # 4: (ObjName Direction)
 def _parse_players(players: [], ps: player.PlayerState):
-
+    ps.players_close_behind = 0
     for cur_player in players:
         # Unknown see object (out of field of view)
         if cur_player.startswith("((P"):
+            ps.players_close_behind += 1
             continue
         # Default values
         team = None

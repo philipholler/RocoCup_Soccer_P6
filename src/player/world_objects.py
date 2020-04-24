@@ -83,12 +83,12 @@ UPPER_FIELD_BOUND = Coordinate(60, 40)
 
 
 class Ball:
-    def __init__(self, distance, direction, dist_chng, dir_chng, coord) -> None:
+    def __init__(self, distance: float, direction: int, dist_chng, dir_chng, coord) -> None:
         super().__init__()
         self.distance = distance
         self.direction = direction
-        self.dist_chng = dist_chng
-        self.dir_chng = dir_chng
+        self.dist_chng = dir_chng
+        self.dir_chng = dist_chng
         self.coord: Coordinate = coord
 
     def __repr__(self) -> str:
