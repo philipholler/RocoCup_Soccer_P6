@@ -100,7 +100,7 @@ def _get_ball_possessor(regressor: Regressor, locations, team_members):
 
 def _get_pass_target(r, index_to_transition_dict, team_members):
     action = index_to_transition_dict[str(r.get_highest_val_trans()[0])]
-    target = int(re.search("pass_target := ([0-4])", action).group(1))
+    target = int(re.search("pass_target := ([0-9]*)", action).group(1))
     return team_members[target]
 
 

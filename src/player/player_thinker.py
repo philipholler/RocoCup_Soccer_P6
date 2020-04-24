@@ -24,8 +24,6 @@ class Thinker(threading.Thread):
         # Non processed inputs from server
         self.input_queue = queue.Queue()
         self.current_objective: Objective = None
-        self.last_measured_time = 0
-        self.time_since_last_tick = 0
         self.is_positioned = False
 
     def start(self) -> None:
@@ -48,9 +46,8 @@ class Thinker(threading.Thread):
         self._stop_event.set()
 
     def think(self):
-        can_perform_action = False
-        self.time_since_last_tick = 0
-        self.last_measured_time = time.time()
+        time_since_last_tick = 0
+        last_measured_time = time.time()
         while not self._stop_event.is_set():
 
             while not self.input_queue.empty():
@@ -60,27 +57,26 @@ class Thinker(threading.Thread):
 
             if not self.is_positioned:
                 self.position_player()
+
             # Update current objective in accordance to the player's strategy
             cur_time = time.time()
-            self.time_since_last_tick += cur_time - self.last_measured_time
-            self.last_measured_time = cur_time
-            if self.time_since_last_tick >= 0.1:
-                self.time_since_last_tick -= 0.1
-                self.time_since_last_tick %= 0.1  # discard extra time if we fall more than tick behind
-                self.last_measured_time = time.time()
-                self.current_objective = determine_objective(self.player_state, self.current_objective)
-                action = self.current_objective.perform_action()
-                if action is not None:
-                    if isinstance(action, str):
-                        if len(action) != 0:
-                            self.player_conn.action_queue.put(action)
-                    else:
-                        for msg in action:
-                            if len(msg) != 0:
-                                self.player_conn.action_queue.put(msg)
+            time_since_last_tick += cur_time - last_measured_time
+            last_measured_time = cur_time
+            if time_since_last_tick >= 0.1:
+                time_since_last_tick -= 0.1
+                time_since_last_tick %= 0.1  # discard extra time if we fall more than tick behind
+                self.perform_action()
 
-            time.sleep(0.01)
+            time.sleep(0.05)
 
+    # Called every 100ms
+    def perform_action(self):
+        self.current_objective = determine_objective(self.player_state, self.current_objective)
+        actions = self.current_objective.plan_actions()
+
+        for action in actions:
+            if action is not None:
+                self.player_conn.action_queue.put(action)
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:

@@ -5,11 +5,13 @@ from geometry import calculate_smallest_origin_angle_between, calculate_full_cir
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer
 
-MAXIMUM_KICK_DISTANCE = 1
+MAXIMUM_KICK_DISTANCE = 0.9
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
 VIEW_RESET = "(change_view normal high)"
+VIEW_NARROW = "(change_view normal high)"
+VIEW_WIDE = "(change_view wide high)"
 
 
 def reset_neck(state):
@@ -19,7 +21,7 @@ def reset_neck(state):
 def jog_towards(state: PlayerState, target_position: Coordinate):
     actions = []
     history = state.action_history
-    minimum_last_update_time = state.now() - 10
+    minimum_last_update_time = state.now() - 3
     angle_known = state.body_angle.is_value_known(minimum_last_update_time)
     position_known = state.position.is_value_known(minimum_last_update_time)
 
@@ -28,13 +30,13 @@ def jog_towards(state: PlayerState, target_position: Coordinate):
 
     if not state.body_facing(target_position, 15) and history.last_turn_time < state.body_angle.last_updated_time:
         rotation = calculate_relative_angle(state, target_position)
-
         history.last_turn_time = state.now()
         actions.append("(turn " + str(rotation) + ")")
     else:
-        actions.append("(dash 60)")
+        distance = state.position.get_value().euclidean_distance_from(target_position)
+        actions.append("(dash {0})".format(str(calculate_dash_power(distance))))
 
-    actions.append(orient_self_neck_only(state))
+    actions.extend(orient_self_neck_only(state))
     return actions
 
 
@@ -54,28 +56,23 @@ def choose_rand_player(player_passing: PlayerState):
     return None
 
 
-def get_player(target_player_num, state: PlayerState):
-    team_players = state.world_view.get_teammates(state.team_name, max_data_age=4)
-    for p in team_players:
-        if p.num is not None and int(p.num) == int(target_player_num):
-            return p
-
-
-def pass_ball_to(target_player_num, state: PlayerState):
+def pass_ball_to(target: ObservedPlayer, state: PlayerState):
     world = state.world_view
 
     if world.ball.is_value_known(world.ticks_ago(5)) and state.position.is_value_known(world.ticks_ago(5)):
         ball = world.ball.get_value()
-        if ball.coord.euclidean_distance_from(state.position.get_value()) < MAXIMUM_KICK_DISTANCE:
-            target = get_player(target_player_num, state)
+        if state.is_near_ball(MAXIMUM_KICK_DISTANCE):
             if target is not None:
-                return "(kick " + str(calculate_power(target.distance)) + " " + str(target.direction) + ")"
+                print("Kicking from player {0} to player {1}".format(str(state.num), str(target.num)))
+                direction = calculate_relative_angle(state, target.coord)
+                distance = state.position.get_value().euclidean_distance_from(target.coord)
+                return ["(kick " + str(calculate_power(distance)) + " " + str(direction) + ")"]
             else:
                 return orient_self(state)
         else:
             return jog_towards_ball(state)
     else:
-        orient_self(state)
+        return orient_self(state)
 
 
 def pass_ball_to_random(player_passing: PlayerState):
@@ -86,7 +83,7 @@ def pass_ball_to_random(player_passing: PlayerState):
     direction = target.direction
     power = calculate_power(target.distance)
 
-    return "(kick " + str(power) + " " + str(direction) + ")"
+    return ["(kick " + str(power) + " " + str(direction) + ")"]
 
 
 def kick_to_goal(player : PlayerState):
@@ -97,32 +94,52 @@ def kick_to_goal(player : PlayerState):
 
     direction = calculate_relative_angle(player, target)
 
-    return "(kick " + str(160) + " " + str(direction) + ")"
+    return ["(kick " + str(160) + " " + str(direction) + ")"]
 
 
 def orient_self(state: PlayerState):
+    actions = [adjust_view(state)]
+    if state.action_history.last_orientation_time >= state.last_see_update:
+        return ""
+
     history = state.action_history
     action = ORIENTATION_ACTIONS[history.last_orientation_action]
+    actions.append(action)
+
     history.last_orientation_action += 1
     history.last_orientation_action %= len(ORIENTATION_ACTIONS)
+    history.last_orientation_time = state.now()
 
-    return action
+    return actions
+
+
+def adjust_view(state: PlayerState):
+    if state.world_view.ball.is_value_known(state.now() - 6) and state.position.is_value_known(state.now() - 6):
+        dist_to_ball = state.world_view.ball.get_value().coord.euclidean_distance_from( state.position.get_value())
+        if dist_to_ball < 15:
+            return VIEW_NARROW
+        else:
+            return VIEW_RESET
+    return VIEW_WIDE
 
 
 def orient_self_neck_only(state: PlayerState):
+    actions = [adjust_view(state)]
     history = state.action_history
-    if history.last_orientation_time > state.position.last_updated_time:
-        return ""  # Don't do anything if no vision update has been received from the server since last turn command
+    if history.last_orientation_time >= state.last_see_update:
+        return [None]  # Don't do anything if no vision update has been received from the server since last turn command
     history.last_orientation_time = state.now()
 
     if history.last_orientation_action >= len(NECK_ORIENTATION_ACTIONS):
         # Reset neck position
         history.last_orientation_action = 0
-        return reset_neck(state)
+        actions.append(reset_neck(state))
+        return actions
 
     action = NECK_ORIENTATION_ACTIONS[history.last_orientation_action]
     history.last_orientation_action += 1
-    return action
+    actions.append(action)
+    return actions
 
 
 def calculate_relative_angle(player_state, target_position):
@@ -141,6 +158,11 @@ def calculate_relative_angle(player_state, target_position):
 
 # TODO: find out how to calculate power from distance
 def calculate_power(distance):
-    return float(distance) * 3
+    return 15 + float(distance) * 3
 
+
+def calculate_dash_power(distance):
+    if distance < 2:
+        return 15 + distance * 10
+    return 65
 
