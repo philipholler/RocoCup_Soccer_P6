@@ -499,8 +499,17 @@ def _parse_ball(ball: str, ps: player.PlayerState):
                                                      my_y=pos.pos_y,
                                                      my_global_angle=ps.get_global_angle().get_value())
 
+        # Save old ball information
+        last_pos_2 = PrecariousData.unknown()
+        last_pos_1 = PrecariousData.unknown()
+        if ps.world_view.ball.is_value_known():
+            old_ball = ps.world_view.ball.get_value()
+            old_ball_time = ps.world_view.ball.last_updated_time
+            if old_ball.last_position.is_value_known():
+                last_pos_2 = old_ball.last_position
+            last_pos_1.set_value(old_ball.coord, old_ball_time)
         new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
-                                      coord=ball_coord)
+                                      coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2)
         ps.world_view.ball.set_value(new_ball, ps.get_global_angle().last_updated_time)
 
 

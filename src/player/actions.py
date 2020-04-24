@@ -28,7 +28,8 @@ def dribble_towards(state: PlayerState, target_position: Coordinate):
 
     if state.is_near_ball():
         direction = calculate_relative_angle(state, target_position)
-        return ["(kick {0} {1})".format(calculate_power(3), direction)]
+        actions: [] = ["(kick {0} {1})".format("20", direction), "(dash 70)"]
+        return actions
     else:
         return jog_towards_ball(state)
 
@@ -181,4 +182,3 @@ def calculate_dash_power(distance):
     if distance < 2:
         return 15 + distance * 10
     return 65
-
