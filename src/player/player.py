@@ -215,5 +215,4 @@ class WorldView:
             return 0
         delta_time = t2 - t1
         speed = self.ball.get_value().coord.euclidean_distance_from(self.ball.get_value().last_position.get_value()) / delta_time
-        print(speed)
         return speed
