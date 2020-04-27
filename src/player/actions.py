@@ -5,8 +5,8 @@ from sympy import solve, Eq, Symbol
 
 from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, MAXIMUM_KICK_DISTANCE, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN
-from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle, \
-    get_distance_between_coords
+from geometry import calculate_full_circle_origin_angle
+
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball
 
@@ -14,7 +14,7 @@ ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(tur
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
 VIEW_RESET = "(change_view normal high)"
-VIEW_NARROW = "(change_view normal high)"
+VIEW_NARROW = "(change_view narrow high)"
 VIEW_WIDE = "(change_view wide high)"
 
 
@@ -90,7 +90,7 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
                 print("Kicking from player {0} to player {1}".format(str(state.num), str(target.num)))
                 direction = calculate_relative_angle(state, target.coord)
                 distance = state.position.get_value().euclidean_distance_from(target.coord)
-                return ["(kick " + str(calculate_power(distance)) + " " + str(direction) + ")"]
+                return ["(kick " + str(calculate_kick_power(state, distance)) + " " + str(direction) + ")"]
             else:
                 return orient_self(state)
         else:
@@ -99,13 +99,13 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
         return orient_self(state)
 
 
-def pass_ball_to_random(player_passing: PlayerState):
-    target: ObservedPlayer = choose_rand_player(player_passing)
+def pass_ball_to_random(state: PlayerState):
+    target: ObservedPlayer = choose_rand_player(state)
     if target is None:
-        return orient_self(player_passing)
+        return orient_self(state)
 
     direction = target.direction
-    power = calculate_power(target.distance)
+    power = calculate_kick_power(state, target.distance)
 
     return ["(kick " + str(power) + " " + str(direction) + ")"]
 
@@ -195,16 +195,34 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()
     dir_diff = abs(ball.direction)
     dist_ball = ball.distance
-    time_to_target = int(distance * 1.35)
+
+    # voodoo parameters
+    if distance > 40:
+        time_to_target = int(distance * 1.4)
+    elif distance >= 30:
+        time_to_target = int(distance * 1.35)
+    elif distance >= 20:
+        time_to_target = int(distance * 1.1)
+    elif distance >= 10:
+        time_to_target = int(distance)
+    else:
+        time_to_target = 3
 
     # Solve for the initial kick power needed to get to the distance after time_to_target ticks
     # x = kickpower (0-100)
     x = Symbol('x', real=True)
     eqn = Eq(sum([(((x * KICK_POWER_RATE) * (1 - 0.25 * (dir_diff / 180) - 0.25 * (dist_ball / KICKABLE_MARGIN)))
                    * BALL_DECAY ** i) for i in range(0, time_to_target)]), distance)
+    solution = solve(eqn)
+    if len(solution) == 0:
+        print(solution)
+        print("Time_to_target: {0}, dist_ball: {1}, dir_diff: {2}, player: {3}".format(time_to_target, dist_ball, dir_diff, state))
     needed_kick_power = solve(eqn)[0]
+
 
     if needed_kick_power < 0:
         raise Exception("Should not be able to be negative. What the hell - Philip")
+    elif needed_kick_power > 100:
+        print("Tried to kick with higher than 100 power: ", str(needed_kick_power), ", player: ", state)
 
     return needed_kick_power
