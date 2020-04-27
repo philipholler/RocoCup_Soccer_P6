@@ -1,11 +1,11 @@
 import math
-
+from logging import debug
 
 from sympy import solve, Eq, Symbol
 
-from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, MAXIMUM_KICK_DISTANCE, KICK_POWER_RATE, BALL_DECAY, \
-    KICKABLE_MARGIN, VIEW_ANGLE_NARROW, VIEW_ANGLE_NORMAL, VIEW_ANGLE_WIDE
-from geometry import calculate_full_circle_origin_angle
+from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, KICK_POWER_RATE, BALL_DECAY, \
+    KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE
+from geometry import calculate_full_circle_origin_angle, is_angle_in_range
 
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball
@@ -13,13 +13,13 @@ from player.world_objects import Coordinate, ObservedPlayer, Ball
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
-VIEW_NORMAL = "(change_view normal high)"
-VIEW_NARROW = "(change_view narrow high)"
-VIEW_WIDE = "(change_view wide high)"
+SET_VIEW_NORMAL = "(change_view normal high)"
+SET_VIEW_NARROW = "(change_view narrow high)"
+SET_VIEW_WIDE = "(change_view wide high)"
 
 
 def reset_neck(state):
-    return "(turn_neck " + str(-state.body_state.neck_angle) + ")"
+    return ["(turn_neck " + str(-state.body_state.neck_angle) + ")"]
 
 
 def dribble_towards(state: PlayerState, target_position: Coordinate):
@@ -121,16 +121,64 @@ def kick_to_goal(player : PlayerState):
     return ["(kick " + str(160) + " " + str(direction) + ")"]
 
 
+def require_see_update(function):
+    def wrapper(*args, **kwargs):
+        if args[0].action_history.has_turned_since_last_see:
+            return []
+        else:
+            return function(*args, **kwargs)
+    return wrapper
+
+
+@require_see_update
+def locate_ball(state: PlayerState):
+    actions = [SET_VIEW_WIDE]
+    if not state.body_angle.is_value_known(state.now() - 10):
+        print("angle unknown")
+        return actions
+
+    turn_history = state.action_history.turn_history
+    angle = turn_history.least_updated_angle(FOV_WIDE)
+    actions.extend(look_direction(state, angle, FOV_WIDE))
+    state.action_history.has_turned_since_last_see = True
+    return actions
+
+
+# Creates turn commands (both neck and body)
+# to face the total angle of the player in the target direction
+@require_see_update
+def look_direction(state: PlayerState, target_direction, fov):
+    actions = []
+    current_total_direction = state.body_angle.get_value() + state.body_state.neck_angle
+
+    body_angle = state.body_angle.get_value()
+    # Case where it is enough to turn neck
+    if is_angle_in_range(target_direction, from_angle=(body_angle - 90) % 360, to_angle=(body_angle + 90) % 360):
+        angle_to_turn = target_direction - current_total_direction
+        actions.append("(turn_neck {0})".format(angle_to_turn))
+    # Case where it is necessary to turn body
+    else:
+        angle_to_turn_body = target_direction - state.body_angle.get_value()
+        actions.extend(reset_neck(state))
+        actions.append("(turn {0})".format(angle_to_turn_body))
+
+    # Update state to show that this angle has now been viewed
+    state.action_history.turn_history.renew_angle(target_direction, fov)
+    state.action_history.has_turned_since_last_see = True
+    return actions
+
+
 def orient_self(state: PlayerState):
+    actions = []
     view = adjust_view(state)
     viewable_range = (state.body_angle.get_value() - 90, state.body_angle.get_value() + 90)
-    viewable_indices_range = range()
+    viewable_indices = ()
     if state.is_near_ball():
-        view = VIEW_NARROW
+        view = SET_VIEW_NARROW
     elif state.is_near_ball(20):
-        view = VIEW_NARROW
+        view = SET_VIEW_NARROW
     else:
-        view = VIEW_NORMAL
+        view = SET_VIEW_NORMAL
 
     if state.action_history.last_orientation_time >= state.last_see_update:
         return ""
@@ -150,10 +198,10 @@ def adjust_view(state: PlayerState):
     if state.world_view.ball.is_value_known(state.now() - 6) and state.position.is_value_known(state.now() - 6):
         dist_to_ball = state.world_view.ball.get_value().coord.euclidean_distance_from( state.position.get_value())
         if dist_to_ball < 15:
-            return VIEW_NARROW
+            return SET_VIEW_NARROW
         else:
-            return VIEW_NORMAL
-    return VIEW_WIDE
+            return SET_VIEW_NORMAL
+    return SET_VIEW_WIDE
 
 
 def orient_self_neck_only(state: PlayerState):
@@ -166,7 +214,7 @@ def orient_self_neck_only(state: PlayerState):
     if history.last_orientation_action >= len(NECK_ORIENTATION_ACTIONS):
         # Reset neck position
         history.last_orientation_action = 0
-        actions.append(reset_neck(state))
+        actions.extend(reset_neck(state))
         return actions
 
     action = NECK_ORIENTATION_ACTIONS[history.last_orientation_action]
@@ -187,6 +235,7 @@ def calculate_relative_angle(player_state, target_position):
         rotation += 360
 
     return rotation
+
 
 # TODO: find out how to calculate power from distance
 def calculate_power(distance):
@@ -227,7 +276,6 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
         print("Time_to_target: {0}, dist_ball: {1}, dir_diff: {2}, player: {3}".format(time_to_target, dist_ball, dir_diff, state))
     needed_kick_power = solve(eqn)[0]
 
-
     if needed_kick_power < 0:
         raise Exception("Should not be able to be negative. What the hell - Philip")
     elif needed_kick_power > 100:
@@ -235,3 +283,6 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
         # print("Tried to kick with higher than 100 power: ", str(needed_kick_power), ", player: ", state)
 
     return needed_kick_power
+
+
+

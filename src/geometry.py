@@ -72,3 +72,10 @@ def get_distance_between_coords(c1, c2):
     y = c2.pos_y - c1.pos_y
 
     return math.sqrt(pow(x, 2) + pow(y, 2))
+
+
+def is_angle_in_range(angle, from_angle, to_angle):
+    if from_angle > to_angle:  # Case where range wraps around 360
+        return from_angle < angle <= 360 or 0 <= angle <= to_angle
+
+    return from_angle <= angle <= to_angle

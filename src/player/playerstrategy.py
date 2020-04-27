@@ -30,9 +30,10 @@ def team_has_corner_kick(state):
     return False
 
 
-
-
 def determine_objective(state: PlayerState, current_objective: Objective):
+    if not state.world_view.ball.is_value_known(state.now() - 3):
+        return Objective(lambda: actions.locate_ball(state))
+
     if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
         return current_objective
 
@@ -40,7 +41,6 @@ def determine_objective(state: PlayerState, current_objective: Objective):
         # Left midfielder
         if state.num == 6:
             return Objective(lambda: actions.jog_towards_ball(state), time_out=5)
-
 
     if state.is_near_ball():
         # If close to goal, dribble closer
@@ -64,7 +64,7 @@ def determine_objective(state: PlayerState, current_objective: Objective):
     if interception_position is not None:
         print("Player " + str(state.num) + " intercepting at : " + str(interception_position))
         return Objective(lambda: actions.run_towards(state, interception_position),
-                         interception_time - 1 - 2)
+                         interception_time - 1)
 
     # If less than 15 meters from ball attempt to retrieve it
     if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):

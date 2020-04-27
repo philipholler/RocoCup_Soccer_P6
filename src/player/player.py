@@ -157,10 +157,56 @@ class PlayerState:
 
 class ActionHistory:
     def __init__(self) -> None:
-        self.turn_heat_map = [0] * 12
+        self.turn_history = ViewFrequency()
         self.last_turn_time = 0
         self.last_orientation_action = 0
         self.last_orientation_time = 0
+        self.has_turned_since_last_see = False
+
+
+class ViewFrequency:
+    SLICE_WIDTH = 30  # The amount of degrees between each view 'slice'
+    SLICES = round(360 / SLICE_WIDTH)
+
+    def __init__(self) -> None:
+        self.last_update_time: [int] = [0] * self.SLICES
+
+    def least_updated_angle(self, field_of_view):
+        viewable_slices_to_each_side = self._get_viewable_slices_to_each_side(field_of_view)
+
+        oldest_angle = 0
+        best_angle_index = 0
+
+        for i, update_time in enumerate(self.last_update_time):
+            viewable_range = range(i - viewable_slices_to_each_side, i + viewable_slices_to_each_side + 1)
+            total_age = 0
+            for v in viewable_range:
+                total_age += self.last_update_time[v % self.SLICES]
+
+            if oldest_angle < total_age:
+                oldest_angle = total_age
+                best_angle_index = i
+
+        return self.SLICE_WIDTH * best_angle_index
+
+    def renew_angle(self, angle: int, field_of_view: int):
+        viewable_slices_to_each_side = self._get_viewable_slices_to_each_side(field_of_view)
+        angle_index = round(angle / self.SLICE_WIDTH)
+        view_range = range(angle_index - viewable_slices_to_each_side, angle_index + viewable_slices_to_each_side + 1)
+
+        # Increment all timers
+        for i in range(0, len(self.last_update_time)):
+            self.last_update_time[i] = max(self.last_update_time[i] + 1, 20)
+
+        # Reset now visible angles
+        for i in view_range:
+            self.last_update_time[i % self.SLICES] = 0
+
+    def _get_viewable_slices_to_each_side(self, field_of_view) -> int:
+        viewable_slices = round(field_of_view / self.SLICE_WIDTH)
+        if viewable_slices % 2 == 0:
+            viewable_slices -= 1
+        return max(math.floor(viewable_slices / 2), 0)
 
 
 class BodyState:
