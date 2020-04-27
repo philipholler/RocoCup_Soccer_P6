@@ -119,7 +119,7 @@ def parse_show_line(txt, game: Game):
             stage.team_r_kicks = stage.team_r_kicks + player.kicks
             # print(str(stage.team_r_kicks))
 
-    if tick <= 6000:
+    if tick <= 150:
         game.show_time.insert(tick, stage)
 
 
