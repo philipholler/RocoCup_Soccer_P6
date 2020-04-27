@@ -7,7 +7,7 @@ from player.world_objects import Coordinate
 
 
 class Objective:
-    def __init__(self, action_planner, time_out) -> None:
+    def __init__(self, action_planner, time_out=0) -> None:
         self.time_out = time_out
         self.action_planner = action_planner
 
@@ -41,6 +41,10 @@ def determine_objective(state: PlayerState, current_objective: Objective):
 
         return Objective(lambda: actions.pass_ball_to(pass_target, state), time_out=1)
 
+#    interception_position, interception_time = state.ball_interception(5)
+ #   if interception_position is not None:
+  #      return Objective(lambda: actions.jog_towards(state, interception_position), state.now() + interception_time)
+
     # If less than 15 meters from ball attempt to retrieve it
     if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):
         if state.is_nearest_ball(2):
@@ -51,14 +55,13 @@ def determine_objective(state: PlayerState, current_objective: Objective):
     if state.is_near(target_position):
         new_objective = orient_objective(state)
     else:
-        new_objective = Objective(lambda: actions.jog_towards(state, target_position),
-                                  time_out=1)  # Always interruptable
+        new_objective = Objective(lambda: actions.jog_towards(state, target_position), time_out=1)
 
     return new_objective
 
 
 def orient_objective(state: PlayerState):
-    return Objective(lambda: actions.orient_self(state),  time_out=5)
+    return Objective(lambda: actions.orient_self(state),  time_out=3)
 
 
 def find_player(state, player_num):

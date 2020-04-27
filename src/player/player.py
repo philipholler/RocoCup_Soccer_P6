@@ -1,7 +1,7 @@
 import math
 import geometry
 from geometry import calculate_full_circle_origin_angle
-from player.world_objects import PrecariousData, Coordinate, ObservedPlayer
+from player.world_objects import PrecariousData, Coordinate, ObservedPlayer, Ball
 
 MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manual
 APPROA_GOAL_DISTANCE = 30
@@ -106,6 +106,14 @@ class PlayerState:
         sorted_distances = sorted(distances)
 
         return sorted_distances[degree - 1] > ball_position.euclidean_distance_from(self.position.get_value())
+
+    def ball_interception(self, param):
+        if self.world_view.ball.is_value_known(self.now() - 4):
+            last_update = self.world_view.ball.last_updated_time
+            ball: Ball = self.world_view.ball.get_value()
+            current_position = ball.coord
+            if last_update < self.now():
+                pass #current_position = project_ball()
 
 
 class ActionHistory:
