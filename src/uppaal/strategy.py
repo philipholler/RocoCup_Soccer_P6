@@ -1,14 +1,21 @@
-import functools
 import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
+from player.player import WorldView
 
-from player.world_objects import Coordinate
 
 SYSTEM_PLAYER_NAMES = ["player0", "player1", "player2", "player3", "player4"]
 PLAYER_POS_DECL_NAME = "player_pos[team_members][2]"
 OPPONENT_POS_DECL_NAME = "opponent_pos[opponents][2]"
+
+
+def generate_strategy_player(wv: WorldView):
+    strategy_generator = _find_applicable_strat_player(wv)
+    if strategy_generator is None:
+        return
+
+    return strategy_generator.generate_strategy(wv)
 
 
 def generate_strategy(wv: WorldViewCoach):
@@ -28,7 +35,7 @@ class _StrategyGenerator:
         self._strategy_parser = strategy_parser
         self._model_modifier = model_modifier
 
-    def generate_strategy(self, wv: WorldViewCoach):
+    def generate_strategy(self, wv):
         # Create model
         model = UppaalModel(self.strategy_name)
 
@@ -42,6 +49,11 @@ class _StrategyGenerator:
 
         # Interpret strategy and produce coach /say output
         return self._strategy_parser(uppaal_strategy, model_data)
+
+
+def _find_applicable_strat_player(wv) -> _StrategyGenerator:
+    # todo use player specific strategies once made available - Philip
+    pass
 
 
 def _find_applicable_strat(world_view) -> _StrategyGenerator:
@@ -104,11 +116,10 @@ def _get_pass_target(r, index_to_transition_dict, team_members):
     return team_members[target]
 
 
-def _to_2d_int_array_decl(players : [PlayerViewCoach]):
+def _to_2d_int_array_decl(players: [PlayerViewCoach]):
     string = "{"
     separator = ""
     for player in players:
         string += separator + "{" + str(round(player.coord.pos_x)) + ", " + str(round(player.coord.pos_y)) + "}"
         separator = ","  # Only comma separate after first coordinate
     return string + "}"
-

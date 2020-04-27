@@ -4,7 +4,6 @@ import re
 import subprocess
 from os import fdopen, remove
 
-from pathlib import Path
 from shutil import copymode, move
 from tempfile import mkstemp
 
@@ -265,6 +264,7 @@ class UppaalModel:
 
     def _extract_template_string(self, xml_file_string):
         pass
+
 
     def _extract_global_decl(self, root: ET):
         global_decl_zone = root.find("./declaration")
