@@ -29,17 +29,27 @@ def parse_logs():
     log_directory = Path(__file__).parent.parent / game.gameID
     os.makedirs(log_directory)
 
-    file_left = open(os.path.join(log_directory, "%s_%s_leftkicks.txt" % (game.gameID, game.teams[0].name)), "w")
-    file_right = open(os.path.join(log_directory, "%s_%s_rightkicks.txt" % (game.gameID, game.teams[1].name)), "w")
+    file_left = open(os.path.join(log_directory, "%s_leftkicks.txt" % game.teams[0].name), "w")
+    file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
+    file_l_goalie_kicks = open(os.path.join(log_directory, "%s_left_goalie_kicks.txt" % game.teams[0].name), "w")
+    file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
+
+    files = [file_left, file_right, file_l_goalie_kicks, file_r_goalie_kicks]
 
     for stage in game.show_time:
-        print(game.show_time.index(stage))
-        print(stage.print_stage())
+        # print(game.show_time.index(stage))
+        # print(stage.print_stage())
         file_left.write(str(game.show_time.index(stage)) + " " + str(stage.team_l_kicks) + "\n")
         file_right.write(str(game.show_time.index(stage)) + " " + str(stage.team_r_kicks) + "\n")
+        for player in stage.players:
+            if player.no == 1:
+                if player.side == "l":
+                    file_l_goalie_kicks.write(str(game.show_time.index(stage)) + " " + str(player.kicks) + "\n")
+                if player.side == "r":
+                    file_r_goalie_kicks.write(str(game.show_time.index(stage)) + " " + str(player.kicks) + "\n")
 
-    file_left.close()
-    file_right.close()
+    for file in files:
+        file.close()
 
 
 # Gets the newest server log ".rcg"
@@ -109,7 +119,8 @@ def parse_show_line(txt, game: Game):
             stage.team_r_kicks = stage.team_r_kicks + player.kicks
             # print(str(stage.team_r_kicks))
 
-    game.show_time.insert(tick, stage)
+    if tick <= 6000:
+        game.show_time.insert(tick, stage)
 
 
 # Parses ball from show msg
