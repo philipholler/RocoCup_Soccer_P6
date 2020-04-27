@@ -39,14 +39,14 @@ def parse_logs():
     for stage in game.show_time:
         # print(game.show_time.index(stage))
         # print(stage.print_stage())
-        file_left.write(str(game.show_time.index(stage)) + " " + str(stage.team_l_kicks) + "\n")
-        file_right.write(str(game.show_time.index(stage)) + " " + str(stage.team_r_kicks) + "\n")
+        file_left.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_l_kicks) + "\n")
+        file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
         for player in stage.players:
             if player.no == 1:
                 if player.side == "l":
-                    file_l_goalie_kicks.write(str(game.show_time.index(stage)) + " " + str(player.kicks) + "\n")
+                    file_l_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
                 if player.side == "r":
-                    file_r_goalie_kicks.write(str(game.show_time.index(stage)) + " " + str(player.kicks) + "\n")
+                    file_r_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
 
     for file in files:
         file.close()
@@ -100,6 +100,8 @@ def parse_show_line(txt, game: Game):
 
     stage = Stage()
     tick = int(matched.group(1))
+    if len(game.show_time) == tick:
+        return
 
     ball_txt = matched.group(2)
     parse_ball(ball_txt, stage)
@@ -119,7 +121,7 @@ def parse_show_line(txt, game: Game):
             stage.team_r_kicks = stage.team_r_kicks + player.kicks
             # print(str(stage.team_r_kicks))
 
-    if tick <= 150:
+    if tick <= 6000:
         game.show_time.insert(tick, stage)
 
 
@@ -144,7 +146,7 @@ def parse_ball(txt, stage: Stage):
 # Parses a player from show msg
 def parse_player(txt, stage: Stage):
     regex_string = "\\(\\((l|r) ({0})\\) ({0}) ({2}|0) ({1}) ({1}) ({1}) ({1}) ({1}) ({1}) \\(v [h|l] {0}\\) \\(s " \
-            "{1} {1} {1} {1}\\) \\(c ({0}) ".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX, __HEX_REGEX)
+                   "{1} {1} {1} {1}\\) \\(c ({0}) ".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX, __HEX_REGEX)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(txt)
 
