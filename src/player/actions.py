@@ -90,7 +90,7 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
                 print("Kicking from player {0} to player {1}".format(str(state.num), str(target.num)))
                 direction = calculate_relative_angle(state, target.coord)
                 distance = state.position.get_value().euclidean_distance_from(target.coord)
-                return ["(kick " + str(calculate_power(distance)) + " " + str(direction) + ")"]
+                return ["(kick " + str(calculate_kick_power(state, distance)) + " " + str(direction) + ")"]
             else:
                 return orient_self(state)
         else:
@@ -105,7 +105,8 @@ def pass_ball_to_random(player_passing: PlayerState):
         return orient_self(player_passing)
 
     direction = target.direction
-    power = calculate_power(target.distance)
+    target_coord: Coordinate = target.coord
+    power = calculate_kick_power(player_passing, target_coord.euclidean_distance_from(player_passing.position))
 
     return ["(kick " + str(power) + " " + str(direction) + ")"]
 
@@ -206,5 +207,7 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
 
     if needed_kick_power < 0:
         raise Exception("Should not be able to be negative. What the hell - Philip")
+    elif needed_kick_power > 100:
+        print("Tried to kick with higher than 100 power: ", str(needed_kick_power), ", player: ", state)
 
     return needed_kick_power

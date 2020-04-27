@@ -4,7 +4,7 @@ from constants import BALL_DECAY
 from geometry import calculate_full_circle_origin_angle
 from player.world_objects import PrecariousData, Coordinate, ObservedPlayer, Ball
 
-MAX_MOVE_DISTANCE_PER_TICK = 2.5  # todo random guess. Look up max_speed in manual
+MAX_MOVE_DISTANCE_PER_TICK = 1.05
 APPROA_GOAL_DISTANCE = 30
 
 
@@ -215,5 +215,4 @@ class WorldView:
             return 0
         delta_time = t2 - t1
         speed = self.ball.get_value().coord.euclidean_distance_from(self.ball.get_value().last_position.get_value()) / delta_time
-        print(speed)
         return speed
