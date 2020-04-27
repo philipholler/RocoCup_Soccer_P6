@@ -196,14 +196,30 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()
     dir_diff = abs(ball.direction)
     dist_ball = ball.distance
-    time_to_target = int(distance * 1.35)
+
+    # voodoo parameters
+    if distance > 40:
+        time_to_target = int(distance * 1.4)
+    elif distance >= 30:
+        time_to_target = int(distance * 1.35)
+    elif distance >= 20:
+        time_to_target = int(distance * 1.1)
+    elif distance >= 10:
+        time_to_target = int(distance)
+    else:
+        time_to_target = 3
 
     # Solve for the initial kick power needed to get to the distance after time_to_target ticks
     # x = kickpower (0-100)
     x = Symbol('x', real=True)
     eqn = Eq(sum([(((x * KICK_POWER_RATE) * (1 - 0.25 * (dir_diff / 180) - 0.25 * (dist_ball / KICKABLE_MARGIN)))
                    * BALL_DECAY ** i) for i in range(0, time_to_target)]), distance)
+    solution = solve(eqn)
+    if len(solution) == 0:
+        print(solution)
+        print("Time_to_target: {0}, dist_ball: {1}, dir_diff: {2}, player: {3}".format(time_to_target, dist_ball, dir_diff, state))
     needed_kick_power = solve(eqn)[0]
+
 
     if needed_kick_power < 0:
         raise Exception("Should not be able to be negative. What the hell - Philip")
