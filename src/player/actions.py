@@ -90,7 +90,7 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
                 print("Kicking from player {0} to player {1}".format(str(state.num), str(target.num)))
                 direction = calculate_relative_angle(state, target.coord)
                 distance = state.position.get_value().euclidean_distance_from(target.coord)
-                return ["(kick " + str(calculate_power(distance)) + " " + str(direction) + ")"]
+                return ["(kick " + str(calculate_kick_power(state, distance)) + " " + str(direction) + ")"]
             else:
                 return orient_self(state)
         else:
@@ -99,13 +99,13 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
         return orient_self(state)
 
 
-def pass_ball_to_random(player_passing: PlayerState):
-    target: ObservedPlayer = choose_rand_player(player_passing)
+def pass_ball_to_random(state: PlayerState):
+    target: ObservedPlayer = choose_rand_player(state)
     if target is None:
-        return orient_self(player_passing)
+        return orient_self(state)
 
     direction = target.direction
-    power = calculate_power(target.distance)
+    power = calculate_kick_power(state, target.distance)
 
     return ["(kick " + str(power) + " " + str(direction) + ")"]
 
