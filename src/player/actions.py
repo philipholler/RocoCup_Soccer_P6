@@ -26,7 +26,7 @@ def dribble_towards(state: PlayerState, target_position: Coordinate):
     if not angle_known or not position_known:
         return orient_self(state)
 
-    if state.is_near_ball():
+    if state.is_near_ball(MAXIMUM_KICK_DISTANCE):
         direction = calculate_relative_angle(state, target_position)
         actions: [] = ["(kick {0} {1})".format("20", direction), "(dash 70)"]
         return actions
