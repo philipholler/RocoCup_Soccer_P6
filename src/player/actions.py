@@ -4,7 +4,7 @@ import math
 from sympy import solve, Eq, Symbol
 
 from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, MAXIMUM_KICK_DISTANCE, KICK_POWER_RATE, BALL_DECAY, \
-    KICKABLE_MARGIN
+    KICKABLE_MARGIN, VIEW_ANGLE_NARROW, VIEW_ANGLE_NORMAL, VIEW_ANGLE_WIDE
 from geometry import calculate_full_circle_origin_angle
 
 from player.player import PlayerState
@@ -13,7 +13,7 @@ from player.world_objects import Coordinate, ObservedPlayer, Ball
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
-VIEW_RESET = "(change_view normal high)"
+VIEW_NORMAL = "(change_view normal high)"
 VIEW_NARROW = "(change_view narrow high)"
 VIEW_WIDE = "(change_view wide high)"
 
@@ -122,7 +122,16 @@ def kick_to_goal(player : PlayerState):
 
 
 def orient_self(state: PlayerState):
-    actions = [adjust_view(state)]
+    view = adjust_view(state)
+    viewable_range = (state.body_angle.get_value() - 90, state.body_angle.get_value() + 90)
+    viewable_indices_range = range()
+    if state.is_near_ball():
+        view = VIEW_NARROW
+    elif state.is_near_ball(20):
+        view = VIEW_NARROW
+    else:
+        view = VIEW_NORMAL
+
     if state.action_history.last_orientation_time >= state.last_see_update:
         return ""
 
@@ -143,7 +152,7 @@ def adjust_view(state: PlayerState):
         if dist_to_ball < 15:
             return VIEW_NARROW
         else:
-            return VIEW_RESET
+            return VIEW_NORMAL
     return VIEW_WIDE
 
 

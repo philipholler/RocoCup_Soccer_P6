@@ -1,6 +1,6 @@
 import math
 import geometry
-from constants import BALL_DECAY
+from constants import BALL_DECAY, KICKABLE_MARGIN
 from geometry import calculate_full_circle_origin_angle
 from player.world_objects import PrecariousData, Coordinate, ObservedPlayer, Ball
 
@@ -73,7 +73,7 @@ class PlayerState:
         distance = coordinate.euclidean_distance_from(self.position.get_value())
         return distance < allowed_delta
 
-    def is_near_ball(self, delta=1.0):
+    def is_near_ball(self, delta=KICKABLE_MARGIN):
         minimum_last_update_time = self.now() - 10
         ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
         if ball_known:
@@ -152,6 +152,7 @@ class PlayerState:
 
 class ActionHistory:
     def __init__(self) -> None:
+        self.turn_heat_map = [0] * 12
         self.last_turn_time = 0
         self.last_orientation_action = 0
         self.last_orientation_time = 0

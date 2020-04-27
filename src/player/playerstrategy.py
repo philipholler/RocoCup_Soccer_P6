@@ -46,7 +46,7 @@ def determine_objective(state: PlayerState, current_objective: Objective):
         print("Player " + str(state.num) + " intercepting at : " + str(interception_position))
         return Objective(lambda: actions.run_towards(state, interception_position),
                          interception_time - 1)
-
+    
     # If less than 15 meters from ball attempt to retrieve it
     if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):
         if state.is_nearest_ball(2):
