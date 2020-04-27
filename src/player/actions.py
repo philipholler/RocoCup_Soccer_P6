@@ -5,8 +5,8 @@ from sympy import solve, Eq, Symbol
 
 from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, MAXIMUM_KICK_DISTANCE, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN
-from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle, \
-    get_distance_between_coords
+from geometry import calculate_full_circle_origin_angle
+
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball
 
@@ -14,7 +14,7 @@ ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(tur
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
 VIEW_RESET = "(change_view normal high)"
-VIEW_NARROW = "(change_view normal high)"
+VIEW_NARROW = "(change_view narrow high)"
 VIEW_WIDE = "(change_view wide high)"
 
 

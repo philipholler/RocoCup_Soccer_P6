@@ -20,7 +20,7 @@ class Objective:
 
 
 def determine_objective(state: PlayerState, current_objective: Objective):
-    if current_objective is not None and not current_objective.should_recalculate():
+    if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
         return current_objective
 
     if state.is_near_ball(actions.MAXIMUM_KICK_DISTANCE):
@@ -41,11 +41,11 @@ def determine_objective(state: PlayerState, current_objective: Objective):
 
         return Objective(lambda: actions.pass_ball_to(pass_target, state), time_out=1)
 
-    """interception_position, interception_time = state.ball_interception()
+    interception_position, interception_time = state.ball_interception()
     if interception_position is not None:
-        print("new interception : " + str(interception_position))
+        print("Player " + str(state.num) + " intercepting at : " + str(interception_position))
         return Objective(lambda: actions.run_towards(state, interception_position),
-                         state.now() + interception_time)"""
+                         interception_time - 1)
 
     # If less than 15 meters from ball attempt to retrieve it
     if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):
