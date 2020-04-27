@@ -3,7 +3,7 @@ import math
 
 from sympy import solve, Eq, Symbol
 
-from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, MAXIMUM_KICK_DISTANCE, KICK_POWER_RATE, BALL_DECAY, \
+from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN
 from geometry import calculate_full_circle_origin_angle
 
@@ -30,7 +30,7 @@ def dribble_towards(state: PlayerState, target_position: Coordinate):
     if not angle_known or not position_known:
         return orient_self(state)
 
-    if state.is_near_ball(MAXIMUM_KICK_DISTANCE):
+    if state.is_near_ball(KICKABLE_MARGIN):
         direction = calculate_relative_angle(state, target_position)
         actions: [] = ["(kick {0} {1})".format("20", direction), "(dash 70)"]
         return actions
@@ -85,7 +85,7 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
 
     if world.ball.is_value_known(world.ticks_ago(5)) and state.position.is_value_known(world.ticks_ago(5)):
         ball = world.ball.get_value()
-        if state.is_near_ball(MAXIMUM_KICK_DISTANCE):
+        if state.is_near_ball(KICKABLE_MARGIN):
             if target is not None:
                 print("Kicking from player {0} to player {1}".format(str(state.num), str(target.num)))
                 direction = calculate_relative_angle(state, target.coord)
@@ -179,7 +179,6 @@ def calculate_relative_angle(player_state, target_position):
 
     return rotation
 
-
 # TODO: find out how to calculate power from distance
 def calculate_power(distance):
     return 15 + float(distance) * 3
@@ -202,9 +201,9 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
     elif distance >= 30:
         time_to_target = int(distance * 1.35)
     elif distance >= 20:
-        time_to_target = int(distance * 1.1)
+        time_to_target = int(distance * 1.25)
     elif distance >= 10:
-        time_to_target = int(distance)
+        time_to_target = int(distance * 1.15)
     else:
         time_to_target = 3
 
@@ -223,6 +222,7 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
     if needed_kick_power < 0:
         raise Exception("Should not be able to be negative. What the hell - Philip")
     elif needed_kick_power > 100:
-        print("Tried to kick with higher than 100 power: ", str(needed_kick_power), ", player: ", state)
+        pass
+        # print("Tried to kick with higher than 100 power: ", str(needed_kick_power), ", player: ", state)
 
     return needed_kick_power
