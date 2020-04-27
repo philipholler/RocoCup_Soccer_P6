@@ -19,11 +19,30 @@ class Objective:
         return self.action_planner()
 
 
+def team_has_corner_kick(state):
+    if state.world_view.side == "l":
+        if state.world_view.game_state == "corner_kick_l":
+            return True
+    elif state.world_view.side == "r":
+        if state.world_view.game_state == "corner_kick_r":
+            return True
+
+    return False
+
+
+
+
 def determine_objective(state: PlayerState, current_objective: Objective):
     if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
         return current_objective
 
-    if state.is_near_ball(actions.MAXIMUM_KICK_DISTANCE):
+    if team_has_corner_kick(state):
+        # Left midfielder
+        if state.num == 6:
+            return Objective(lambda: actions.jog_towards_ball(state), time_out=5)
+
+
+    if state.is_near_ball():
         # If close to goal, dribble closer
         if state.is_approaching_goal():
             if state.world_view.side == "l":
@@ -45,8 +64,8 @@ def determine_objective(state: PlayerState, current_objective: Objective):
     if interception_position is not None:
         print("Player " + str(state.num) + " intercepting at : " + str(interception_position))
         return Objective(lambda: actions.run_towards(state, interception_position),
-                         interception_time - 1)
-    
+                         interception_time - 1 - 2)
+
     # If less than 15 meters from ball attempt to retrieve it
     if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):
         if state.is_nearest_ball(2):

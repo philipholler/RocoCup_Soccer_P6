@@ -1,4 +1,6 @@
 import math
+
+import constants
 import geometry
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from geometry import calculate_full_circle_origin_angle
@@ -147,7 +149,10 @@ class PlayerState:
     def can_player_reach(self, position: Coordinate, ticks):
         run_speed = 1.05 * 0.7  # Account for initial acceleration
         distance = position.euclidean_distance_from(self.position.get_value())
-        return (ticks - 1) * run_speed >= distance
+        if self.body_facing(position, delta=20):
+            return (ticks - 1) * run_speed >= distance
+        else:
+            return (ticks - 3) * run_speed >= distance
 
 
 class ActionHistory:
