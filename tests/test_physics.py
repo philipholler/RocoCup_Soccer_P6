@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from physics import calculate_kick_power
+from player.actions import calculate_kick_power
 from player.player import PlayerState
 from player.world_objects import Ball, Coordinate, PrecariousData
 

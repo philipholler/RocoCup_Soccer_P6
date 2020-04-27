@@ -1,11 +1,15 @@
 import math
 
+
+from sympy import solve, Eq, Symbol
+
+from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, MAXIMUM_KICK_DISTANCE, KICK_POWER_RATE, BALL_DECAY, \
+    KICKABLE_MARGIN
 from geometry import calculate_smallest_origin_angle_between, calculate_full_circle_origin_angle, \
     get_distance_between_coords
 from player.player import PlayerState
-from player.world_objects import Coordinate, ObservedPlayer
+from player.world_objects import Coordinate, ObservedPlayer, Ball
 
-MAXIMUM_KICK_DISTANCE = 0.8
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
@@ -34,8 +38,11 @@ def dribble_towards(state: PlayerState, target_position: Coordinate):
         return jog_towards_ball(state)
 
 
+def run_towards(state, target):
+    return jog_towards(state, target, PLAYER_RUN_SPEED)
 
-def jog_towards(state: PlayerState, target_position: Coordinate):
+
+def jog_towards(state: PlayerState, target_position: Coordinate, speed=PLAYER_JOG_SPEED):
     actions = []
     history = state.action_history
     minimum_last_update_time = state.now() - 3
@@ -51,7 +58,7 @@ def jog_towards(state: PlayerState, target_position: Coordinate):
         actions.append("(turn " + str(rotation) + ")")
     else:
         distance = state.position.get_value().euclidean_distance_from(target_position)
-        actions.append("(dash {0})".format(str(calculate_dash_power(distance))))
+        actions.append("(dash {0})".format(str(calculate_dash_power(distance, speed))))
 
     actions.extend(orient_self_neck_only(state))
     return actions
@@ -178,7 +185,26 @@ def calculate_power(distance):
     return 15 + float(distance) * 3
 
 
-def calculate_dash_power(distance):
+def calculate_dash_power(distance, speed):
     if distance < 2:
         return 15 + distance * 10
-    return 65
+    return speed
+
+
+def calculate_kick_power(state: PlayerState, distance: float) -> int:
+    ball: Ball = state.world_view.ball.get_value()
+    dir_diff = abs(ball.direction)
+    dist_ball = ball.distance
+    time_to_target = int(distance * 1.35)
+
+    # Solve for the initial kick power needed to get to the distance after time_to_target ticks
+    # x = kickpower (0-100)
+    x = Symbol('x', real=True)
+    eqn = Eq(sum([(((x * KICK_POWER_RATE) * (1 - 0.25 * (dir_diff / 180) - 0.25 * (dist_ball / KICKABLE_MARGIN)))
+                   * BALL_DECAY ** i) for i in range(0, time_to_target)]), distance)
+    needed_kick_power = solve(eqn)[0]
+
+    if needed_kick_power < 0:
+        raise Exception("Should not be able to be negative. What the hell - Philip")
+
+    return needed_kick_power

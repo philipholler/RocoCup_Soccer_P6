@@ -1,5 +1,6 @@
 import math
 import geometry
+from constants import BALL_DECAY
 from geometry import calculate_full_circle_origin_angle
 from player.world_objects import PrecariousData, Coordinate, ObservedPlayer, Ball
 
@@ -107,13 +108,46 @@ class PlayerState:
 
         return sorted_distances[degree - 1] > ball_position.euclidean_distance_from(self.position.get_value())
 
-    def ball_interception(self, param):
-        if self.world_view.ball.is_value_known(self.now() - 4):
-            last_update = self.world_view.ball.last_updated_time
-            ball: Ball = self.world_view.ball.get_value()
-            current_position = ball.coord
-            if last_update < self.now():
-                pass #current_position = project_ball()
+    def ball_interception(self):
+        wv = self.world_view
+        if wv.ball.is_value_known(self.now() - 4) and wv.ball.get_value().last_position.is_value_known(self.now() - 6):
+            if wv.ball_speed() < 0.8:
+                return None, None
+
+            project_positions = self.project_ball_position(wv.ball.get_value(), 8)
+            for i, position in enumerate(project_positions):
+                if self.can_player_reach(position, i + 1):
+                    return position, i + 1
+
+        return None, None
+
+    def project_ball_position(self, ball: Ball, ticks: int):
+        positions = []
+
+        def advance(previous_location: Coordinate, vx, vy):
+            return Coordinate(previous_location.pos_x + vx, previous_location.pos_y + vy)
+
+        if ball.last_position.is_value_known(self.now() - 5) and ball.last_position.last_updated_time <= self.now() - 1:
+            last_position = ball.last_position.get_value()
+            delta_time = self.world_view.ball.last_updated_time - ball.last_position.last_updated_time
+            velocity_x = ((ball.coord.pos_x - last_position.pos_x) / delta_time) * BALL_DECAY
+            velocity_y = ((ball.coord.pos_y - last_position.pos_y) / delta_time) * BALL_DECAY
+            positions.append(advance(ball.coord, velocity_x, velocity_y))
+            offset = self.now() - self.world_view.ball.last_updated_time
+
+            for i in range(1, ticks + offset):
+                velocity_x *= BALL_DECAY
+                velocity_y *= BALL_DECAY
+                positions.append(advance(positions[i - 1], velocity_x, velocity_y))
+
+            return positions[offset:]
+        else:
+            return []
+
+    def can_player_reach(self, position: Coordinate, ticks):
+        run_speed = 1.05 * 0.7  # Account for initial acceleration
+        distance = position.euclidean_distance_from(self.position.get_value())
+        return (ticks - 1) * run_speed >= distance
 
 
 class ActionHistory:
@@ -173,3 +207,13 @@ class WorldView:
                 return
         # Add new data point if player does not already exist in list
         self.other_players.append(PrecariousData(observed_player, self.sim_time))
+
+    def ball_speed(self):
+        t1 = self.ball.get_value().last_position.last_updated_time
+        t2 = self.ball.last_updated_time
+        if t1 == t2:
+            return 0
+        delta_time = t2 - t1
+        speed = self.ball.get_value().coord.euclidean_distance_from(self.ball.get_value().last_position.get_value()) / delta_time
+        print(speed)
+        return speed

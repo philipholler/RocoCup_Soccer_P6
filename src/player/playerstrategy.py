@@ -41,13 +41,16 @@ def determine_objective(state: PlayerState, current_objective: Objective):
 
         return Objective(lambda: actions.pass_ball_to(pass_target, state), time_out=1)
 
-#    interception_position, interception_time = state.ball_interception(5)
- #   if interception_position is not None:
-  #      return Objective(lambda: actions.jog_towards(state, interception_position), state.now() + interception_time)
+    interception_position, interception_time = state.ball_interception()
+    if interception_position is not None:
+        print("new interception : " + str(interception_position))
+        return Objective(lambda: actions.run_towards(state, interception_position),
+                         state.now() + interception_time)
 
     # If less than 15 meters from ball attempt to retrieve it
     if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):
         if state.is_nearest_ball(2):
+
             return Objective(lambda: actions.jog_towards_ball(state), time_out=5)
 
     target_position = state.get_global_play_pos()
@@ -55,7 +58,7 @@ def determine_objective(state: PlayerState, current_objective: Objective):
     if state.is_near(target_position):
         new_objective = orient_objective(state)
     else:
-        new_objective = Objective(lambda: actions.jog_towards(state, target_position), time_out=1)
+        new_objective = Objective(lambda: actions.jog_towards(state, target_position))
 
     return new_objective
 
