@@ -450,7 +450,6 @@ def _extract_flag_directions(flag_strings, neck_angle):
         direction += neck_angle
         direction %= 360
         flag_directions.append(direction)
-
     return flag_directions
 
 
@@ -543,10 +542,7 @@ def _parse_player_obj_name(obj_name, ps: player.PlayerState):
 
 # (b) 0 0 0 0)
 # X Y DELTAX DELTAY
-def _parse_ball_online_coach(ball, wv):
-    if ball is None:
-        return
-
+def _parse_ball_online_coach(ball, wv: WorldViewCoach):
     my_ball = ball
 
     # Remove ),( and " from the items
