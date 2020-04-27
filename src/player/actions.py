@@ -206,5 +206,7 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
 
     if needed_kick_power < 0:
         raise Exception("Should not be able to be negative. What the hell - Philip")
+    elif needed_kick_power > 100:
+        print("Tried to kick with higher than 100 power: ", str(needed_kick_power), ", player: ", state)
 
     return needed_kick_power
