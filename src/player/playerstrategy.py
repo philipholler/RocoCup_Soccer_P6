@@ -19,9 +19,28 @@ class Objective:
         return self.action_planner()
 
 
+def team_has_corner_kick(state):
+    if state.world_view.side == "l":
+        if state.world_view.game_state == "corner_kick_l":
+            return True
+    elif state.world_view.side == "r":
+        if state.world_view.game_state == "corner_kick_r":
+            return True
+
+    return False
+
+
+
+
 def determine_objective(state: PlayerState, current_objective: Objective):
     if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
         return current_objective
+
+    if team_has_corner_kick(state):
+        # Left midfielder
+        if state.num == 6:
+            return Objective(lambda: actions.jog_towards_ball(state), time_out=5)
+
 
     if state.is_near_ball(actions.MAXIMUM_KICK_DISTANCE):
         # If close to goal, dribble closer
