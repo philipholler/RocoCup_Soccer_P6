@@ -103,7 +103,7 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
                 print("Kicking from player {0} to player {1}".format(str(state.num), str(target.num)))
                 direction = calculate_relative_angle(state, target.coord)
                 distance = state.position.get_value().euclidean_distance_from(target.coord)
-                return ["(kick " + str(calculate_kick_power(state, distance)) + " " + str(direction) + ")"]
+                return ["(kick " + str(calculate_kick_power(state, distance) * 0.8) + " " + str(direction) + ")"]
             else:
                 return idle_neck_orientation(state)
         else:

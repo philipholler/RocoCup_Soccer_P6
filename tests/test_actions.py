@@ -7,7 +7,7 @@ from player.world_objects import Ball, PrecariousData, Coordinate
 
 class Test(TestCase):
     def test_calculate_kick_power_01(self):
-        ball = Ball(0.7, 180, 0, 0, Coordinate(0, 0), PrecariousData.unknown(), PrecariousData.unknown())
+        ball = Ball(0.7, 180, 0, 0, Coordinate(0, 0), PrecariousData.unknown(), PrecariousData.unknown(), PrecariousData.unknown())
         ps = PlayerState()
         ps.world_view.ball.set_value(ball, 0)
         distance = 17
@@ -15,7 +15,7 @@ class Test(TestCase):
                                                                   "case ball position")
 
     def test_calculate_kick_power_02(self):
-        ball = Ball(0, 0, 0, 0, Coordinate(0, 0), PrecariousData.unknown(), PrecariousData.unknown())
+        ball = Ball(0, 0, 0, 0, Coordinate(0, 0), PrecariousData.unknown(), PrecariousData.unknown(), PrecariousData.unknown())
         ps = PlayerState()
         ps.world_view.ball.set_value(ball, 0)
         distance = 43
@@ -23,7 +23,7 @@ class Test(TestCase):
                                                                   "position")
 
     def test_calculate_kick_power_03(self):
-        ball = Ball(0.4, 90, 0, 0, Coordinate(0, 0), PrecariousData.unknown(), PrecariousData.unknown())
+        ball = Ball(0.4, 90, 0, 0, Coordinate(0, 0), PrecariousData.unknown(), PrecariousData.unknown(), PrecariousData.unknown())
         ps = PlayerState()
         ps.world_view.ball.set_value(ball, 0)
         distance = 30
@@ -33,7 +33,7 @@ class Test(TestCase):
     def test__calculate_ball_global_dir(self):
         state: PlayerState = PlayerState()
         state.body_angle.set_value(90, 1)
-        ball: Ball = Ball(0, 0, 0, 0, Coordinate(-1.5, 1.5), PrecariousData.unknown(), PrecariousData.unknown())
+        ball: Ball = Ball(0, 0, 0, 0, Coordinate(-1.5, 1.5), PrecariousData.unknown(), PrecariousData.unknown(), PrecariousData.unknown())
         ball.last_position.set_value(Coordinate(0, 0), 0)
         state.world_view.ball.set_value(ball, 1)
         stop_ball(state)

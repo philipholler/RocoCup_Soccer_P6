@@ -203,7 +203,8 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     # ok clang is just an ok message, that the coach language requested has been accepted.
     if not (msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type")
             or msg.startswith("(ok clang")):
-        _update_time(msg, ps)
+        pass
+        # _update_time(msg, ps)
 
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
@@ -758,8 +759,6 @@ def _parse_init(msg, ps: player.PlayerState):
 
 def _parse_hear_coach(text: str, coach_world_view):
     split_by_whitespaces = re.split('\\s+', text)
-    time = split_by_whitespaces[1]
-    coach_world_view.sim_time = int(time)  # Update players understanding of time
 
     sender = split_by_whitespaces[2]
     if sender == "referee":
@@ -794,8 +793,8 @@ def _parse_hear_coach(text: str, coach_world_view):
 # Pattern: (hear *time* *degrees* *msg*)
 def _parse_hear(text: str, ps: PlayerState):
     split_by_whitespaces = re.split('\\s+', text)
-    time = int(split_by_whitespaces[1])
-    ps.world_view.sim_time = time  # Update players understanding of time
+    # time = int(split_by_whitespaces[1])
+    # ps.world_view.sim_time = time  # Update players understanding of time
     sender = split_by_whitespaces[2]
     if sender == "referee":
         regex_string = "\\(hear ({0}) referee ({1})\\)".format(_SIGNED_INT_REGEX, _ROBOCUP_MSG_REGEX)
@@ -873,7 +872,7 @@ def _parse_body_sense(text: str, ps: player):
         unum = int(matched.group(23))
     '''
 
-    ps.body_state.time = int(matched.group(1))
+    # ps.body_state.time = int(matched.group(1))
     ps.body_state.view_mode = matched.group(2)
     ps.body_state.stamina = float(matched.group(3))
     ps.body_state.effort = float(matched.group(4))
