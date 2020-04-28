@@ -15,19 +15,34 @@ __HEX_REGEX = "0[xX][0-9a-fA-F]+"
 # Main method
 def parse_logs():
     game = statistics.Game()
-    log_name = get_newest_server_log()
-    parse_log_name(log_name, game)
+    server_log_name = get_newest_server_log()
+    action_log_name = get_newest_action_log()
+    parse_log_name(server_log_name, game)
 
-    file = open(Path(__file__).parent.parent / log_name, 'r')
+    with open(Path(__file__).parent.parent / server_log_name, 'r') as file:
+        for line in file:
+            if line.startswith("(show "):
+                parse_show_line(line, game)
+            else:
+                continue
 
-    for line in file:
-        if line.startswith("(show "):
-            parse_show_line(line, game)
-        else:
-            continue
+    with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
+        for line in file:
+            if "kick " in line:
+                print("parse kick")
+                parse_kick_action(line, game)
+            elif "goal_" in line:
+                print("parse goal")
+                parse_goal_action(line, game)
+            else:
+                continue
 
     log_directory = Path(__file__).parent.parent / game.gameID
     os.makedirs(log_directory)
+
+    with open(os.path.join(log_directory, "game_goals.txt"), "w") as file:
+        for goal in game.goals:
+            file.write(goal + "\n")
 
     file_left = open(os.path.join(log_directory, "%s_leftkicks.txt" % game.teams[0].name), "w")
     file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
@@ -66,6 +81,35 @@ def get_newest_action_log():
     action_logs = fnmatch.filter(actions_log_path, ACTION_LOG_PATTERN)
     action_logs.sort(reverse=True)
     return action_logs[0]
+
+
+def parse_kick_action(txt, game: Game):
+    kick_regex = "{0},{0}\tRecv (.*)_{0}: \\(kick {1} {1}\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
+    kick_re = re.compile(kick_regex)
+    matched = kick_re.match(txt)
+    print(txt)
+    print(matched.groups())
+
+    player = Player()
+
+    for team in game.teams:
+        if matched.group(1) == team.name:
+            player.side = team.side
+
+    game.last_kicker = player
+
+
+def parse_goal_action(txt, game: Game):
+    goal_regex = "({0}),{0}\t\\(referee goal_(r|l)_{0}\\)".format(_SIGNED_INT_REGEX)
+    goal_re = re.compile(goal_regex)
+    matched = goal_re.match(txt)
+
+    print(matched.groups())
+
+    if game.last_kicker.side == matched.group(2):
+        game.goals.append("%s goal to %s" % (matched.group(1), matched.group(2)))
+    else:
+        game.goals.append("%s goal to %s by suicide" % (matched.group(1), matched.group(2)))
 
 
 # Parses log name (game id, team names and goals)
@@ -121,8 +165,7 @@ def parse_show_line(txt, game: Game):
             stage.team_r_kicks = stage.team_r_kicks + player.kicks
             # print(str(stage.team_r_kicks))
 
-    if tick <= 6000:
-        game.show_time.insert(tick, stage)
+    game.show_time.insert(tick, stage)
 
 
 # Parses ball from show msg

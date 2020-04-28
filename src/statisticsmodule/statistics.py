@@ -1,6 +1,8 @@
 class Game:
 
     def __init__(self):
+        self.last_kicker = Player()
+        self.goals = []
         self.gameID = ""
         self.teams = []
 
