@@ -3,8 +3,7 @@ import math
 import constants
 import geometry
 from constants import BALL_DECAY, KICKABLE_MARGIN
-from geometry import calculate_full_origin_angle_radians
-from player.world_objects import PrecariousData, Coordinate, ObservedPlayer, Ball
+from player.world_objects import PrecariousData, Coordinate, Ball, ObservedPlayer
 
 MAX_MOVE_DISTANCE_PER_TICK = 1.05
 APPROA_GOAL_DISTANCE = 30
@@ -64,7 +63,8 @@ class PlayerState:
             # should this return unknown?(None?)
             return False
 
-        expected_angle = math.degrees(calculate_full_origin_angle_radians(coordinate, self.position.get_value()))
+        expected_angle = math.degrees(
+            geometry.calculate_full_origin_angle_radians(coordinate, self.position.get_value()))
         return abs(geometry.smallest_angle_difference(expected_angle, self.body_angle.get_value())) < delta
 
     def is_near(self, coordinate: Coordinate, allowed_delta=0.5):

@@ -3,12 +3,13 @@ from logging import debug
 
 from sympy import solve, Eq, Symbol
 
+import geometry
 from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 
 from player.player import PlayerState
-from player.world_objects import Coordinate, ObservedPlayer, Ball
+from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
 
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
@@ -198,9 +199,6 @@ def orient_self(state: PlayerState):
     else:
         view = SET_VIEW_NORMAL
 
-    if state.action_history.last_orientation_time >= state.last_see_update:
-        return ""
-
     history = state.action_history
     action = ORIENTATION_ACTIONS[history.last_orientation_action]
     actions.append(action)
@@ -260,16 +258,56 @@ def calculate_relative_angle(player_state, target_position):
     return rotation
 
 
-# TODO: find out how to calculate power from distance
-def calculate_power(distance):
-    return 15 + float(distance) * 3
-
-
 def calculate_dash_power(distance, speed):
     if distance < 2:
         return 15 + distance * 10
     return speed
 
+
+def _calculate_ball_velocity_vector(state: PlayerState):
+    if state.world_view.ball.is_value_known():
+        ball: Ball = state.world_view.ball.get_value()
+        last_position = ball.last_position.get_value()
+        delta_time = state.world_view.ball.last_updated_time - ball.last_position.last_updated_time
+        velocity_x = ((ball.coord.pos_x - last_position.pos_x) / delta_time) * BALL_DECAY
+        velocity_y = ((ball.coord.pos_y - last_position.pos_y) / delta_time) * BALL_DECAY
+        return velocity_x, velocity_y
+
+
+def stop_ball(state: PlayerState):
+    if state.world_view.ball.is_value_known() and state.body_angle.is_value_known():
+        ball: Ball = state.world_view.ball.get_value()
+
+        # Calculate ball direction from origin
+        ball_global_dir = math.degrees(calculate_full_origin_angle_radians(ball.coord, Coordinate(0, 0)))
+
+        # Kick angle should be opposite of ball direction
+        global_kick_angle = (ball_global_dir - 180) % 360
+        # x = kickpower (0-100)
+        kick_difference = Symbol('kick_difference', real=True)
+        eq = Eq(state.body_angle.get_value() + kick_difference, global_kick_angle)
+        relative_kick_angle = solve(eq)
+
+        # Get ball speed needed to calculate power of stopping kick
+        ball_speed = state.world_view.ball_speed()
+
+        # Find kick power depending on ball direction from player, ball distance from player, ball speed decay, kickable margin as well as ball speed
+        # x = kickpower (0-100)
+        x = Symbol('x', real=True)
+        eqn = Eq(((x * KICK_POWER_RATE) * (1 - 0.25 * (abs(ball.direction) / 180) - 0.25 * (ball.distance / KICKABLE_MARGIN)) * BALL_DECAY), ball_speed)
+        kick_power = solve(eqn)
+
+        '''
+        print("Vel_vec: ", velocity_vector)
+        print("Ball_global_dir: ", ball_global_dir)
+        print("kick_angle", relative_kick_angle)
+        print("ball_speed", ball_speed)
+        print("kick_power", kick_power)
+        '''
+
+        return ["(kick {0} {1})".format(kick_power, relative_kick_angle)]
+
+    pass
 
 def calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()
