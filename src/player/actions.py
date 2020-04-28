@@ -13,6 +13,9 @@ from player.world_objects import Coordinate, ObservedPlayer, Ball
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
+IDLE_ORIENTATION_INTERVAL = 50
+POSSESSION_ORIENTATION_INTERVAL = 3
+
 SET_VIEW_NORMAL = "(change_view normal high)"
 SET_VIEW_NARROW = "(change_view narrow high)"
 SET_VIEW_WIDE = "(change_view wide high)"
@@ -28,14 +31,14 @@ def dribble_towards(state: PlayerState, target_position: Coordinate):
     position_known = state.position.is_value_known(minimum_last_update_time)
 
     if not angle_known or not position_known:
-        return orient_self(state)
+        return idle_neck_orientation(state)
 
     if state.is_near_ball(KICKABLE_MARGIN):
         direction = calculate_relative_angle(state, target_position)
         actions: [] = ["(kick {0} {1})".format("20", direction), "(dash 70)"]
         return actions
     else:
-        return jog_towards_ball(state)
+        return run_towards_ball(state)
 
 
 def run_towards(state, target):
@@ -50,9 +53,9 @@ def jog_towards(state: PlayerState, target_position: Coordinate, speed=PLAYER_JO
     position_known = state.position.is_value_known(minimum_last_update_time)
 
     if not angle_known or not position_known:
-        return orient_self(state)
+        return idle_neck_orientation(state)
 
-    if not state.body_facing(target_position, 15) and history.last_turn_time < state.body_angle.last_updated_time:
+    if not state.action_history.has_turned_since_last_see and not state.body_facing(target_position, 15):
         rotation = calculate_relative_angle(state, target_position)
         history.last_turn_time = state.now()
         actions.append("(turn " + str(rotation) + ")")
@@ -60,18 +63,18 @@ def jog_towards(state: PlayerState, target_position: Coordinate, speed=PLAYER_JO
         distance = state.position.get_value().euclidean_distance_from(target_position)
         actions.append("(dash {0})".format(str(calculate_dash_power(distance, speed))))
 
-    actions.extend(orient_self_neck_only(state))
+    actions.extend(idle_neck_orientation(state))
     return actions
 
 
-def jog_towards_ball(state: PlayerState):
-    minimum_last_update_time = state.now() - 10
+def run_towards_ball(state: PlayerState):
+    minimum_last_update_time = state.now() - 5
     ball_known = state.world_view.ball.is_value_known(minimum_last_update_time)
 
     if not ball_known:
-        return orient_self(state)
+        return locate_ball(state)
 
-    return jog_towards(state, state.world_view.ball.get_value().coord)
+    return jog_towards(state, state.world_view.ball.get_value().coord, PLAYER_RUN_SPEED)
 
 
 def choose_rand_player(player_passing: PlayerState):
@@ -92,17 +95,17 @@ def pass_ball_to(target: ObservedPlayer, state: PlayerState):
                 distance = state.position.get_value().euclidean_distance_from(target.coord)
                 return ["(kick " + str(calculate_kick_power(state, distance)) + " " + str(direction) + ")"]
             else:
-                return orient_self(state)
+                return idle_neck_orientation(state)
         else:
-            return jog_towards_ball(state)
+            return run_towards_ball(state)
     else:
-        return orient_self(state)
+        return idle_neck_orientation(state)
 
 
 def pass_ball_to_random(state: PlayerState):
     target: ObservedPlayer = choose_rand_player(state)
     if target is None:
-        return orient_self(state)
+        return idle_neck_orientation(state)
 
     direction = target.direction
     power = calculate_kick_power(state, target.distance)
@@ -142,14 +145,12 @@ def look_at_ball(state: PlayerState):
 
     ball_coord = state.world_view.ball.get_value().coord
     ball_direction = math.degrees(calculate_full_origin_angle_radians(ball_coord, state.position.get_value()))
-    print("ball dir : " + str(ball_direction) + " - body dir : " + str(state.body_angle.get_value()) + " - neck dir : " + str(state.body_state.neck_angle))
     actions.extend(look_direction(state, ball_direction, fov_size))
     return actions
 
 
 @require_see_update
 def locate_ball(state: PlayerState):
-    print("locating ball!")
     actions = [SET_VIEW_WIDE]
     if not state.body_angle.is_value_known(state.now() - 10):
         print("angle unknown")
@@ -186,29 +187,51 @@ def look_direction(state: PlayerState, target_direction, fov):
     return actions
 
 
-def orient_self(state: PlayerState):
-    actions = []
-    #view = adjust_view(state)
-    viewable_range = (state.body_angle.get_value() - 90, state.body_angle.get_value() + 90)
-    viewable_indices = ()
-    if state.is_near_ball():
-        view = SET_VIEW_NARROW
-    elif state.is_near_ball(20):
-        view = SET_VIEW_NARROW
+@require_see_update
+def idle_neck_orientation(state: PlayerState):
+    return idle_orientation(state, neck_movement_only=True)
+
+
+@require_see_update
+def idle_orientation(state, neck_movement_only=False):
+    # Perform an orientation with boundaries of neck movement
+    if state.action_history.last_orientation_action >= IDLE_ORIENTATION_INTERVAL:
+        state.action_history.last_orientation_action = 0
+        return _orient(state, neck_movement_only)
     else:
-        view = SET_VIEW_NORMAL
+        state.action_history.last_orientation_action += 1
+        return look_at_ball(state)
 
-    if state.action_history.last_orientation_time >= state.last_see_update:
-        return ""
 
-    history = state.action_history
-    action = ORIENTATION_ACTIONS[history.last_orientation_action]
-    actions.append(action)
+@require_see_update
+def look_for_pass_target(state: PlayerState):
+    # Perform an orientation with boundaries of neck movement
+    if state.action_history.last_orientation_action >= POSSESSION_ORIENTATION_INTERVAL:
+        state.action_history.last_orientation_action = 0
+        return _orient(state, True)
+    else:
+        state.action_history.last_orientation_action += 1
+        return look_at_ball(state)
 
-    history.last_orientation_action += 1
-    history.last_orientation_action %= len(ORIENTATION_ACTIONS)
-    history.last_orientation_time = state.now()
 
+def _orient(state, neck_movement_only):
+    fov_command, fov_size = determine_fov(state)
+    actions = [fov_command]
+    turn_history = state.action_history.turn_history
+
+    body_angle = state.body_angle.get_value()
+    if neck_movement_only:  # Limit movement to within neck range
+        lower_bound = (body_angle - 90) % 360
+        upper_bound = (body_angle + 90) % 360
+    else:  # Allow any turn movement (both body and neck)
+        lower_bound = 0
+        upper_bound = 360
+
+    angle = turn_history.least_updated_angle(FOV_WIDE, lower_bound, upper_bound)
+    actions.extend(look_direction(state, angle, FOV_WIDE))
+    state.action_history.has_turned_since_last_see = True
+
+    state.action_history.last_orientation_action = 0
     return actions
 
 
@@ -224,26 +247,6 @@ def determine_fov(state: PlayerState):
             return SET_VIEW_WIDE, FOV_WIDE
 
     return SET_VIEW_WIDE, FOV_WIDE
-
-
-def orient_self_neck_only(state: PlayerState):
-    # actions = [adjust_view(state)] todo
-    action = []
-    history = state.action_history
-    if history.last_orientation_time >= state.last_see_update:
-        return [None]  # Don't do anything if no vision update has been received from the server since last turn command
-    history.last_orientation_time = state.now()
-
-    if history.last_orientation_action >= len(NECK_ORIENTATION_ACTIONS):
-        # Reset neck position
-        history.last_orientation_action = 0
-        actions.extend(reset_neck(state))
-        return actions
-
-    action = NECK_ORIENTATION_ACTIONS[history.last_orientation_action]
-    history.last_orientation_action += 1
-    actions.append(action)
-    return actions
 
 
 def calculate_relative_angle(player_state, target_position):

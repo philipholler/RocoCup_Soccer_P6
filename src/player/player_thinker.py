@@ -76,7 +76,6 @@ class Thinker(threading.Thread):
             return
 
         actions = self.current_objective.plan_actions()
-        print(actions)
         for action in actions:
             if action is not None:
                 self.player_conn.action_queue.put(action)
