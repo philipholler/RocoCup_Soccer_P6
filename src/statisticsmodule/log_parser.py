@@ -100,8 +100,6 @@ def parse_goal_action(txt, game: Game):
     goal_re = re.compile(goal_regex)
     matched = goal_re.match(txt)
 
-    print(txt)
-
     if game.last_kicker.side == matched.group(2):
         game.goals.append("%s goal to %s" % (matched.group(1), matched.group(2)))
     else:
