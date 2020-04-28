@@ -283,11 +283,13 @@ def _calculate_ball_velocity_vector(state: PlayerState):
 
 
 def stop_ball(state: PlayerState):
-    if state.world_view.ball.is_value_known() and state.body_angle.is_value_known():
+    if state.world_view.ball.is_value_known(state.now() - 1) and state.body_angle.is_value_known(state.now() - 1):
         ball: Ball = state.world_view.ball.get_value()
 
+        velocity_vector_x, velocity_vector_y = _calculate_ball_velocity_vector(state)
+
         # Calculate ball direction from origin
-        ball_global_dir = math.degrees(calculate_full_origin_angle_radians(ball.coord, Coordinate(0, 0)))
+        ball_global_dir = math.degrees(calculate_full_origin_angle_radians(Coordinate(velocity_vector_x, velocity_vector_y), Coordinate(0, 0)))
 
         # Kick angle should be opposite of ball direction
         global_kick_angle = (ball_global_dir - 180) % 360
