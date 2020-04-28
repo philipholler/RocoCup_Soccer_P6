@@ -75,7 +75,7 @@ class PlayerState:
         return distance < allowed_delta
 
     def is_near_ball(self, delta=KICKABLE_MARGIN):
-        minimum_last_update_time = self.now() - 10
+        minimum_last_update_time = self.now() - 3
         ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
         if ball_known:
             return float(self.world_view.ball.get_value().distance) <= delta

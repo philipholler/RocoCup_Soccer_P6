@@ -75,9 +75,9 @@ def determine_objective(state: PlayerState, current_objective: Objective):
             return Objective(lambda: actions.run_towards_ball(state), time_out=1)
 
     target_position = state.get_global_play_pos()
-
+    return Objective(lambda: actions.idle_orientation(state))
     if state.is_near(target_position):
-        return Objective(lambda: actions.idle_orientation(state))
+        pass
     else:
         return Objective(lambda: actions.jog_towards(state, target_position))
 

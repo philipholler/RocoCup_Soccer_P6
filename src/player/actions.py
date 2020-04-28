@@ -15,7 +15,7 @@ ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(tur
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
 
 IDLE_ORIENTATION_INTERVAL = 50
-POSSESSION_ORIENTATION_INTERVAL = 3
+POSSESSION_ORIENTATION_INTERVAL = 2
 
 SET_VIEW_NORMAL = "(change_view normal high)"
 SET_VIEW_NARROW = "(change_view narrow high)"
@@ -54,7 +54,7 @@ def jog_towards(state: PlayerState, target_position: Coordinate, speed=PLAYER_JO
     position_known = state.position.is_value_known(minimum_last_update_time)
 
     if not angle_known or not position_known:
-        return idle_neck_orientation(state)
+        return idle_orientation(state)
 
     if not state.action_history.has_turned_since_last_see and not state.body_facing(target_position, 15):
         rotation = calculate_relative_angle(state, target_position)
@@ -74,6 +74,10 @@ def run_towards_ball(state: PlayerState):
 
     if not ball_known:
         return locate_ball(state)
+
+    if state.world_view.ball.get_value().distance < 2.5:
+        pass  # todo
+
 
     return jog_towards(state, state.world_view.ball.get_value().coord, PLAYER_RUN_SPEED)
 
@@ -262,12 +266,6 @@ def calculate_relative_angle(player_state, target_position):
         rotation += 360
 
     return rotation
-
-
-def calculate_dash_power(distance, speed):
-    if distance < 2:
-        return 15 + distance * 10
-    return speed
 
 
 def _calculate_ball_velocity_vector(state: PlayerState):
