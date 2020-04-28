@@ -20,7 +20,7 @@ def calculate_smallest_origin_angle_between(c1, c2):
 
 
 # Calculates the angle (0-6.24 radians) from due east to c1 relative to c2
-def calculate_full_circle_origin_angle(c1, c2):
+def calculate_full_origin_angle_radians(c1, c2):
     angle = atan2(c1.pos_y - c2.pos_y, c1.pos_x - c2.pos_x)
 
     # Turn negative angles into positive angles

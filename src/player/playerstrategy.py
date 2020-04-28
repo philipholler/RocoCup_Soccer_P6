@@ -31,8 +31,10 @@ def team_has_corner_kick(state):
 
 
 def determine_objective(state: PlayerState, current_objective: Objective):
-    if not state.world_view.ball.is_value_known(state.now() - 3):
+    if not state.world_view.ball.is_value_known(state.now() - 5):
         return Objective(lambda: actions.locate_ball(state))
+    else:
+        return Objective(lambda: actions.look_at_ball(state))
 
     if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
         return current_objective

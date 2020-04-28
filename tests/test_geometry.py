@@ -56,3 +56,15 @@ class Test(TestCase):
 
     def test_smallest_angle_difference_reverse(self):
         self.assertEqual(7, geometry.smallest_angle_difference(1, 354))
+
+    def test_is_angle_in_range(self):
+        self.assertTrue(geometry.is_angle_in_range(15, 0, 359))
+        self.assertTrue(geometry.is_angle_in_range(15, 350, 20))
+        self.assertTrue(geometry.is_angle_in_range(270, 240, 280))
+
+        self.assertFalse(geometry.is_angle_in_range(240, 260, 280))
+        self.assertFalse(geometry.is_angle_in_range(240, 260, 230))
+
+        self.assertFalse(geometry.is_angle_in_range(5, 10, 4))
+        self.assertTrue(geometry.is_angle_in_range(3, 10, 4))
+

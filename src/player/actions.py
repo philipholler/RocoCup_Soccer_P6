@@ -5,7 +5,7 @@ from sympy import solve, Eq, Symbol
 
 from constants import PLAYER_JOG_SPEED, PLAYER_RUN_SPEED, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE
-from geometry import calculate_full_circle_origin_angle, is_angle_in_range
+from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball
@@ -130,8 +130,26 @@ def require_see_update(function):
     return wrapper
 
 
+# Can turn both neck and body to look at the ball
+@require_see_update
+def look_at_ball(state: PlayerState):
+    if not state.body_angle.is_value_known(state.action_history.last_see_update):
+        print("Should not happen: angle value unknown for last update" + str(state.action_history.last_see_update))
+        return locate_ball(state)
+
+    fov_command, fov_size = determine_fov(state)
+    actions = [fov_command]
+
+    ball_coord = state.world_view.ball.get_value().coord
+    ball_direction = math.degrees(calculate_full_origin_angle_radians(ball_coord, state.position.get_value()))
+    print("ball dir : " + str(ball_direction) + " - body dir : " + str(state.body_angle.get_value()) + " - neck dir : " + str(state.body_state.neck_angle))
+    actions.extend(look_direction(state, ball_direction, fov_size))
+    return actions
+
+
 @require_see_update
 def locate_ball(state: PlayerState):
+    print("locating ball!")
     actions = [SET_VIEW_WIDE]
     if not state.body_angle.is_value_known(state.now() - 10):
         print("angle unknown")
@@ -154,11 +172,11 @@ def look_direction(state: PlayerState, target_direction, fov):
     body_angle = state.body_angle.get_value()
     # Case where it is enough to turn neck
     if is_angle_in_range(target_direction, from_angle=(body_angle - 90) % 360, to_angle=(body_angle + 90) % 360):
-        angle_to_turn = target_direction - current_total_direction
+        angle_to_turn = smallest_angle_difference(target_direction, current_total_direction)
         actions.append("(turn_neck {0})".format(angle_to_turn))
     # Case where it is necessary to turn body
     else:
-        angle_to_turn_body = target_direction - state.body_angle.get_value()
+        angle_to_turn_body = smallest_angle_difference(target_direction, state.body_angle.get_value())
         actions.extend(reset_neck(state))
         actions.append("(turn {0})".format(angle_to_turn_body))
 
@@ -170,7 +188,7 @@ def look_direction(state: PlayerState, target_direction, fov):
 
 def orient_self(state: PlayerState):
     actions = []
-    view = adjust_view(state)
+    #view = adjust_view(state)
     viewable_range = (state.body_angle.get_value() - 90, state.body_angle.get_value() + 90)
     viewable_indices = ()
     if state.is_near_ball():
@@ -194,18 +212,23 @@ def orient_self(state: PlayerState):
     return actions
 
 
-def adjust_view(state: PlayerState):
+def determine_fov(state: PlayerState):
     if state.world_view.ball.is_value_known(state.now() - 6) and state.position.is_value_known(state.now() - 6):
         dist_to_ball = state.world_view.ball.get_value().coord.euclidean_distance_from( state.position.get_value())
+
         if dist_to_ball < 15:
-            return SET_VIEW_NARROW
+            return SET_VIEW_NARROW, FOV_NARROW
+        elif dist_to_ball < 25:
+            return SET_VIEW_NORMAL, FOV_NORMAL
         else:
-            return SET_VIEW_NORMAL
-    return SET_VIEW_WIDE
+            return SET_VIEW_WIDE, FOV_WIDE
+
+    return SET_VIEW_WIDE, FOV_WIDE
 
 
 def orient_self_neck_only(state: PlayerState):
-    actions = [adjust_view(state)]
+    # actions = [adjust_view(state)] todo
+    action = []
     history = state.action_history
     if history.last_orientation_time >= state.last_see_update:
         return [None]  # Don't do anything if no vision update has been received from the server since last turn command
@@ -224,7 +247,7 @@ def orient_self_neck_only(state: PlayerState):
 
 
 def calculate_relative_angle(player_state, target_position):
-    rotation = calculate_full_circle_origin_angle(target_position, player_state.position.get_value())
+    rotation = calculate_full_origin_angle_radians(target_position, player_state.position.get_value())
     rotation = math.degrees(rotation)
     rotation -= player_state.body_angle.get_value()
 
