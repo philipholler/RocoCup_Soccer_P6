@@ -1090,7 +1090,7 @@ def find_closest_flags(flags, amount):
 
 def _approx_position(flags: [Flag], state):
     if len(flags) < 2:
-        print("No more than two flags can be seen - Position unknown")
+        print("Less than 2 flags available")
         return
 
     if len(flags) > MAX_FLAGS_FOR_POSITION_ESTIMATE:
@@ -1099,7 +1099,6 @@ def _approx_position(flags: [Flag], state):
     all_solutions = _find_all_solutions(flags)
 
     if len(all_solutions) == 2:
-        print("only two flags visible")
         solution_1_plausible = is_possible_position(all_solutions[0], state)
         solution_2_plausible = is_possible_position(all_solutions[1], state)
 
