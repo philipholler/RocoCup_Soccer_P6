@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from player.actions import calculate_kick_power
+from player.actions import calculate_kick_power, stop_ball
 from player.player import PlayerState
 from player.world_objects import Ball, PrecariousData, Coordinate
 
@@ -29,3 +29,12 @@ class Test(TestCase):
         distance = 30
         self.assertTrue(calculate_kick_power(ps, distance) < 100, "Should be able to kick 30 meters with"
                                                                   " decent ball position")
+
+    def test__calculate_ball_global_dir(self):
+        state: PlayerState = PlayerState()
+        state.body_angle.set_value(90, 1)
+        ball: Ball = Ball(0, 0, 0, 0, Coordinate(-1.5, 1.5), PrecariousData.unknown(), PrecariousData.unknown())
+        ball.last_position.set_value(Coordinate(0, 0), 0)
+        state.world_view.ball.set_value(ball, 1)
+        stop_ball(state)
+

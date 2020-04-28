@@ -3,7 +3,7 @@ import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
-    calculate_full_circle_origin_angle
+    calculate_full_origin_angle_radians
 from player import player, world_objects
 from math import sqrt
 
@@ -214,7 +214,8 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     elif msg.startswith("(see "):
         _update_time(msg, ps)
         _parse_see(msg, ps)
-        ps.last_see_update = ps.now()
+        ps.action_history.last_see_update = ps.now()
+        ps.action_history.has_turned_since_last_see = False
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
@@ -417,7 +418,7 @@ def _approx_body_angle(flags: [Flag], state):
     # For this purpose x+ = east, -x = west etc.
     player_coord = state.position.get_value()
     for flag in flags:
-        radians_between_flag_player = calculate_full_circle_origin_angle(flag.coordinate, player_coord)
+        radians_between_flag_player = calculate_full_origin_angle_radians(flag.coordinate, player_coord)
         flag_body_angle = float(radians_between_flag_player) - math.radians(float(flag.body_relative_direction))
         estimated_body_angle = math.degrees(flag_body_angle) % 360
 
@@ -426,6 +427,8 @@ def _approx_body_angle(flags: [Flag], state):
     mean_angle = find_mean_angle(estimated_angles)
     if mean_angle is not None:
         state.body_angle.set_value(mean_angle, state.position.last_updated_time)
+    else:
+        print("No angle could be found")
 
 
 # ((flag g r b) 99.5 -5)
@@ -1041,6 +1044,7 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
     if not world_objects.is_inside_field_bounds(new_position):
         return False
 
+    # If the timer is not running (ie. game mode != play_on) players can be teleported around
     if state.position.last_updated_time == state.now():
         return True
 
@@ -1049,7 +1053,7 @@ def is_possible_position(new_position: Coordinate, state: PlayerState):
         return True
 
     ticks_since_update = state.world_view.sim_time - state.position.last_updated_time
-    possible_travel_distance = player.MAX_MOVE_DISTANCE_PER_TICK * ticks_since_update
+    possible_travel_distance = (player.MAX_MOVE_DISTANCE_PER_TICK + 1.0) * ticks_since_update
     return possible_travel_distance >= new_position.euclidean_distance_from(state.position.get_value())
 
 
@@ -1086,7 +1090,7 @@ def find_closest_flags(flags, amount):
 
 def _approx_position(flags: [Flag], state):
     if len(flags) < 2:
-        # print("No flag can be seen - Position unknown")
+        print("Less than 2 flags available")
         return
 
     if len(flags) > MAX_FLAGS_FOR_POSITION_ESTIMATE:
@@ -1095,12 +1099,11 @@ def _approx_position(flags: [Flag], state):
     all_solutions = _find_all_solutions(flags)
 
     if len(all_solutions) == 2:
-        # print("only two flags visible")
         solution_1_plausible = is_possible_position(all_solutions[0], state)
         solution_2_plausible = is_possible_position(all_solutions[1], state)
 
         if solution_1_plausible and solution_2_plausible:
-            # print("both solutions match")
+            print("both solutions match")
             return
 
         if solution_1_plausible:
@@ -1118,6 +1121,8 @@ def _approx_position(flags: [Flag], state):
         solution = _find_mean_solution(all_solutions, state)
         if solution is not None and is_possible_position(solution, state):
             state.position.set_value(solution, state.world_view.sim_time)
+        else:
+            print("impossible position solution or no solution at all" + str(solution))
 
 
 # PHILIPS - DO NOT REMOVE

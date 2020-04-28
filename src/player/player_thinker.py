@@ -72,8 +72,10 @@ class Thinker(threading.Thread):
     # Called every 100ms
     def perform_action(self):
         self.current_objective = determine_objective(self.player_state, self.current_objective)
-        actions = self.current_objective.plan_actions()
+        if self.current_objective is None:
+            return
 
+        actions = self.current_objective.plan_actions()
         for action in actions:
             if action is not None:
                 self.player_conn.action_queue.put(action)
