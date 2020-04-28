@@ -29,10 +29,8 @@ def parse_logs():
     with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
         for line in file:
             if "kick " in line:
-                print("parse kick")
                 parse_kick_action(line, game)
             elif "goal_" in line:
-                print("parse goal")
                 parse_goal_action(line, game)
             else:
                 continue
@@ -87,8 +85,6 @@ def parse_kick_action(txt, game: Game):
     kick_regex = "{0},{0}\tRecv (.*)_{0}: \\(kick {1} {1}\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
     kick_re = re.compile(kick_regex)
     matched = kick_re.match(txt)
-    print(txt)
-    print(matched.groups())
 
     player = Player()
 
@@ -103,8 +99,6 @@ def parse_goal_action(txt, game: Game):
     goal_regex = "({0}),{0}\t\\(referee goal_(r|l)_{0}\\)".format(_SIGNED_INT_REGEX)
     goal_re = re.compile(goal_regex)
     matched = goal_re.match(txt)
-
-    print(matched.groups())
 
     if game.last_kicker.side == matched.group(2):
         game.goals.append("%s goal to %s" % (matched.group(1), matched.group(2)))
