@@ -31,10 +31,8 @@ def team_has_corner_kick(state):
 
 
 def determine_objective(state: PlayerState, current_objective: Objective):
-    if not state.world_view.ball.is_value_known(state.now() - 5):
+    if not state.world_view.ball.is_value_known(state.now() - 3):
         return Objective(lambda: actions.locate_ball(state))
-    else:
-        return Objective(lambda: actions.look_at_ball(state))
 
     if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
         return current_objective
@@ -42,7 +40,7 @@ def determine_objective(state: PlayerState, current_objective: Objective):
     if team_has_corner_kick(state):
         # Left midfielder
         if state.num == 6:
-            return Objective(lambda: actions.jog_towards_ball(state), time_out=5)
+            return Objective(lambda: actions.run_towards_ball(state), time_out=5)
 
     if state.is_near_ball():
         # If close to goal, dribble closer
@@ -54,37 +52,38 @@ def determine_objective(state: PlayerState, current_objective: Objective):
                 goal_pos = parsing._FLAG_COORDS.get("gl")
                 return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])), time_out=5)
 
+        # otherwise find a pass target
         pass_target = _find_pass_target(state)
         if pass_target is None:
             if state.is_near_goal():
                 return Objective(lambda: actions.kick_to_goal(state))
-            return orient_objective(state)
-
+            print("no one to kick to")
+            return Objective(lambda: actions.look_for_pass_target(state))
+        print("kick!")
         return Objective(lambda: actions.pass_ball_to(pass_target, state), time_out=1)
 
+    # Attempt interception if possible
     interception_position, interception_time = state.ball_interception()
     if interception_position is not None:
         print("Player " + str(state.num) + " intercepting at : " + str(interception_position))
         return Objective(lambda: actions.run_towards(state, interception_position),
                          interception_time - 1)
 
-    # If less than 15 meters from ball attempt to retrieve it
+    # If less than 15 meters from ball and one of two closest team players, then attempt to retrieve it
     if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):
-        if state.is_nearest_ball(2):
-            return Objective(lambda: actions.jog_towards_ball(state), time_out=1)
+        if state.is_nearest_ball(1):
+            return Objective(lambda: actions.run_towards_ball(state), time_out=1)
 
     target_position = state.get_global_play_pos()
 
     if state.is_near(target_position):
-        new_objective = orient_objective(state)
+        return Objective(lambda: actions.idle_orientation(state))
     else:
-        new_objective = Objective(lambda: actions.jog_towards(state, target_position))
-
-    return new_objective
+        return Objective(lambda: actions.jog_towards(state, target_position))
 
 
 def orient_objective(state: PlayerState):
-    return Objective(lambda: actions.orient_self(state),  time_out=3)
+    return Objective(lambda: actions.idle_neck_orientation(state), time_out=3)
 
 
 def find_player(state, player_num):

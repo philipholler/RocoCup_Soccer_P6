@@ -171,13 +171,16 @@ class ViewFrequency:
     def __init__(self) -> None:
         self.last_update_time: [int] = [0] * self.SLICES
 
-    def least_updated_angle(self, field_of_view):
+    def least_updated_angle(self, field_of_view, lower_bound=0, upper_bound=360):
         viewable_slices_to_each_side = self._get_viewable_slices_to_each_side(field_of_view)
 
         oldest_angle = 0
         best_angle_index = 0
 
         for i, update_time in enumerate(self.last_update_time):
+            if not geometry.is_angle_in_range(i * self.SLICE_WIDTH, lower_bound, upper_bound):
+                continue
+
             viewable_range = range(i - viewable_slices_to_each_side, i + viewable_slices_to_each_side + 1)
             total_age = 0
             for v in viewable_range:
