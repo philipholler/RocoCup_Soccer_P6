@@ -43,6 +43,8 @@ def determine_objective(state: PlayerState, current_objective: Objective):
             return Objective(lambda: actions.run_towards_ball(state), time_out=5)
 
     if state.is_near_ball():
+        if state.world_view.ball_speed() > 1.2:
+            return Objective(lambda: actions.stop_ball(state))
         # If close to goal, dribble closer
         if state.is_approaching_goal():
             if state.world_view.side == "l":
@@ -57,9 +59,7 @@ def determine_objective(state: PlayerState, current_objective: Objective):
         if pass_target is None:
             if state.is_near_goal():
                 return Objective(lambda: actions.kick_to_goal(state))
-            print("no one to kick to")
             return Objective(lambda: actions.look_for_pass_target(state))
-        print("kick!")
         return Objective(lambda: actions.pass_ball_to(pass_target, state), time_out=1)
 
     # Attempt interception if possible
@@ -75,6 +75,7 @@ def determine_objective(state: PlayerState, current_objective: Objective):
             return Objective(lambda: actions.run_towards_ball(state), time_out=1)
 
     target_position = state.get_global_play_pos()
+
     return Objective(lambda: actions.idle_orientation(state))
     if state.is_near(target_position):
         pass

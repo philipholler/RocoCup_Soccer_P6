@@ -68,6 +68,11 @@ def jog_towards(state: PlayerState, target_position: Coordinate, speed=PLAYER_JO
     return actions
 
 
+def calculate_dash_power(distance, speed):
+    if distance < 2:
+        return 15 + distance * 10
+    return speed
+
 def run_towards_ball(state: PlayerState):
     minimum_last_update_time = state.now() - 5
     ball_known = state.world_view.ball.is_value_known(minimum_last_update_time)
@@ -142,7 +147,6 @@ def require_see_update(function):
 @require_see_update
 def look_at_ball(state: PlayerState):
     if not state.body_angle.is_value_known(state.action_history.last_see_update):
-        print("Should not happen: angle value unknown for last update" + str(state.action_history.last_see_update))
         return locate_ball(state)
 
     fov_command, fov_size = determine_fov(state)
@@ -290,7 +294,7 @@ def stop_ball(state: PlayerState):
         # x = kickpower (0-100)
         kick_difference = Symbol('kick_difference', real=True)
         eq = Eq(state.body_angle.get_value() + kick_difference, global_kick_angle)
-        relative_kick_angle = solve(eq)
+        relative_kick_angle = solve(eq)[0]
 
         # Get ball speed needed to calculate power of stopping kick
         ball_speed = state.world_view.ball_speed()
@@ -299,7 +303,7 @@ def stop_ball(state: PlayerState):
         # x = kickpower (0-100)
         x = Symbol('x', real=True)
         eqn = Eq(((x * KICK_POWER_RATE) * (1 - 0.25 * (abs(ball.direction) / 180) - 0.25 * (ball.distance / KICKABLE_MARGIN)) * BALL_DECAY), ball_speed)
-        kick_power = solve(eqn)
+        kick_power = solve(eqn)[0]
 
         '''
         print("Vel_vec: ", velocity_vector)
@@ -308,7 +312,7 @@ def stop_ball(state: PlayerState):
         print("ball_speed", ball_speed)
         print("kick_power", kick_power)
         '''
-
+        print("Stopping ball... kick_power={0}, kick_angle={1}".format(kick_power, relative_kick_angle))
         return ["(kick {0} {1})".format(kick_power, relative_kick_angle)]
 
     pass
