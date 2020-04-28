@@ -96,16 +96,19 @@ UPPER_FIELD_BOUND = Coordinate(60, 40)
 
 class Ball:
     def __init__(self, distance: float, direction: int, dist_chng, dir_chng, coord, last_pos: PrecariousData
-                 , last_pos_2: PrecariousData) -> None:
+                 , last_pos_2: PrecariousData, last_distance: PrecariousData) -> None:
         super().__init__()
         self.distance = distance
         self.direction = direction
         self.dist_chng = dir_chng
         self.dir_chng = dist_chng
         self.coord: Coordinate = coord
+        self.last_distance: PrecariousData = PrecariousData.unknown()
         self.last_position: PrecariousData = PrecariousData.unknown()
         self.last_position_2: PrecariousData = PrecariousData.unknown()
 
+        if last_distance.is_value_known():
+            self.last_distance = last_distance
         if last_pos.is_value_known():
             self.last_position = last_pos
         if last_pos_2.is_value_known():

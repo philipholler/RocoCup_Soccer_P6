@@ -8,7 +8,7 @@ from player import player, world_objects
 from math import sqrt
 
 from player.player import PlayerState
-from player.world_objects import Coordinate
+from player.world_objects import Coordinate, Ball
 from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
 
@@ -504,14 +504,17 @@ def _parse_ball(ball: str, ps: player.PlayerState):
         # Save old ball information
         last_pos_2 = PrecariousData.unknown()
         last_pos_1 = PrecariousData.unknown()
+        old_ball_distance = PrecariousData.unknown()
         if ps.world_view.ball.is_value_known():
-            old_ball = ps.world_view.ball.get_value()
+            old_ball: Ball = ps.world_view.ball.get_value()
+            old_ball_distance.set_value(old_ball.distance, ps.world_view.ball.last_updated_time)
             old_ball_time = ps.world_view.ball.last_updated_time
             if old_ball.last_position.is_value_known():
                 last_pos_2 = old_ball.last_position
             last_pos_1.set_value(old_ball.coord, old_ball_time)
         new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
-                                      coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2)
+                                      coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2,
+                                      last_distance=old_ball_distance)
         ps.world_view.ball.set_value(new_ball, ps.get_global_angle().last_updated_time)
 
 
@@ -1090,7 +1093,7 @@ def find_closest_flags(flags, amount):
 
 def _approx_position(flags: [Flag], state):
     if len(flags) < 2:
-        print("Less than 2 flags available")
+        # print("Less than 2 flags available")
         return
 
     if len(flags) > MAX_FLAGS_FOR_POSITION_ESTIMATE:
@@ -1099,11 +1102,12 @@ def _approx_position(flags: [Flag], state):
     all_solutions = _find_all_solutions(flags)
 
     if len(all_solutions) == 2:
+        # print("only two flags visible")
         solution_1_plausible = is_possible_position(all_solutions[0], state)
         solution_2_plausible = is_possible_position(all_solutions[1], state)
 
         if solution_1_plausible and solution_2_plausible:
-            print("both solutions match")
+            # print("both solutions match")
             return
 
         if solution_1_plausible:
@@ -1122,15 +1126,5 @@ def _approx_position(flags: [Flag], state):
         if solution is not None and is_possible_position(solution, state):
             state.position.set_value(solution, state.world_view.sim_time)
         else:
-            print("impossible position solution or no solution at all" + str(solution))
-
-
-# PHILIPS - DO NOT REMOVE
-my_str4 = "(see 0 ((f r t) 55.7 3) ((f g r b) 70.8 38) ((g r) 66.7 34) ((f g r t) 62.8 28) ((f p r c) 53.5 43) ((f p " \
-          "r t) 42.5 23) ((f t 0) 3.6 -34 0 0) ((f t r 10) 13.2 -9 0 0) ((f t r 20) 23.1 -5 0 0) ((f t r 30) 33.1 -3 " \
-          "0 0) ((f t r 40) 42.9 -3) ((f t r 50) 53 -2) ((f r 0) 70.8 31) ((f r t 10) 66 24) ((f r t 20) 62.8 16) ((f " \
-          "r t 30) 60.9 7) ((f r b 10) 76.7 38) ((f r b 20) 83.1 43) ((p) 66.7 35) ((p \"Team2\" 2) 9 0 0 0 0 0) ((p " \
-          "\"Team2\" 3) 12.2 0 0 0 0 0) ((p \"Team2\" 4) 14.9 0 0 0 0 0) ((p \"Team2\" 5) 18.2 0 0 0 0 0) ((p " \
-          "\"Team2\" 6) 20.1 0 0 0 0 0) ((p \"Team2\" 7) 24.5 0 0 0 0 0) ((p \"Team2\") 27.1 0) ((p \"Team2\" 9) 30 0 " \
-          "0 0 0 0) ((p \"Team2\") 33.1 0) ((p \"Team2\") 36.6 0)) "
-# parse_message_update_state(my_str4, player.PlayerState())
+            pass
+            # print("impossible position solution or no solution at all" + str(solution))

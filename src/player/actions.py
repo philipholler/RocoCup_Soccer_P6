@@ -314,7 +314,7 @@ def stop_ball(state: PlayerState):
         print("ball_speed", ball_speed)
         print("kick_power", kick_power)
         '''
-        print("Stopping ball... kick_power={0}, kick_angle={1}".format(kick_power, relative_kick_angle))
+        print("Stopping ball... kick_power={0}, kick_angle={1}, ball_speed={2}".format(kick_power, relative_kick_angle, ball_speed))
         return ["(kick {0} {1})".format(kick_power, relative_kick_angle)]
 
     pass

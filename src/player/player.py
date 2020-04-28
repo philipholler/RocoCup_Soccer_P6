@@ -81,6 +81,18 @@ class PlayerState:
             return float(self.world_view.ball.get_value().distance) <= delta
         return False
 
+    def is_near_ball_in_ticks(self, ticks: int, delta=KICKABLE_MARGIN):
+        minimum_last_update_time = self.now() - 3
+        ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
+        if ball_known and self.position.is_value_known():
+            ball_positions = self.project_ball_position(self.world_view.ball.get_value(), ticks)
+            if len(ball_positions) < ticks:
+                return False
+            pos_in_ticks: Coordinate = ball_positions[ticks - 1]
+            if self.position.get_value().euclidean_distance_from(pos_in_ticks) <= delta:
+                return True
+        return False
+
     def is_near_goal(self, delta=10.0):
 
         if self.world_view.goals[0] is not None and self.world_view.side != self.world_view.goals[0].goal_side:
@@ -131,8 +143,14 @@ class PlayerState:
         if ball.last_position.is_value_known(self.now() - 5) and ball.last_position.last_updated_time <= self.now() - 1:
             last_position = ball.last_position.get_value()
             delta_time = self.world_view.ball.last_updated_time - ball.last_position.last_updated_time
-            velocity_x = ((ball.coord.pos_x - last_position.pos_x) / delta_time) * BALL_DECAY
-            velocity_y = ((ball.coord.pos_y - last_position.pos_y) / delta_time) * BALL_DECAY
+
+            if delta_time != 0:
+                velocity_x = ((ball.coord.pos_x - last_position.pos_x) / delta_time) * BALL_DECAY
+                velocity_y = ((ball.coord.pos_y - last_position.pos_y) / delta_time) * BALL_DECAY
+            else:
+                velocity_x = 0
+                velocity_y = 0
+
             positions.append(advance(ball.coord, velocity_x, velocity_y))
             offset = self.now() - self.world_view.ball.last_updated_time
 
@@ -269,5 +287,6 @@ class WorldView:
         if t1 == t2:
             return 0
         delta_time = t2 - t1
-        speed = self.ball.get_value().coord.euclidean_distance_from(self.ball.get_value().last_position.get_value()) / delta_time
+        distance = self.ball.get_value().coord.euclidean_distance_from(self.ball.get_value().last_position.get_value())
+        speed = distance / delta_time
         return speed
