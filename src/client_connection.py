@@ -2,6 +2,7 @@ import select
 import socket
 import threading
 import queue
+import time
 
 
 class Connection(threading.Thread):
@@ -16,6 +17,8 @@ class Connection(threading.Thread):
         self.player_conn = None
         self.connected = False
         self.action_queue = queue.Queue()
+        self.last_send_time = 0
+        self.sending = False
 
     def start(self):
         super().start()
@@ -30,10 +33,13 @@ class Connection(threading.Thread):
                 if msg is None:
                     break
                 self.think.input_queue.put(msg)
+
             while not self.action_queue.empty():
+                self.sending = True
                 if self._stop_event.is_set():
                     return
                 self._send_message(self.action_queue.get())
+
             if self._stop_event.is_set():
                 return
 

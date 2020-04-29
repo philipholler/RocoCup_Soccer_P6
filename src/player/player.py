@@ -124,7 +124,7 @@ class PlayerState:
     def ball_interception(self):
         wv = self.world_view
         if wv.ball.is_value_known(self.now() - 4) and wv.ball.get_value().last_position.is_value_known(self.now() - 6):
-            if wv.ball_speed() < 0.8:
+            if wv.ball_speed() < 0.5:
                 return None, None
 
             project_positions = self.project_ball_position(wv.ball.get_value(), 8)
@@ -167,9 +167,9 @@ class PlayerState:
         run_speed = 1.05 * 0.7  # Account for initial acceleration
         distance = position.euclidean_distance_from(self.position.get_value())
         if self.body_facing(position, delta=20):
-            return (ticks - 1) * run_speed >= distance
+            return (ticks - 2) * run_speed >= distance
         else:
-            return (ticks - 3) * run_speed >= distance
+            return (ticks - 4) * run_speed >= distance
 
 
 class ActionHistory:
@@ -180,6 +180,8 @@ class ActionHistory:
         self.last_orientation_time = 0
         self.last_see_update = 0
         self.has_turned_since_last_see = False
+        self.last_dash_time = 0
+        self.should_break = False
 
 
 class ViewFrequency:

@@ -851,7 +851,6 @@ def _parse_hear(text: str, ps: PlayerState):
 # [28] = charged, [29] = card
 
 def _parse_body_sense(text: str, ps: player):
-
     regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({0})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
@@ -1090,7 +1089,7 @@ def find_closest_flags(flags, amount):
     return closest_flags
 
 
-def _approx_position(flags: [Flag], state):
+def _approx_position(flags: [Flag], state: PlayerState):
     if len(flags) < 2:
         # print("Less than 2 flags available")
         return

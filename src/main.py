@@ -14,10 +14,13 @@ def shut_down_gracefully():
     for player in player_threads:
         player.stop()
         player.join()
-    coach_1.stop()
-    coach_1.join()
-    coach_2.stop()
-    coach_2.join()
+
+    if coaches_enabled:
+        coach_1.stop()
+        coach_1.join()
+        coach_2.stop()
+        coach_2.join()
+
     if trainer_mode:
         trainer.stop()
         trainer.join()
@@ -28,10 +31,11 @@ def shut_down_gracefully():
     log_parser.parse_logs()
 
 
-TEAM_NAMES = ["Team1", "Team2"]
-NUM_PLAYERS = 11
+TEAM_NAMES = ["Team1"]
+NUM_PLAYERS = 1
 
 trainer_mode = False
+coaches_enabled = False
 
 player_threads = []
 coach_1: Coach
@@ -76,8 +80,9 @@ if trainer_mode:
     trainer = Trainer(UDP_PORT_TRAINER, UDP_IP)
     trainer.start()
 
-coach_1 = Coach(TEAM_NAMES[0], UDP_PORT_COACH, UDP_IP)
-coach_1.start()
+if coaches_enabled:
+    coach_1 = Coach(TEAM_NAMES[0], UDP_PORT_COACH, UDP_IP)
+    coach_1.start()
 
-coach_2 = Coach(TEAM_NAMES[1], UDP_PORT_COACH, UDP_IP)
-coach_2.start()
+    coach_2 = Coach(TEAM_NAMES[1], UDP_PORT_COACH, UDP_IP)
+    coach_2.start()
