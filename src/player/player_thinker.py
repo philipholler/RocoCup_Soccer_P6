@@ -51,41 +51,36 @@ class Thinker(threading.Thread):
         self.current_objective = determine_objective(self.player_state)
         time_since_last_tick = 0
         last_measured_time = time.time()
+        can_send = False
         while not self._stop_event.is_set():
 
             while not self.input_queue.empty():
                 # Parse message and update player state / world view
                 msg: str = self.input_queue.get()
+                if msg.startswith("(sense_body"):
+                    can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
             if not self.is_positioned:
                 self.position_player()
 
             # Update current objective in accordance to the player's strategy
-            cur_time = time.time()
-            time_since_last_tick += cur_time - last_measured_time
-            last_measured_time = cur_time
-            if time_since_last_tick >= 0.095:
-                time_since_last_tick -= 0.095
-                time_since_last_tick %= 0.095  # discard extra time if we fall more than tick behind
+            if can_send:
                 self.perform_action()
+                can_send = False
 
             time.sleep(0.05)
 
     # Called every 100ms
     def perform_action(self):
-        if self.current_objective.has_next_actions(self.player_state):
+        if not self.current_objective.has_next_actions(self.player_state):
             self.current_objective = determine_objective(self.player_state)
-
         commands = self.current_objective.get_next_commands(self.player_state)
-
+        #print("Executing commands : ", commands)
         for command in commands:
             if command is not None:
-                if "dash" in command:  # update speed with new approximation (in case we get a see update before a body update)
-                    power = float(re.match(r'\(dash ([^\)]*)\)', command).group(1))
-                    self.player_state.body_state.speed += (power / 100)
-                    self.player_state.body_state.speed *= PLAYER_SPEED_DECAY
                 self.player_conn.action_queue.put(command)
+
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:

@@ -35,7 +35,7 @@ TEAM_NAMES = ["Team1"]
 NUM_PLAYERS = 1
 
 trainer_mode = False
-coaches_enabled = False
+coaches_enabled = True
 
 player_threads = []
 coach_1: Coach

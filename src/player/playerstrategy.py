@@ -2,6 +2,7 @@ from random import choice
 
 import parsing
 from player import actions
+from player.actions import Command
 from player.player import PlayerState
 from player.world_objects import Coordinate
 
@@ -12,14 +13,14 @@ class Objective:
         self.completion_criteria = completion_criteria
         self.deadline = state.now() + maximum_duration
         self.commands_executed = 0
-        self.planned_commands = []
+        self.planned_commands: [Command] = []
         self.last_command_update_time = -1
 
     def has_next_actions(self, state: PlayerState):
-        return self.deadline <= state.now() and not self.completion_criteria()
+        return self.has_urgent_commands() or (self.deadline >= state.now() and not self.completion_criteria())
 
     def get_next_commands(self, state: PlayerState):
-        if self.last_command_update_time < state.action_history.last_see_update:
+        if (not self.has_urgent_commands()) and self.last_command_update_time < state.action_history.last_see_update:
             # Update planned commands after receiving a 'see' update
             self.planned_commands = self.command_generator()
             self.last_command_update_time = state.action_history.last_see_update
@@ -29,8 +30,16 @@ class Objective:
             return []  # All planned commands have been executed, so don't do anything until next planning
 
         next_command = self.planned_commands[self.commands_executed]
+        # Execute functions associated with command (such as projecting direction or position values)
+        next_command.execute_attached_functions()
         self.commands_executed += 1
-        return next_command
+        return next_command.messages
+
+    def has_urgent_commands(self):
+        for command in self.planned_commands[self.commands_executed:]:
+            if command.urgent:
+                return True
+        return False
 
 
 def team_has_corner_kick(state):
@@ -45,14 +54,15 @@ def team_has_corner_kick(state):
 
 
 def determine_objective(state: PlayerState):
-    target = Coordinate(0, 15)
-
-    if state.is_near(target):
-        return Objective(state, lambda: actions.idle_orientation(state)
-                              , lambda: False, maximum_duration=1)
+    target = Coordinate(-35, 20)
+    print("NEW OBJECTIVE!!!!")
+    if state.is_near(target, 0.5):
+        print("assgined new orientation objective")
+        return Objective(state, lambda: []
+                              , lambda: False, maximum_duration=100)
 
     return Objective(state, lambda: actions.plan_rush_to(state, target)
-                          , lambda: state.is_near(target), 100)
+                          , lambda: state.is_near(target, 0.5) and state.body_state.speed < 0.1, 100)
 
     if not state.world_view.ball.is_value_known(state.now() - 3):
         return Objective(lambda: actions.locate_ball(state))

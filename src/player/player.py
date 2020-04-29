@@ -12,6 +12,7 @@ APPROA_GOAL_DISTANCE = 30
 class PlayerState:
 
     def __init__(self):
+        self.power_rate = constants.DASH_POWER_RATE
         self.team_name = ""
         self.num = -1
         self.player_type = None
@@ -72,7 +73,7 @@ class PlayerState:
             return False
 
         distance = coordinate.euclidean_distance_from(self.position.get_value())
-        return distance < allowed_delta
+        return distance <= allowed_delta
 
     def is_near_ball(self, delta=KICKABLE_MARGIN):
         minimum_last_update_time = self.now() - 3
@@ -171,6 +172,22 @@ class PlayerState:
         else:
             return (ticks - 4) * run_speed >= distance
 
+    def update_body_angle(self, new_angle, time):
+        # print("time : ", time, " - Old angle : ", self.body_angle.get_value(), " | New angle: ", new_angle)
+
+        if self.body_angle.get_value() is None:
+            self.body_angle.set_value(new_angle, time)
+            self.action_history.expected_angle = None
+            return
+
+        delta = new_angle - self.body_angle.get_value()
+        if abs(delta) < 0.1 and self.action_history.expected_angle is not None:
+            self.body_angle.set_value(self.action_history.expected_angle, self.now())
+            print("ANGLE UPDATE OVERWRITTEN BY PROJECTION: ", delta)
+        else:
+            self.body_angle.set_value(new_angle, time)
+        self.action_history.expected_angle = None
+
 
 class ActionHistory:
     def __init__(self) -> None:
@@ -182,6 +199,7 @@ class ActionHistory:
         self.has_turned_since_last_see = False
         self.last_dash_time = 0
         self.should_break = False
+        self.expected_angle = None
 
 
 class ViewFrequency:

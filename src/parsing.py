@@ -28,7 +28,7 @@ _FLAG_COORDS = {
     "tl30": (-30, 39),
     "tl20": (-20, 39),
     "tl10": (-10, 39),
-    "t0": (0, 40),
+    "t0": (0, 39),
     "tr10": (10, 39),
     "tr20": (20, 39),
     "tr30": (30, 39),
@@ -48,7 +48,7 @@ _FLAG_COORDS = {
     "bl30": (-30, -39),
     "bl20": (-20, -39),
     "bl10": (-10, -39),
-    "b0": (0, -40),
+    "b0":   (0, -39),
     "br10": (10, -39),
     "br20": (20, -39),
     "br30": (30, -39),
@@ -65,22 +65,22 @@ _FLAG_COORDS = {
 
     # goal flags ('t' and 'b' flags can change based on server parameter
     # 'goal_width', but we leave their coords as the default values.
-    "glt": (-52.5, 7.01),
+    "glt": (-52.5, 7.0),
     "gl": (-52.5, 0),
-    "glb": (-52.5, -7.01),
+    "glb": (-52.5, -7.0),
 
-    "grt": (52.5, 7.01),
+    "grt": (52.5, 7.0),
     "gr": (52.5, 0),
-    "grb": (52.5, -7.01),
+    "grb": (52.5, -7.0),
 
     # penalty flags
-    "plt": (-35, 20),
-    "plc": (-35, 0),
-    "plb": (-32, -20),
+    "plt": (-36, 20),
+    "plc": (-36, 0),
+    "plb": (-36, -20),
 
-    "prt": (35, 20),
-    "prc": (35, 0),
-    "prb": (32, -20),
+    "prt": (36, 20),
+    "prc": (36, 0),
+    "prb": (36, -20),
 
     # field boundary flags (on boundary lines)
     "lt": (-52.5, 34),
@@ -427,7 +427,8 @@ def _approx_body_angle(flags: [Flag], state):
 
     mean_angle = find_mean_angle(estimated_angles)
     if mean_angle is not None:
-        state.body_angle.set_value(mean_angle, state.position.last_updated_time)
+        state.update_body_angle(mean_angle, state.now())
+        # state.body_angle.set_value(mean_angle, state.position.last_updated_time)
     else:
         print("No angle could be found")
 
@@ -811,7 +812,7 @@ def _parse_hear(text: str, ps: PlayerState):
         if ps.world_view.side == "l":
             coach_command_pattern = '.*"(.*)".*'
             matches = re.match(coach_command_pattern, text)
-            ps.coach_command.set_value(matches.group(1), time)
+            ps.coach_command.set_value(matches.group(1), time)  # todo Time?
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":
@@ -904,10 +905,6 @@ def _match(regex_string, text):
     regular_expression = re.compile(regex_string)
     regex_match = regular_expression.match(text)
     return regex_match
-
-
-def _flag_position(pos_x, pos_y):
-    return None
 
 
 def _extract_flag_identifiers(flags):

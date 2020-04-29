@@ -56,7 +56,7 @@ class Connection(threading.Thread):
         self.sock.sendto(bytes_to_send, self.addr)
 
     def _receive_message(self):
-        ready = select.select([self.sock], [], [], 0.02)
+        ready = select.select([self.sock], [], [], 0.01)
         if ready[0]:
             player_info, address = self.sock.recvfrom(1024)
             # The client will be sent the init ok message from a different port.
