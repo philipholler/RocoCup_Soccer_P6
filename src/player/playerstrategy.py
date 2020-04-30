@@ -26,6 +26,7 @@ class Objective:
             self.last_command_update_time = state.action_history.last_see_update
             self.commands_executed = 0
 
+        print(self.planned_commands)
         if self.commands_executed >= len(self.planned_commands):
             return []  # All planned commands have been executed, so don't do anything until next planning
 
@@ -54,19 +55,29 @@ def team_has_corner_kick(state):
 
 
 def determine_objective(state: PlayerState):
-    if state.world_view.game_state != "play_on":
-        print("NOT STARTED")
-        return Objective(state, lambda: [], lambda: True, maximum_duration=1)
+    last_see_update = state.action_history.last_see_update
+    if not state.world_view.ball.is_value_known(last_see_update - 3):
+        return Objective(state, lambda: actions.locate_ball(state),
+                         lambda: state.world_view.ball.is_value_known(last_see_update), 1)
 
-    target = Coordinate(-36, -20)
-    print("NEW OBJECTIVE!!!!")
+    return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+    return Objective(state, lambda: [], lambda: True, 1)
+
+    target = state.get_global_play_pos()
+    if state.num == 10:
+        print(target)
+    if not state.is_near(target, 0.5):
+        return Objective(state, lambda: actions.plan_rush_to(state, state.get_global_play_pos()), lambda: True,
+                         maximum_duration=10)
+
+    return Objective(state, lambda: [], lambda: True, 1)
+
     if state.is_near(target, 0.5):
-        print("assgined new orientation objective")
         return Objective(state, lambda: []
-                              , lambda: False, maximum_duration=100)
+                         , lambda: False, maximum_duration=100)
 
     return Objective(state, lambda: actions.plan_rush_to(state, target)
-                          , lambda: state.is_near(target, 0.5) and state.body_state.speed < 0.1, 100)
+                     , lambda: state.is_near(target, 0.5) and state.body_state.speed < 0.1, 100)
 
     if not state.world_view.ball.is_value_known(state.now() - 3):
         return Objective(lambda: actions.locate_ball(state))
@@ -76,7 +87,8 @@ def determine_objective(state: PlayerState):
     # Attempt interception if possible
     interception_position, interception_time = state.ball_interception()
     if interception_position is not None:
-        print("Player " + str(state.num) + " intercepting at : " + str(interception_position) + " in " + str(interception_time))
+        print("Player " + str(state.num) + " intercepting at : " + str(interception_position) + " in " + str(
+            interception_time))
         print(state.world_view.ball_speed())
         return Objective(lambda: actions.plan_rush_to(state, interception_position),
                          interception_time + 80)
@@ -98,10 +110,12 @@ def determine_objective(state: PlayerState):
         if state.is_approaching_goal():
             if state.world_view.side == "l":
                 goal_pos = parsing._FLAG_COORDS.get("gr")
-                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])), maximum_duration=5)
+                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])),
+                                 maximum_duration=5)
             if state.world_view.side == "r":
                 goal_pos = parsing._FLAG_COORDS.get("gl")
-                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])), maximum_duration=5)
+                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])),
+                                 maximum_duration=5)
 
         # otherwise find a pass target
         pass_target = _find_pass_target(state)

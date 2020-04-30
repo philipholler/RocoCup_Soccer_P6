@@ -37,6 +37,9 @@ class Thinker(threading.Thread):
         else:
             init_string = "(init " + self.player_state.team_name + " (version 16))"
         self.player_conn.action_queue.put(init_string)
+        init_msg: str = self.input_queue.get()
+        parsing.parse_message_update_state(init_msg, self.player_state)
+        self.position_player()
 
     def run(self) -> None:
         super().run()
@@ -50,10 +53,8 @@ class Thinker(threading.Thread):
         self._stop_event.set()
 
     def think(self):
-        self.current_objective = determine_objective(self.player_state)
-        time_since_last_tick = 0
-        last_measured_time = time.time()
         can_send = False
+        self.current_objective = determine_objective(self.player_state)
         while not self._stop_event.is_set():
 
             while not self.input_queue.empty():
@@ -62,9 +63,6 @@ class Thinker(threading.Thread):
                 if msg.startswith("(sense_body"):
                     can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
-
-            if not self.is_positioned:
-                self.position_player()
 
             # Update current objective in accordance to the player's strategy
             if can_send:
@@ -75,16 +73,10 @@ class Thinker(threading.Thread):
 
     # Called every 100ms
     def perform_action(self):
+
         if not self.current_objective.has_next_actions(self.player_state):
             self.current_objective = determine_objective(self.player_state)
         commands = self.current_objective.get_next_commands(self.player_state)
-        # print("Time : ", self.player_state.now(), " | position = ", self.player_state.position.get_value(), " | Speed: ", self.player_state.body_state.speed, " | Executing commands", commands)
-        rotation = calculate_full_origin_angle_radians(Coordinate(-36, -20), self.player_state.position.get_value())
-        rotation = math.degrees(rotation)
-        rotation -= self.player_state.body_angle.get_value()
-        dist = Coordinate(-36, -20).euclidean_distance_from(self.player_state.position.get_value())
-        print("Angle to target : ", rotation, " | Distance: ", dist)
-        print("Executing : ", commands)
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)

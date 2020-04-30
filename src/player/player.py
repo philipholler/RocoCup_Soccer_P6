@@ -180,6 +180,11 @@ class PlayerState:
             return
 
         delta = new_angle - self.body_angle.get_value()
+        if abs(delta) <= 0.1 and self.action_history.has_turned_since_last_see:
+            self.action_history.has_turned_since_last_see = True
+        else:
+            self.action_history.has_turned_since_last_see = False
+
         if self.action_history.expected_angle is not None: # and abs(delta) < 0.1:
             self.body_angle.set_value(self.action_history.expected_angle, self.now())
             # print("ANGLE UPDATE OVERWRITTEN BY PROJECTION: ", delta)
