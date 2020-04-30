@@ -209,6 +209,7 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     if msg.startswith("(hear"):
         _parse_hear(msg, ps)
     elif msg.startswith("(sense_body"):
+        _update_time(msg, ps)
         _parse_body_sense(msg, ps)
     elif msg.startswith("(init"):
         _parse_init(msg, ps)
@@ -1106,11 +1107,11 @@ def _approx_position(flags: [Flag], state: PlayerState):
             return
 
         if solution_1_plausible:
-            state.position.set_value(all_solutions[0], state.world_view.sim_time)
+            state.update_position(all_solutions[0], state.world_view.sim_time)
             # print(all_solutions[0])
             return
         if solution_2_plausible:
-            state.position.set_value(all_solutions[1], state.world_view.sim_time)
+            state.update_position(all_solutions[1], state.world_view.sim_time)
             # print(all_solutions[1])
             return
 
@@ -1119,7 +1120,7 @@ def _approx_position(flags: [Flag], state: PlayerState):
         # handle case where this return an uncertain result
         solution = _find_mean_solution(all_solutions, state)
         if solution is not None and is_possible_position(solution, state):
-            state.position.set_value(solution, state.world_view.sim_time)
+            state.update_position(solution, state.now())
         else:
             pass
             # print("impossible position solution or no solution at all" + str(solution))

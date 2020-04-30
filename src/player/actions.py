@@ -22,7 +22,7 @@ SET_VIEW_NORMAL = "(change_view normal high)"
 SET_VIEW_NARROW = "(change_view narrow high)"
 SET_VIEW_WIDE = "(change_view wide high)"
 
-MAX_TICKS_PER_SEE_UPDATE = 4  # todo Correct?
+MAX_TICKS_PER_SEE_UPDATE = 6  # todo Correct?
 
 
 class Command:
@@ -33,12 +33,16 @@ class Command:
             self.messages = messages
         self.urgent = urgent
         self._attached_functions = [on_execute]
+        self.final = False
 
     def append_action(self, action: str):
         self.messages.append(action)
 
     def add_function(self, f):
         self._attached_functions.append(f)
+
+    def mark_final(self):
+        self.final = True
 
     def __repr__(self) -> str:
         return str(self.messages) + ", urgent: " + str(self.urgent)
@@ -61,17 +65,17 @@ class CommandBuilder:
 
     def append_turn_action(self, state: PlayerState, turn_moment, urgent=False):
         self.append_action("(turn {0})".format(turn_moment), urgent)
-        self._current_command().add_function(lambda: project_body_angle(state, turn_moment))
+        self.current_command().add_function(lambda: project_body_angle(state, turn_moment))
 
     def append_dash_action(self, state, power, urgent=False):
         self.append_action("(dash {0})".format(power), urgent)
-        # self.command_list[self.ticks].add_function(lambda: project_speed(state, power))
+        self.current_command().add_function(lambda: project_dash(state, power))
 
-    def next_tick(self):
+    def next_tick(self, urgent=False):
         self.ticks += 1
-        self.command_list.append(Command())
+        self.command_list.append(Command(urgent=urgent))
 
-    def _current_command(self):
+    def current_command(self):
         return self.command_list[self.ticks]
 
 
@@ -79,12 +83,24 @@ def project_body_angle(state: PlayerState, turn_moment):
     current_angle = state.body_angle.get_value()
     turn_angle = calculate_actual_turn_angle(state, turn_moment)
     state.action_history.expected_angle = current_angle + turn_angle
-    print(state.now() + 1, " Projecting angle. Old angle: ", current_angle, " | new angle: ", current_angle + turn_angle)
+    #print("PROJECTION: ", state.now() + 1, " | Old angle: ", current_angle, " | new angle: ", current_angle + turn_angle)
+    rotation = calculate_relative_angle(state, Coordinate(-36, 20))
 
 
-def project_dash(state, dash_power):
-    state.body_state.speed = calculate_actual_speed(state.body_state.speed, dash_power)
-    # todo: project position too?
+def project_dash(state: PlayerState, dash_power):
+    actual_speed = calculate_actual_speed(state.body_state.speed, dash_power)
+    exp_angle = state.action_history.expected_angle
+
+    if exp_angle is not None:
+        projected_angle = exp_angle
+    else:
+        projected_angle = state.body_angle.get_value()
+
+    projected_position = state.action_history.projected_position + geometry.get_xy_vector(direction=-projected_angle, length=actual_speed)
+
+    #print("PROJECTION : ", state.now() + 1, " | Position: ", projected_position, "Projected speed: ", actual_speed * PLAYER_SPEED_DECAY)
+    state.body_state.speed = actual_speed * PLAYER_SPEED_DECAY
+    state.action_history.projected_position = projected_position
 
 
 def orient_if_position_or_angle_unknown(function):
@@ -102,27 +118,13 @@ def orient_if_position_or_angle_unknown(function):
 
 @orient_if_position_or_angle_unknown
 def plan_rush_to(state: PlayerState, target: Coordinate):
-    commandBuilder = CommandBuilder()
+    command_builder = CommandBuilder()
 
     dist = target.euclidean_distance_from(state.position.get_value())
-    print("time : ", state.action_history.last_see_update, " | angle to target: ",
-          calculate_relative_angle(state, target), " | dist: ", dist)
-    if dist <= 1.0:
-        # Dash last distance
-        target_speed = dist
-        power, projected_speed = calculate_power(state.body_state.speed, target_speed)
-        commandBuilder.append_dash_action(state, power, urgent=True)
-        commandBuilder.next_tick()
+    # print("ACTUAL : ",  state.action_history.last_see_update, " | position: ", state.position.get_value(), " | speed", state.body_state.speed, " | angle to target: ",
+    #      calculate_relative_angle(state, target), " | dist: ", dist, " | body angle : ", state.body_angle.get_value())
 
-        # Brake to speed 0
-        dist -= projected_speed
-        projected_speed *= PLAYER_SPEED_DECAY
-        power, projected_speed = calculate_power(projected_speed, 0)
-        commandBuilder.append_dash_action(state, power, urgent=True)
-
-        return commandBuilder.command_list
-
-    if not state.body_facing(target, 3):
+    if not state.body_facing(target, allowed_angle_delta(dist)):
         rotation = calculate_relative_angle(state, target)
         turn_moment = round(calculate_turn_moment(state, rotation), 2)
 
@@ -130,40 +132,86 @@ def plan_rush_to(state: PlayerState, target: Coordinate):
             first_turn_moment = max(turn_moment, -180)
         else:
             first_turn_moment = min(turn_moment, 180)
-        commandBuilder.append_turn_action(state, first_turn_moment)
-        commandBuilder.next_tick()
+        command_builder.append_turn_action(state, first_turn_moment)
+        command_builder.next_tick()
 
         # state.body_angle.get_value()
-        print(commandBuilder.command_list)
+        print(command_builder.command_list)
         # | Commands : ", commands)
 
-        # if necessary to turn again:
+        # if necessary to turn again:  todo : moment should be recalculated based on projected speed
         second_turn_moment = turn_moment - first_turn_moment
         if abs(second_turn_moment) > 0.5:  # If turn could not be completed in one tick, perform it after
             print("one turn not enough!")
-            commandBuilder.append_turn_action(state, second_turn_moment)
-            commandBuilder.next_tick()
+            command_builder.append_turn_action(state, second_turn_moment)
+            command_builder.next_tick()
 
     # Might need to account for direction after turning
     projected_speed = state.body_state.speed
     projected_dist = dist
+    #projected_pos =
     for i in range(0,
-                   commandBuilder.ticks):  # Account for position and speed after possible spending some ticks turning
+                   command_builder.ticks):  # Account for position and speed after possible spending some ticks turning
         projected_dist -= projected_speed
         projected_speed *= PLAYER_SPEED_DECAY
+        #projected_pos = project_position()
 
     # Add dash commands for remaining amount of ticks
-    for i in range(commandBuilder.ticks, MAX_TICKS_PER_SEE_UPDATE):
+    for i in range(command_builder.ticks, MAX_TICKS_PER_SEE_UPDATE):
+        if projected_dist < 1.5:
+            append_last_dash_actions(state, projected_speed, projected_dist, command_builder)
+            # append_dash_and_brake(projected_dist, state, command_builder)
+            print("Dashing and decelerating: ", command_builder.command_list)
+            return command_builder.command_list
+
         target_speed = min(projected_dist, PLAYER_MAX_SPEED)
-        power, projected_speed = calculate_power(projected_speed, target_speed)
-        commandBuilder.append_dash_action(state, power)
-        commandBuilder.next_tick()
+        power, projected_speed = calculate_dash_power(projected_speed, target_speed)
+        command_builder.append_dash_action(state, power)
+        command_builder.next_tick()
 
         # Predict new dist to target and speed
         projected_dist -= projected_speed
         projected_speed *= PLAYER_SPEED_DECAY  # todo should this be urgent if power is negative? (ie. braking)
 
-    return commandBuilder.command_list
+    return command_builder.command_list
+
+
+def project_position():
+    pass
+
+
+def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder):
+    if distance > PLAYER_MAX_SPEED + PLAYER_MAX_SPEED * PLAYER_SPEED_DECAY + PLAYER_MAX_SPEED * PLAYER_SPEED_DECAY * PLAYER_SPEED_DECAY:
+        command_builder.append_dash_action(state, 100)
+        command_builder.next_tick()
+        projected_speed = calculate_actual_speed(projected_speed, 100)
+        distance -= projected_speed
+        projected_speed *= PLAYER_SPEED_DECAY
+        append_last_dash_actions(projected_speed, distance, command_builder)
+        return
+
+    # one dash + two empty commands:
+    target_speed = projected_speed + (25.0 * distance - 39.0 * projected_speed) / 39.0
+    dash_power, projected_speed = calculate_dash_power(projected_speed, target_speed)
+    command_builder.append_dash_action(state, dash_power, urgent=True)
+    command_builder.next_tick(urgent=True)  # idle deceleration tick 1
+    command_builder.next_tick(urgent=True)  # idle deceleration tick 2
+
+
+def append_dash_and_brake(dist, state, command_builder):
+    projected_speed = state.body_state.speed
+    if state.body_state.speed < dist:
+        # Dash last distance
+        target_speed = dist
+        power, projected_speed = calculate_dash_power(projected_speed, target_speed)
+        command_builder.append_dash_action(state, power, urgent=True)
+        command_builder.next_tick()
+
+    # Brake to speed 0
+    dist -= projected_speed
+    projected_speed *= PLAYER_SPEED_DECAY
+    power, projected_speed = calculate_dash_power(projected_speed, 0)
+    command_builder.append_dash_action(state, power, urgent=True)
 
 
 def reset_neck(state):
@@ -226,14 +274,6 @@ def jog_towards(state: PlayerState, target_position: Coordinate, speed=PLAYER_JO
 
     actions.extend(idle_neck_orientation(state))
     return actions
-
-
-def calculate_dash_power(state: PlayerState, distance, speed):
-    if distance < 3:
-        if (state.speed) > distance:
-            return -10
-        return 25 + distance * 5
-    return speed
 
 
 def run_towards_ball(state: PlayerState):
@@ -530,7 +570,7 @@ def calculate_actual_turn_angle(state: PlayerState, moment):
     return moment / (1 + 5 * state.body_state.speed)
 
 
-def calculate_power(current_speed, target_speed):
+def calculate_dash_power(current_speed, target_speed):
     delta = target_speed - current_speed
     power = delta / DASH_POWER_RATE
 
@@ -545,3 +585,14 @@ def calculate_power(current_speed, target_speed):
 
 def calculate_actual_speed(current_speed, dash_power):
     return current_speed + dash_power * DASH_POWER_RATE
+
+
+def allowed_angle_delta(distance, max_distance_deviation=0.5):
+    if distance > 15:
+        return 3
+    else:
+        return 5
+
+    if distance < 0.1:
+        return 90
+    return math.degrees(math.acos(distance / math.sqrt(pow(max_distance_deviation, 2) + pow(distance, 2))))

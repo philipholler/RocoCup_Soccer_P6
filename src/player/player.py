@@ -174,19 +174,25 @@ class PlayerState:
 
     def update_body_angle(self, new_angle, time):
         # print("time : ", time, " - Old angle : ", self.body_angle.get_value(), " | New angle: ", new_angle)
-
         if self.body_angle.get_value() is None:
             self.body_angle.set_value(new_angle, time)
             self.action_history.expected_angle = None
             return
 
         delta = new_angle - self.body_angle.get_value()
-        if abs(delta) < 0.1 and self.action_history.expected_angle is not None:
+        if self.action_history.expected_angle is not None: # and abs(delta) < 0.1:
             self.body_angle.set_value(self.action_history.expected_angle, self.now())
-            print("ANGLE UPDATE OVERWRITTEN BY PROJECTION: ", delta)
+            # print("ANGLE UPDATE OVERWRITTEN BY PROJECTION: ", delta)
         else:
             self.body_angle.set_value(new_angle, time)
+
+        # print("new body angle = ", self.body_angle.get_value())
         self.action_history.expected_angle = None
+
+    def update_position(self, new_position, time):
+        self.position.set_value(new_position, time)
+        # print("PARSED : ", time, " | Position: ", new_position)
+        self.action_history.projected_position = new_position
 
 
 class ActionHistory:
@@ -200,6 +206,7 @@ class ActionHistory:
         self.last_dash_time = 0
         self.should_break = False
         self.expected_angle = None
+        self.projected_position = Coordinate(0, 0)
 
 
 class ViewFrequency:

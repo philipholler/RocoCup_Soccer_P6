@@ -1,8 +1,10 @@
+import math
 import re
 import threading
 import queue
 
 from constants import PLAYER_SPEED_DECAY
+from geometry import calculate_full_origin_angle_radians
 from player import player
 import client_connection
 from player.playerstrategy import Objective
@@ -76,11 +78,16 @@ class Thinker(threading.Thread):
         if not self.current_objective.has_next_actions(self.player_state):
             self.current_objective = determine_objective(self.player_state)
         commands = self.current_objective.get_next_commands(self.player_state)
-        #print("Executing commands : ", commands)
+        # print("Time : ", self.player_state.now(), " | position = ", self.player_state.position.get_value(), " | Speed: ", self.player_state.body_state.speed, " | Executing commands", commands)
+        rotation = calculate_full_origin_angle_radians(Coordinate(-36, -20), self.player_state.position.get_value())
+        rotation = math.degrees(rotation)
+        rotation -= self.player_state.body_angle.get_value()
+        dist = Coordinate(-36, -20).euclidean_distance_from(self.player_state.position.get_value())
+        print("Angle to target : ", rotation, " | Distance: ", dist)
+        print("Executing : ", commands)
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)
-
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:

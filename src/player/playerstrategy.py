@@ -54,7 +54,11 @@ def team_has_corner_kick(state):
 
 
 def determine_objective(state: PlayerState):
-    target = Coordinate(-35, 20)
+    if state.world_view.game_state != "play_on":
+        print("NOT STARTED")
+        return Objective(state, lambda: [], lambda: True, maximum_duration=1)
+
+    target = Coordinate(-36, -20)
     print("NEW OBJECTIVE!!!!")
     if state.is_near(target, 0.5):
         print("assgined new orientation objective")

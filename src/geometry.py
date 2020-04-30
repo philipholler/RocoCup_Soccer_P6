@@ -79,3 +79,8 @@ def is_angle_in_range(angle, from_angle, to_angle):
         return from_angle < angle <= 360 or 0 <= angle <= to_angle
 
     return from_angle <= angle <= to_angle
+
+
+def get_xy_vector(direction, length):
+    radians = math.radians(direction)
+    return Coordinate(length * math.cos(radians), length * math.sin(radians))
