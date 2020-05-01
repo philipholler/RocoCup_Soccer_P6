@@ -55,6 +55,8 @@ class Thinker(threading.Thread):
     def think(self):
         can_send = False
         self.current_objective = determine_objective(self.player_state)
+        time_since_action = 0
+        last_time = time.time()
         while not self._stop_event.is_set():
 
             while not self.input_queue.empty():
@@ -64,19 +66,25 @@ class Thinker(threading.Thread):
                     can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
+            current_time = time.time()
+            time_since_action += current_time - last_time
+            last_time = current_time
             # Update current objective in accordance to the player's strategy
-            if can_send:
+            if time_since_action >= 0.1:
+                time_since_action -= 0.1
+                time_since_action %= 0.08  # discard queued updates if more than 80 ms behind
                 self.perform_action()
-                can_send = False
 
             time.sleep(0.05)
 
     # Called every 100ms
     def perform_action(self):
-
-        if not self.current_objective.has_next_actions(self.player_state):
+        if self.current_objective.should_recalculate(self.player_state):
             self.current_objective = determine_objective(self.player_state)
+
         commands = self.current_objective.get_next_commands(self.player_state)
+        if self.player_state.is_test_player():
+            print(commands)
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)

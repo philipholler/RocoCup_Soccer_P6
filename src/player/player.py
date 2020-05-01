@@ -25,6 +25,7 @@ class PlayerState:
         self.coach_command = PrecariousData.unknown()
         self.starting_position: Coordinate = None
         self.playing_position: Coordinate = None
+        self.global_angle = 0
         super().__init__()
 
     def __str__(self) -> str:
@@ -108,7 +109,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 7 and self.team_name == "Team2"
+        return self.num == 1 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -173,26 +174,8 @@ class PlayerState:
             return (ticks - 4) * run_speed >= distance
 
     def update_body_angle(self, new_angle, time):
-        # print("time : ", time, " - Old angle : ", self.body_angle.get_value(), " | New angle: ", new_angle)
-        if self.body_angle.get_value() is None:
-            self.body_angle.set_value(new_angle, time)
-            self.action_history.expected_angle = None
-            return
-
-        delta = new_angle - self.body_angle.get_value()
-        if abs(delta) <= 0.1 and self.action_history.has_turned_since_last_see:
-            self.action_history.has_turned_since_last_see = True
-        else:
-            self.action_history.has_turned_since_last_see = False
-
-        if self.action_history.expected_angle is not None: # and abs(delta) < 0.1:
-            self.body_angle.set_value(self.action_history.expected_angle, self.now())
-            # print("ANGLE UPDATE OVERWRITTEN BY PROJECTION: ", delta)
-        else:
-            self.body_angle.set_value(new_angle, time)
-
-        # print("new body angle = ", self.body_angle.get_value())
-        self.action_history.expected_angle = None
+        # If value is uninitialized, then accept new_angle as actual angle
+        self.body_angle.set_value(new_angle, time)
 
     def update_position(self, new_position, time):
         self.position.set_value(new_position, time)
@@ -203,14 +186,15 @@ class PlayerState:
 class ActionHistory:
     def __init__(self) -> None:
         self.turn_history = ViewFrequency()
-        self.last_turn_time = 0
         self.last_orientation_action = 0
         self.last_orientation_time = 0
         self.last_see_update = 0
-        self.has_turned_since_last_see = False
-        self.last_dash_time = 0
-        self.should_break = False
-        self.expected_angle = None
+        self.two_see_updates_ago = 0
+        self.three_see_updates_ago = 0
+        self.turn_in_progress = False
+        self.missed_turn_last_see = False
+        self.expected_body_angle = None
+        self.expected_neck_angle = None
         self.projected_position = Coordinate(0, 0)
 
 
@@ -281,6 +265,7 @@ class BodyState:
         self.collision = ""
         self.charged = 0
         self.card = ""
+        self.fov = 90
 
 
 class WorldView:

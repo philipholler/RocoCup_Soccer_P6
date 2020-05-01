@@ -48,7 +48,7 @@ _FLAG_COORDS = {
     "bl30": (-30, -39),
     "bl20": (-20, -39),
     "bl10": (-10, -39),
-    "b0":   (0, -39),
+    "b0": (0, -39),
     "br10": (10, -39),
     "br20": (20, -39),
     "br30": (30, -39),
@@ -150,6 +150,7 @@ def parse_message_trainer(msg: str, world_view: WorldViewCoach):
     else:
         raise Exception("Unknown message received: " + msg)
 
+
 def parse_message_online_coach(msg: str, team: str, world_view: WorldViewCoach):
     if msg.startswith("(error"):
         print("Coach for team {0} received error: {1}".format(team, msg))
@@ -194,7 +195,6 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         print("Player num {0}, team {1}, received error: {2}".format(ps.num, ps.team_name, msg))
         return
 
-
     # The server_param and player_param files do not contain a time stamp
     # Can be used to get the configuration of the server and player
     # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
@@ -214,10 +214,19 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     elif msg.startswith("(init"):
         _parse_init(msg, ps)
     elif msg.startswith("(see "):
+        last_update = ps.action_history.last_see_update
+        if ps.world_view.game_state == 'play_on' and msg.startswith("(see {0}".format(last_update)):
+            return  # Discard duplicate messages
+
         _update_time(msg, ps)
         _parse_see(msg, ps)
+
+        if ps.is_test_player():
+            print(ps.now(), "body_angle : ", ps.body_angle.get_value(), msg)
+
+        ps.action_history.three_see_updates_ago = ps.action_history.two_see_updates_ago
+        ps.action_history.two_see_updates_ago = ps.action_history.last_see_update
         ps.action_history.last_see_update = ps.now()
-        ps.action_history.has_turned_since_last_see = False
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
@@ -229,6 +238,7 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         return
     else:
         raise Exception("Unknown message received: " + msg)
+
 
 '''
 Old protocol 3: 
@@ -282,6 +292,7 @@ def _parse_see(msg, ps: player.PlayerState):
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
     _parse_lines(lines, ps)
+
 
 def _parse_lines(lines, ps):
     for line in lines:
@@ -385,7 +396,7 @@ def find_mean_angle(angles):
 
     for i, first_angle in enumerate(angles):
         cluster = [first_angle]
-        for other_angle in angles[i+1:]:
+        for other_angle in angles[i + 1:]:
             # Handle wrap-around 360 degrees
             if first_angle < 0 + acceptable_variance:
                 if other_angle > 360 - acceptable_variance:
@@ -427,7 +438,44 @@ def _approx_body_angle(flags: [Flag], state):
         estimated_angles.append(estimated_body_angle)
 
     mean_angle = find_mean_angle(estimated_angles)
+
     if mean_angle is not None:
+        new_body_angle = mean_angle
+        new_neck_angle = state.body_state.neck_angle
+
+        # Detect if latest turn has been included in this see update
+        if state.action_history.turn_in_progress:
+            # otherwise, see if new angle matches expected one
+            old_body_angle = state.body_angle.get_value()
+            old_neck_angle = state.global_angle - old_body_angle
+
+            actual_body_delta = abs(old_body_angle - new_body_angle)
+            actual_neck_delta = abs(old_neck_angle - new_neck_angle)
+
+            if state.action_history.expected_body_angle is None:
+                expected_body_delta = actual_body_delta  # No body turn is expected
+            else:
+                expected_body_delta = abs(old_body_angle - state.action_history.expected_body_angle)
+
+            if state.action_history.expected_neck_angle is None:
+                expected_neck_delta = actual_neck_delta  # No neck turn is expected
+            else:
+                expected_neck_delta = abs(old_neck_angle - state.action_history.expected_neck_angle)
+
+            if (actual_body_delta >= expected_body_delta / 2 and actual_neck_delta >= expected_neck_delta / 2) or \
+                    state.action_history.missed_turn_last_see:
+                # We have turned at least half of what was expected,
+                # or we have received more than one see update since turn,
+                # so we assume the turn was included
+                state.action_history.turn_in_progress = False
+                state.action_history.missed_turn_last_see = False
+            else:
+                # No significant turn has been detected since last see update,
+                # so the turn is assumed to have been missed
+                state.action_history.turn_in_progress = True
+                state.action_history.missed_turn_last_see = True
+
+        state.global_angle = (mean_angle + state.body_state.neck_angle) % 360
         state.update_body_angle(mean_angle, state.now())
         # state.body_angle.set_value(mean_angle, state.position.last_updated_time)
     else:
@@ -453,7 +501,7 @@ def _extract_flag_directions(flag_strings, neck_angle):
         # ['13.5', '-31', '2', '-5']
 
         direction = float(split_by_whitespaces[1])
-        direction += neck_angle
+        direction += neck_angle  # Account for neck angle
         direction %= 360
         flag_directions.append(direction)
     return flag_directions
@@ -515,10 +563,11 @@ def _parse_ball(ball: str, ps: player.PlayerState):
             if old_ball.last_position.is_value_known():
                 last_pos_2 = old_ball.last_position
             last_pos_1.set_value(old_ball.coord, old_ball_time)
-        new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng, dir_chng=dir_chng,
+        new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng,
+                                      dir_chng=dir_chng,
                                       coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2,
                                       last_distance=old_ball_distance)
-        ps.world_view.ball.set_value(new_ball, ps.get_global_angle().last_updated_time)
+        ps.world_view.ball.set_value(new_ball, ps.now())
 
 
 # Parse this: (p "team"? num? goalie?)
@@ -758,6 +807,7 @@ def _parse_init(msg, ps: player.PlayerState):
     matched = regex.match(msg)
     ps.world_view.side = matched.group(1)
     ps.num = int(matched.group(2))
+
 
 def _parse_hear_coach(text: str, coach_world_view):
     split_by_whitespaces = re.split('\\s+', text)

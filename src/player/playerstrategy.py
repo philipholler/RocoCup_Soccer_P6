@@ -16,8 +16,13 @@ class Objective:
         self.planned_commands: [Command] = []
         self.last_command_update_time = -1
 
-    def has_next_actions(self, state: PlayerState):
-        return self.has_urgent_commands() or (self.deadline >= state.now() and not self.completion_criteria())
+    def should_recalculate(self, state: PlayerState):
+        # Don't recalculate if there are any un-executed urgent commands
+        if self.has_urgent_commands() or self.last_command_update_time >= state.action_history.last_see_update:
+            return False
+
+        deadline_reached = self.deadline >= state.now()
+        return deadline_reached or self.completion_criteria()
 
     def get_next_commands(self, state: PlayerState):
         if (not self.has_urgent_commands()) and self.last_command_update_time < state.action_history.last_see_update:
@@ -26,7 +31,6 @@ class Objective:
             self.last_command_update_time = state.action_history.last_see_update
             self.commands_executed = 0
 
-        print(self.planned_commands)
         if self.commands_executed >= len(self.planned_commands):
             return []  # All planned commands have been executed, so don't do anything until next planning
 
@@ -56,9 +60,13 @@ def team_has_corner_kick(state):
 
 def determine_objective(state: PlayerState):
     last_see_update = state.action_history.last_see_update
-    if not state.world_view.ball.is_value_known(last_see_update - 3):
+    if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
+        print(state.now(), " DETERMINE OBJECTIVE: LOCATE BALL. Last seen", state.world_view.ball.last_updated_time)
         return Objective(state, lambda: actions.locate_ball(state),
                          lambda: state.world_view.ball.is_value_known(last_see_update), 1)
+
+    if state.is_nearest_ball(1):
+        return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 5)
 
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
     return Objective(state, lambda: [], lambda: True, 1)
@@ -67,7 +75,7 @@ def determine_objective(state: PlayerState):
     if state.num == 10:
         print(target)
     if not state.is_near(target, 0.5):
-        return Objective(state, lambda: actions.plan_rush_to(state, state.get_global_play_pos()), lambda: True,
+        return Objective(state, lambda: actions.go_to(state, state.get_global_play_pos()), lambda: True,
                          maximum_duration=10)
 
     return Objective(state, lambda: [], lambda: True, 1)
@@ -76,7 +84,7 @@ def determine_objective(state: PlayerState):
         return Objective(state, lambda: []
                          , lambda: False, maximum_duration=100)
 
-    return Objective(state, lambda: actions.plan_rush_to(state, target)
+    return Objective(state, lambda: actions.go_to(state, target)
                      , lambda: state.is_near(target, 0.5) and state.body_state.speed < 0.1, 100)
 
     if not state.world_view.ball.is_value_known(state.now() - 3):
@@ -90,12 +98,12 @@ def determine_objective(state: PlayerState):
         print("Player " + str(state.num) + " intercepting at : " + str(interception_position) + " in " + str(
             interception_time))
         print(state.world_view.ball_speed())
-        return Objective(lambda: actions.plan_rush_to(state, interception_position),
+        return Objective(lambda: actions.go_to(state, interception_position),
                          interception_time + 80)
 
     return Objective(lambda: actions.run_towards_ball(state))
 
-    if current_objective is not None and not current_objective.has_next_actions() and not state.is_near_ball():
+    if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
         return current_objective
 
     if team_has_corner_kick(state):
@@ -129,7 +137,7 @@ def determine_objective(state: PlayerState):
     interception_position, interception_time = state.ball_interception()
     if interception_position is not None:
         print("Player " + str(state.num) + " intercepting at : " + str(interception_position))
-        return Objective(lambda: actions.plan_rush_to(state, interception_position),
+        return Objective(lambda: actions.go_to(state, interception_position),
                          interception_time - 1)
 
     # If less than 15 meters from ball and one of two closest team players, then attempt to retrieve it
@@ -147,7 +155,7 @@ def determine_objective(state: PlayerState):
 
 
 def orient_objective(state: PlayerState):
-    return Objective(lambda: actions.idle_neck_orientation(state), maximum_duration=3)
+    return Objective(lambda: actions.append_neck_orientation(state), maximum_duration=3)
 
 
 def find_player(state, player_num):

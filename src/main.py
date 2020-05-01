@@ -31,11 +31,11 @@ def shut_down_gracefully():
     log_parser.parse_logs()
 
 
-TEAM_NAMES = ["Team1", "Team2"]
-NUM_PLAYERS = 11
+TEAM_NAMES = ["Team1"]
+NUM_PLAYERS = 1
 
 trainer_mode = False
-coaches_enabled = True
+coaches_enabled = False
 
 player_threads = []
 coach_1: Coach
