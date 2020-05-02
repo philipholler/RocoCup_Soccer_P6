@@ -14,7 +14,7 @@ APPROA_GOAL_DISTANCE = 30
 class PlayerState:
 
     def __init__(self):
-        self._ball_missing = True
+        self._ball_seen_since_missing = True
         self.power_rate = constants.DASH_POWER_RATE
         self.team_name = ""
         self.num = -1
@@ -109,9 +109,9 @@ class PlayerState:
 
     # True if looking towards last known ball position and not seeing the ball
     def is_ball_missing(self):
-        if self.world_view.ball.get_value() is None or self._ball_missing:
+        if self.world_view.ball.get_value() is None or not self._ball_seen_since_missing:
             print("ball missing!")
-            self._ball_missing = True
+            self._ball_seen_since_missing = False
             return True
 
         ball_position = self.world_view.ball.get_value().coord
@@ -204,7 +204,19 @@ class PlayerState:
 
     def update_ball_position(self, new_ball, param):
         self.world_view.ball.set_value(new_ball, param)
-        self._ball_missing = False
+        self._ball_seen_since_missing = False
+
+    def on_see_update(self):
+        self.action_history.three_see_updates_ago = self.action_history.two_see_updates_ago
+        self.action_history.two_see_updates_ago = self.action_history.last_see_update
+        self.action_history.last_see_update = self.now()
+
+        if self.world_view.ball.last_updated_time == self.action_history.last_see_update:
+            # We've seen the ball this tick, so it is not missing
+            self._ball_seen_since_missing = True
+        elif self.is_ball_missing():
+            # We're looking in the direction of the ball and not seeing it, so it must be missing
+            self._ball_seen_since_missing = False
 
 
 class ActionHistory:

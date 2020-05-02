@@ -179,7 +179,7 @@ def rush_to_ball(state: PlayerState):
         print("ACTION: LOCATE BALL")
         return locate_ball(state)
 
-    return go_to(state, state.world_view.ball.get_value().coord)
+    return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_JOG_POWER)
 
 
 def jog_to(state: PlayerState, target: Coordinate):
@@ -697,7 +697,7 @@ def calculate_actual_speed(current_speed, dash_power):
 
 def allowed_angle_delta(distance, max_distance_deviation=0.5):
     if distance > 15:
-        return 3
+        return 4
     else:
         return 5
 

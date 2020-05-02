@@ -194,7 +194,6 @@ def parse_message_update_state(msg: str, ps: PlayerState):
     if msg.startswith("(error"):
         print("Player num {0}, team {1}, received error: {2}".format(ps.num, ps.team_name, msg))
         return
-
     # The server_param and player_param files do not contain a time stamp
     # Can be used to get the configuration of the server and player
     # server_param: clang_mess_per_cycle, olcoach_port = 6002 etc.
@@ -220,13 +219,11 @@ def parse_message_update_state(msg: str, ps: PlayerState):
 
         _update_time(msg, ps)
         _parse_see(msg, ps)
+        ps.on_see_update()
 
         if ps.is_test_player():
             print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle, " | ball position", ps.world_view.ball.get_value().coord, ps.world_view.ball.last_updated_time, " | ", msg)
 
-        ps.action_history.three_see_updates_ago = ps.action_history.two_see_updates_ago
-        ps.action_history.two_see_updates_ago = ps.action_history.last_see_update
-        ps.action_history.last_see_update = ps.now()
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
@@ -574,7 +571,6 @@ def _parse_ball(ball: str, ps: player.PlayerState):
                                       coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2,
                                       last_distance=old_ball_distance)
         ps.update_ball_position(new_ball, ps.now())
-        #ps.world_view.ball.set_value(new_ball, ps.now())
 
 
 # Parse this: (p "team"? num? goalie?)
