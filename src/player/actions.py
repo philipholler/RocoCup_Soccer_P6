@@ -12,6 +12,7 @@ from geometry import calculate_full_origin_angle_radians, is_angle_in_range, sma
 
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
+from utils import clamp
 
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
@@ -357,20 +358,19 @@ def append_neck_orientation(state: PlayerState, command_builder, body_dir_change
         state.action_history.last_orientation_action = state.now()
     else:
         # Look towards ball as far as possible
-        print("LOOK AT BALL")
         ball_position = state.world_view.ball.get_value().coord
         global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
-        angle_difference = abs((body_angle + state.body_state.neck_angle) - global_ball_angle)
+        angle_difference = abs(smallest_angle_difference(body_angle + state.body_state.neck_angle, global_ball_angle))
 
         if angle_difference > 0.9:
-            target_neck_angle = global_ball_angle - body_angle
+            target_neck_angle = smallest_angle_difference(global_ball_angle, body_angle)
 
             # Adjust to be within range of neck turn
-            target_neck_angle = target_neck_angle if target_neck_angle < 90 else 90
-            target_neck_angle = target_neck_angle if target_neck_angle > -90 else -90
+            target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
 
-            neck_turn_angle = target_neck_angle - state.body_state.neck_angle
+            neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
             command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
+            print("LOOK AT BALL. Ball angle: ", global_ball_angle, "| player global : ", body_angle + state.body_state.neck_angle, "| neck : ", state.body_state.neck_angle, "| angle turn turn: ", target_neck_angle)
 
 
 @require_angle_update

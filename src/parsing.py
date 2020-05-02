@@ -437,7 +437,7 @@ def _approx_body_angle(flags: [Flag], state):
     mean_angle = find_mean_angle(estimated_angles)
 
     if mean_angle is not None:
-        new_body_angle = mean_angle
+        new_body_angle = mean_angle % 360
         new_neck_angle = state.body_state.neck_angle
 
         # Detect if latest turn has been included in this see update
