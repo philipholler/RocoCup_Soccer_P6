@@ -222,7 +222,7 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         _parse_see(msg, ps)
 
         if ps.is_test_player():
-            print(ps.now(), "body_angle : ", ps.body_angle.get_value(), msg)
+            print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle, " | ball position", ps.world_view.ball.get_value().coord, ps.world_view.ball.last_updated_time, " | ", msg)
 
         ps.action_history.three_see_updates_ago = ps.action_history.two_see_updates_ago
         ps.action_history.two_see_updates_ago = ps.action_history.last_see_update
@@ -447,7 +447,7 @@ def _approx_body_angle(flags: [Flag], state):
         if state.action_history.turn_in_progress:
             # otherwise, see if new angle matches expected one
             old_body_angle = state.body_angle.get_value()
-            old_neck_angle = state.global_angle - old_body_angle
+            old_neck_angle = state.last_see_global_angle - old_body_angle
 
             actual_body_delta = abs(old_body_angle - new_body_angle)
             actual_neck_delta = abs(old_neck_angle - new_neck_angle)
@@ -469,13 +469,16 @@ def _approx_body_angle(flags: [Flag], state):
                 # so we assume the turn was included
                 state.action_history.turn_in_progress = False
                 state.action_history.missed_turn_last_see = False
+                state.action_history.expected_body_angle = None
+                state.action_history.expected_neck_angle = None
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
+                print(state.now(), "Turn missed in see update!")
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
-        state.global_angle = (mean_angle + state.body_state.neck_angle) % 360
+        state.last_see_global_angle = (mean_angle + state.body_state.neck_angle) % 360
         state.update_body_angle(mean_angle, state.now())
         # state.body_angle.set_value(mean_angle, state.position.last_updated_time)
     else:

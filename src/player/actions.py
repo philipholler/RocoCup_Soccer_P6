@@ -153,7 +153,7 @@ def project_dash(state: PlayerState, dash_power):
 def orient_if_position_or_angle_unknown(function):
     def wrapper(*args, **kwargs):
         state: PlayerState = args[0]
-        time_limit = state.action_history.last_see_update
+        time_limit = state.action_history.two_see_updates_ago
         if (not state.position.is_value_known(time_limit)) or not state.body_angle.is_value_known(time_limit):
             print("Oriented instead of : " + str(function) + " because position or angle is unknown")
             return blind_orient(state)
@@ -175,7 +175,7 @@ def require_angle_update(function):
 
 
 def rush_to_ball(state: PlayerState):
-    if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
+    if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
         print("LOCATE BALL")
         return locate_ball(state)
 
@@ -198,7 +198,7 @@ def go_to(state: PlayerState, target: Coordinate, max_ticks=MAX_TICKS_PER_SEE_UP
         rotation = calculate_relative_angle(state, target)
         turn_moment = round(calculate_turn_moment(state, rotation), 2)
 
-        print(state.now(), "global angle: ", state.global_angle, " off by: ", rotation)
+        print(state.now(), "global angle: ", state.last_see_global_angle, " off by: ", rotation)
 
         if turn_moment < 0:
             first_turn_moment = max(turn_moment, -180)
@@ -352,10 +352,12 @@ def append_neck_orientation(state: PlayerState, command_builder, body_dir_change
     if state.action_history.last_orientation_action < state.now() - IDLE_ORIENTATION_INTERVAL \
             and state.world_view.ball.is_value_known(state.action_history.last_see_update):
         # Orient to least updated place within neck angle
+        print("NECK ORIENTING")
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
         state.action_history.last_orientation_action = state.now()
     else:
         # Look towards ball as far as possible
+        print("LOOK AT BALL")
         ball_position = state.world_view.ball.get_value().coord
         global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
         angle_difference = abs((body_angle + state.body_state.neck_angle) - global_ball_angle)

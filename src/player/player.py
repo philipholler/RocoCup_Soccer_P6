@@ -1,9 +1,11 @@
 import math
 
 import constants
-import geometry
+from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from player.world_objects import PrecariousData, Coordinate, Ball, ObservedPlayer
+
+
 
 MAX_MOVE_DISTANCE_PER_TICK = 1.05
 APPROA_GOAL_DISTANCE = 30
@@ -25,7 +27,7 @@ class PlayerState:
         self.coach_command = PrecariousData.unknown()
         self.starting_position: Coordinate = None
         self.playing_position: Coordinate = None
-        self.global_angle = 0
+        self.last_see_global_angle = 0
         super().__init__()
 
     def __str__(self) -> str:
@@ -65,9 +67,8 @@ class PlayerState:
             # should this return unknown?(None?)
             return False
 
-        expected_angle = math.degrees(
-            geometry.calculate_full_origin_angle_radians(coordinate, self.position.get_value()))
-        return abs(geometry.smallest_angle_difference(expected_angle, self.body_angle.get_value())) < delta
+        expected_angle = math.degrees(calculate_full_origin_angle_radians(coordinate, self.position.get_value()))
+        return abs(smallest_angle_difference(expected_angle, self.body_angle.get_value())) < delta
 
     def is_near(self, coordinate: Coordinate, allowed_delta=0.5):
         if not self.position.is_value_known():
@@ -104,6 +105,23 @@ class PlayerState:
             return float(self.world_view.goals[1].distance) <= delta
 
         return False
+
+    # True if looking towards last known ball position and not seeing the ball
+    def is_ball_missing(self):
+        if self.world_view.ball.get_value() is None:
+            print("ball missing!")
+            return True
+
+        ball_position = self.world_view.ball.get_value().coord
+        ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, self.position.get_value()))
+        angle_difference = abs(self.last_see_global_angle - ball_angle)
+
+        looking_towards_ball = angle_difference < self.body_state.fov * 0.25
+        can_see_ball = self.world_view.ball.is_value_known(self.action_history.last_see_update)
+        if looking_towards_ball and not can_see_ball:
+            print("ball missing!")
+
+        return looking_towards_ball and not can_see_ball
 
     def now(self):
         return self.world_view.sim_time
@@ -212,7 +230,7 @@ class ViewFrequency:
         best_angle_index = 0
 
         for i, update_time in enumerate(self.last_update_time):
-            if not geometry.is_angle_in_range(i * self.SLICE_WIDTH, lower_bound, upper_bound):
+            if not is_angle_in_range(i * self.SLICE_WIDTH, lower_bound, upper_bound):
                 continue
 
             viewable_range = range(i - viewable_slices_to_each_side, i + viewable_slices_to_each_side + 1)
