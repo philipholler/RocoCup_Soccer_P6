@@ -3,7 +3,7 @@ import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
-    calculate_full_origin_angle_radians
+    calculate_full_origin_angle_radians, smallest_angle_difference
 from player import player, world_objects
 from math import sqrt
 
@@ -449,18 +449,21 @@ def _approx_body_angle(flags: [Flag], state):
             old_body_angle = state.body_angle.get_value()
             old_neck_angle = state.last_see_global_angle - old_body_angle
 
-            actual_body_delta = abs(old_body_angle - new_body_angle)
-            actual_neck_delta = abs(old_neck_angle - new_neck_angle)
+            expected_neck_angle = state.action_history.expected_neck_angle
+            expected_body_angle = state.action_history.expected_body_angle
 
-            if state.action_history.expected_body_angle is None:
+            actual_body_delta = abs(smallest_angle_difference(old_body_angle, new_body_angle))
+            actual_neck_delta = abs(smallest_angle_difference(old_neck_angle, new_neck_angle))
+
+            if expected_body_angle is None:
                 expected_body_delta = actual_body_delta  # No body turn is expected
             else:
-                expected_body_delta = abs(old_body_angle - state.action_history.expected_body_angle)
+                expected_body_delta = abs(smallest_angle_difference(old_body_angle, expected_body_angle))
 
-            if state.action_history.expected_neck_angle is None:
+            if expected_neck_angle is None:
                 expected_neck_delta = actual_neck_delta  # No neck turn is expected
             else:
-                expected_neck_delta = abs(old_neck_angle - state.action_history.expected_neck_angle)
+                expected_neck_delta = abs(smallest_angle_difference(old_neck_angle, expected_neck_angle))
 
             if (actual_body_delta >= expected_body_delta / 2 and actual_neck_delta >= expected_neck_delta / 2) or \
                     state.action_history.missed_turn_last_see:
@@ -474,7 +477,7 @@ def _approx_body_angle(flags: [Flag], state):
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
-                print(state.now(), "Turn missed in see update!")
+                print(state.now(), "Turn missed in see update! (expected,actual) body : ", expected_body_delta, actual_body_delta, " neck: ", expected_neck_delta, actual_neck_delta)
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
