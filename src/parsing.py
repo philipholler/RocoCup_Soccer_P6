@@ -573,7 +573,8 @@ def _parse_ball(ball: str, ps: player.PlayerState):
                                       dir_chng=dir_chng,
                                       coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2,
                                       last_distance=old_ball_distance)
-        ps.world_view.ball.set_value(new_ball, ps.now())
+        ps.update_ball_position(new_ball, ps.now())
+        #ps.world_view.ball.set_value(new_ball, ps.now())
 
 
 # Parse this: (p "team"? num? goalie?)

@@ -14,6 +14,7 @@ APPROA_GOAL_DISTANCE = 30
 class PlayerState:
 
     def __init__(self):
+        self._ball_missing = True
         self.power_rate = constants.DASH_POWER_RATE
         self.team_name = ""
         self.num = -1
@@ -108,8 +109,9 @@ class PlayerState:
 
     # True if looking towards last known ball position and not seeing the ball
     def is_ball_missing(self):
-        if self.world_view.ball.get_value() is None:
+        if self.world_view.ball.get_value() is None or self._ball_missing:
             print("ball missing!")
+            self._ball_missing = True
             return True
 
         ball_position = self.world_view.ball.get_value().coord
@@ -199,6 +201,10 @@ class PlayerState:
         self.position.set_value(new_position, time)
         # print("PARSED : ", time, " | Position: ", new_position)
         self.action_history.projected_position = new_position
+
+    def update_ball_position(self, new_ball, param):
+        self.world_view.ball.set_value(new_ball, param)
+        self._ball_missing = False
 
 
 class ActionHistory:

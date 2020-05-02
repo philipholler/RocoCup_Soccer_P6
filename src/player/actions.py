@@ -176,7 +176,7 @@ def require_angle_update(function):
 
 def rush_to_ball(state: PlayerState):
     if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
-        print("LOCATE BALL")
+        print("ACTION: LOCATE BALL")
         return locate_ball(state)
 
     return go_to(state, state.world_view.ball.get_value().coord)
