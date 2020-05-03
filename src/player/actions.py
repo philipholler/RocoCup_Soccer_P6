@@ -205,7 +205,7 @@ def adjust_position(state: PlayerState, delta_x, delta_y, focus_ball=True):
             moment = calculate_turn_moment(state, turn_angle)
             command_builder.append_turn_action(state, moment, True)
             actual_turn_angle = calculate_actual_turn_angle(state, moment)
-            append_neck_look_ball(state, command_builder, body_dir_change=actual_turn_angle)
+            append_look_at_ball_neck_only(state, command_builder, body_dir_change=actual_turn_angle)
             command_builder.next_tick()
 
         append_last_dash_actions(state, state.body_state.speed, distance, command_builder)
@@ -391,28 +391,7 @@ def append_neck_orientation(state: PlayerState, command_builder, body_dir_change
         state.action_history.last_orientation_action = state.now()
     else:
         # Look towards ball as far as possible
-        append_neck_look_ball(state, command_builder, body_dir_change)
-
-
-def append_neck_look_ball(state: PlayerState, command_builder, body_dir_change=0):
-    # Look towards ball as far as possible
-    # todo adjust fov to always see ball
-    body_angle = state.body_angle.get_value() + body_dir_change
-    ball_position: Coordinate = state.world_view.ball.get_value().coord
-    global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
-    angle_difference = abs(smallest_angle_difference(body_angle + state.body_state.neck_angle, global_ball_angle))
-
-    if angle_difference > 0.9:
-        target_neck_angle = smallest_angle_difference(global_ball_angle, body_angle)
-
-        # Adjust to be within range of neck turn
-        target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
-
-        neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
-        command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
-        #print("LOOK AT BALL. Ball angle: ", global_ball_angle, "| player global : ",
-        #      body_angle + state.body_state.neck_angle, "| neck : ", state.body_state.neck_angle, "| angle turn turn: ",
-        #      target_neck_angle)
+        append_look_at_ball_neck_only(state, command_builder, body_dir_change)
 
 
 @require_angle_update
@@ -430,7 +409,8 @@ def idle_orientation(state):
 
 def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, body_dir_change=0, fov=None):
     if fov is None:
-        fov_size = append_fov_update(state, command_builder)
+        fov_size = calculate_fov(state)
+        command_builder.append_fov_change(fov_size)
     else:
         fov_size = fov
         command_builder.append_fov_change(state, fov)
@@ -459,25 +439,51 @@ def append_look_at_ball(state, command_builder):
     ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
     angle_difference = abs((state.body_angle.get_value() + state.body_state.neck_angle) - ball_angle)
     if angle_difference > 0.9:
-        fov = append_fov_update(state, command_builder)
+        fov = calculate_fov(state)
+        command_builder.append_fov_change(fov)
         append_look_direction(state, ball_angle, fov, command_builder)
 
 
-def append_fov_update(state: PlayerState, command_builder):
+def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_change=0):
+    # Look towards ball as far as possible
+    body_angle = state.body_angle.get_value() + body_dir_change
+    ball_position: Coordinate = state.world_view.ball.get_value().coord
+    global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
+    angle_difference = abs(smallest_angle_difference(body_angle + state.body_state.neck_angle, global_ball_angle))
+
+    if angle_difference > 0.9:
+        target_neck_angle = smallest_angle_difference(global_ball_angle, body_angle)
+
+        # Adjust to be within range of neck turn
+        target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
+        new_total_angle = target_neck_angle + state.body_angle.get_value()
+
+        # Calculate which fov to use based on what is required to see the ball
+        preferred_fov = calculate_fov(state)
+        required_view_angle = abs(smallest_angle_difference(new_total_angle, global_ball_angle) * 2.0)
+        minimum_fov = FOV_WIDE
+        if required_view_angle < FOV_WIDE:
+            required_view_angle = FOV_NORMAL
+        elif required_view_angle < FOV_NORMAL:
+            required_view_angle = FOV_NARROW
+        fov = max(minimum_fov, required_view_angle)
+        command_builder.append_fov_change(fov)
+
+        neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
+        command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
+
+
+def calculate_fov(state: PlayerState):
     if state.world_view.ball.is_value_known(state.now() - 6) and state.position.is_value_known(state.now() - 6):
         dist_to_ball = state.world_view.ball.get_value().coord.euclidean_distance_from(state.position.get_value())
 
         if dist_to_ball < 15:
-            command_builder.append_fov_change(state, FOV_NARROW)
             return FOV_NARROW
         elif dist_to_ball < 25:
-            command_builder.append_fov_change(state, FOV_NORMAL)
             return FOV_NORMAL
         else:
-            command_builder.append_fov_change(state, FOV_WIDE)
             return FOV_WIDE
 
-    command_builder.append_fov_change(state, FOV_WIDE)
     return FOV_WIDE
 
 
@@ -500,6 +506,7 @@ def pass_to_player(state, player: ObservedPlayer):
     return command_builder.command_list
 
 
+@require_angle_update
 def look_for_pass_target(state):
     command_builder = CommandBuilder()
     # Perform an orientation with boundaries of neck movement
