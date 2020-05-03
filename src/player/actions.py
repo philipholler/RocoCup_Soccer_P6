@@ -410,7 +410,7 @@ def idle_orientation(state):
 def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, body_dir_change=0, fov=None):
     if fov is None:
         fov_size = calculate_fov(state)
-        command_builder.append_fov_change(fov_size)
+        command_builder.append_fov_change(state, fov_size)
     else:
         fov_size = fov
         command_builder.append_fov_change(state, fov)
@@ -440,7 +440,7 @@ def append_look_at_ball(state, command_builder):
     angle_difference = abs((state.body_angle.get_value() + state.body_state.neck_angle) - ball_angle)
     if angle_difference > 0.9:
         fov = calculate_fov(state)
-        command_builder.append_fov_change(fov)
+        command_builder.append_fov_change(state, fov)
         append_look_direction(state, ball_angle, fov, command_builder)
 
 
@@ -466,8 +466,8 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
             required_view_angle = FOV_NORMAL
         elif required_view_angle < FOV_NORMAL:
             required_view_angle = FOV_NARROW
-        fov = max(minimum_fov, required_view_angle)
-        command_builder.append_fov_change(fov)
+        fov = max(minimum_fov, preferred_fov)
+        command_builder.append_fov_change(state, fov)
 
         neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
