@@ -66,9 +66,13 @@ def determine_objective(state: PlayerState):
             return Objective(state, lambda: actions.locate_ball(state),
                              lambda: state.world_view.ball.is_value_known(last_see_update), 1)
         else:
+            if state.is_near_ball():
+                return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+
             intercept_point, ticks = state.ball_interception()
             if intercept_point is not None:
                 return Objective(state, lambda : actions.intercept(state, intercept_point), lambda: True, 1)
+
             return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
     if state.is_near_ball():

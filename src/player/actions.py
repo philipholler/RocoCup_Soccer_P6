@@ -179,6 +179,7 @@ def require_angle_update(function):
 
 
 def intercept(state: PlayerState, intercept_point: Coordinate):
+    print("intercepting at: ", intercept_point)
     delta: Coordinate = intercept_point - state.position.get_value()
     return adjust_position(state, delta.pos_x, delta.pos_y)
 
@@ -188,7 +189,7 @@ def rush_to_ball(state: PlayerState):
         print("ACTION: LOCATE BALL")
         return locate_ball(state)
 
-    return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_JOG_POWER)
+    return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
 
 
 # Calculates urgent actions to quickly reposition player at the cost of precision
@@ -207,12 +208,13 @@ def adjust_position(state: PlayerState, delta_x, delta_y, focus_ball=True):
             append_neck_look_ball(state, command_builder, body_dir_change=actual_turn_angle)
             command_builder.next_tick()
 
-        speed = state.body_state.speed
-        append_last_dash_actions(state, speed, distance - speed, command_builder)
+        append_last_dash_actions(state, state.body_state.speed, distance, command_builder)
+        print("distance: ", distance, "| speed : ", state.body_state.speed, command_builder.command_list)
     else:
         pass
         # TODO Speed not zero
     return command_builder.command_list
+
 
 def jog_to(state: PlayerState, target: Coordinate):
     return go_to(state, target, dash_power_limit=PLAYER_JOG_POWER)
@@ -288,13 +290,14 @@ def project_position(current_pos, current_speed, current_dir):
 
 
 def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder):
-    if distance > 1.68:
+    print("distance", distance, "speed:", projected_speed)
+    if distance >= 1.68:
         command_builder.append_dash_action(state, 100)
         command_builder.next_tick()
         projected_speed = calculate_actual_speed(projected_speed, 100)
         distance -= projected_speed
         projected_speed *= PLAYER_SPEED_DECAY
-        append_last_dash_actions(state, projected_speed, distance - projected_speed, command_builder)
+        append_last_dash_actions(state, projected_speed, distance, command_builder)
         return
 
     # one dash + two empty commands
