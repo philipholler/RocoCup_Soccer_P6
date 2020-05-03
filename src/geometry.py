@@ -2,8 +2,36 @@
 import math
 from math import atan2
 
-from player import world_objects
-from player.world_objects import Coordinate
+
+
+class Coordinate:
+    def __init__(self, pos_x: float, pos_y: float):
+        self.pos_x: float = pos_x
+        self.pos_y: float = pos_y
+
+    def __repr__(self):
+        return "(" + str(self.pos_x) + ", " + str(self.pos_y) + ")"
+
+    def __add__(self, other):
+        return Coordinate(self.pos_x + other.pos_x, self.pos_y + other.pos_y)
+
+    def __sub__(self, other):
+        return Coordinate(self.pos_x - other.pos_x, self.pos_y - other.pos_y)
+
+    def __le__(self, other):
+        return self.pos_x <= other.pos_x and self.pos_y <= other.pos_y
+
+    def __lt__(self, other):
+        return self.pos_x < other.pos_x and self.pos_y < other.pos_y
+
+    def __ge__(self, other):
+        return self.pos_x >= other.pos_x and self.pos_y >= other.pos_y
+
+    def __gt__(self, other):
+        return self.pos_x > other.pos_x and self.pos_y > other.pos_y
+
+    def euclidean_distance_from(self, other):
+        return math.sqrt((self.pos_x - other.pos_x) ** 2 + (self.pos_y - other.pos_y) ** 2)
 
 
 def angle_between(c1, c2, c3):
@@ -64,7 +92,7 @@ def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float
     actual_angle = (my_global_angle + object_rel_angle) % 360
     x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
     y = dist_to_obj * - math.sin(math.radians(actual_angle)) + my_y
-    return world_objects.Coordinate(x, y)
+    return Coordinate(x, y)
 
 
 def get_distance_between_coords(c1, c2):
@@ -72,6 +100,18 @@ def get_distance_between_coords(c1, c2):
     y = c2.pos_y - c1.pos_y
 
     return math.sqrt(pow(x, 2) + pow(y, 2))
+
+
+def direction_of_movement(from_coord: Coordinate, to_coord: Coordinate):
+    dif = to_coord - from_coord
+    dx = dif.pos_x
+    dy = dif.pos_y
+    if dy == 0:  # avoid division by 0
+        if dx > 0:
+            return 0
+        else:
+            return 180
+    return (math.degrees(math.atan(dx / dy)) - 90) % 360
 
 
 def is_angle_in_range(angle, from_angle, to_angle):
@@ -84,3 +124,50 @@ def is_angle_in_range(angle, from_angle, to_angle):
 def get_xy_vector(direction, length):
     radians = math.radians(direction)
     return Coordinate(length * math.cos(radians), length * math.sin(radians))
+
+
+# Note there is no standard definition for averaging angles
+def find_mean_angle(angles, acceptable_variance=3.0):
+    if len(angles) == 0:
+        return None
+
+    if len(angles) == 1:
+        return angles[0]
+
+    # We expect more than half of the angles to be close together (eliminate outliers)
+    expected_close_angles = int(len(angles) / 2 + 1)
+    cluster_size_best_solution = 0
+    best_cluster = []
+
+    for i, first_angle in enumerate(angles):
+        cluster = [first_angle]
+        for other_angle in angles[i + 1:]:
+            # Handle wrap-around 360 degrees
+            if first_angle < 0 + acceptable_variance:
+                if other_angle > 360 - acceptable_variance:
+                    other_angle = -(360 - other_angle)
+            # Handle other case of wrap-around 360 degrees
+            elif first_angle > 360 - acceptable_variance:
+                if other_angle < acceptable_variance:
+                    other_angle = 360 + other_angle
+
+            if abs(first_angle - other_angle) <= acceptable_variance:
+                cluster.append(other_angle)
+
+        if len(cluster) >= expected_close_angles:
+            return average(cluster) % 360
+
+        if len(cluster) > cluster_size_best_solution:
+            cluster_size_best_solution = len(cluster)
+            best_cluster = cluster
+
+    # No angles were close enough to provide a non-ambiguous solution
+    if len(best_cluster) <= 1:
+        return None
+    return average(best_cluster) % 360
+
+
+# Note that the mean value of angles is not well defined (fx. what is the mean angle of (0, 90, 180, 270)?)
+# This function averages angles that are close together.
+def average(numbers):
+    return sum(numbers) / len(numbers)

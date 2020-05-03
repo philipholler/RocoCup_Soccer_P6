@@ -68,3 +68,36 @@ class Test(TestCase):
         self.assertFalse(geometry.is_angle_in_range(5, 10, 4))
         self.assertTrue(geometry.is_angle_in_range(3, 10, 4))
 
+    def test_find_mean_angle(self):
+        angles = [299.19, 305.42]
+        mean_angle = geometry.find_mean_angle(angles, 8)
+        expected_mean = (299.19 + 305.42) / 2
+        self.assertAlmostEqual(mean_angle, expected_mean, 1)
+
+    def test_find_mean_angle_wrap_around(self):
+        angles = [355, 6]
+        mean_angle = geometry.find_mean_angle(angles, 11)
+        expected_mean = 0.5
+        self.assertAlmostEqual(mean_angle, expected_mean, 1)
+
+    def test_find_mean_angle_wrap_around_2(self):
+        angles = [354, 5]
+        mean_angle = geometry.find_mean_angle(angles, 11)
+        expected_mean = 359.5
+        self.assertAlmostEqual(mean_angle, expected_mean, 1)
+
+    def test_direction_of_movement_180(self):
+        direction = geometry.direction_of_movement(Coordinate(0, 5), Coordinate(-5, 5))
+        self.assertAlmostEqual(direction, 180, 1)
+
+    def test_direction_of_movement_0(self):
+        direction = geometry.direction_of_movement(Coordinate(0, 5), Coordinate(5, 5))
+        self.assertAlmostEqual(direction, 0, 1)
+
+    def test_direction_of_movement_270(self):
+        direction = geometry.direction_of_movement(Coordinate(0, -5), Coordinate(0, 5))
+        self.assertAlmostEqual(direction, 270, 1)
+
+    def test_direction_of_movement_90(self):
+        direction = geometry.direction_of_movement(Coordinate(0, 5), Coordinate(0, -5))
+        self.assertAlmostEqual(direction, 270, 1)

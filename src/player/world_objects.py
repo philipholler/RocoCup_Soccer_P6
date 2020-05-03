@@ -1,34 +1,9 @@
-from math import sqrt
+from collections import deque
+from itertools import islice
+from math import sqrt, atan, degrees
 
-
-class Coordinate:
-    def __init__(self, pos_x: float, pos_y: float):
-        self.pos_x: float = pos_x
-        self.pos_y: float = pos_y
-
-    def __repr__(self):
-        return "(" + str(self.pos_x) + ", " + str(self.pos_y) + ")"
-
-    def __add__(self, other):
-        return Coordinate(self.pos_x + other.pos_x, self.pos_y + other.pos_y)
-
-    def __sub__(self, other):
-        return Coordinate(self.pos_x - other.pos_x, self.pos_y - other.pos_y)
-
-    def __le__(self, other):
-        return self.pos_x <= other.pos_x and self.pos_y <= other.pos_y
-
-    def __lt__(self, other):
-        return self.pos_x < other.pos_x and self.pos_y < other.pos_y
-
-    def __ge__(self, other):
-        return self.pos_x >= other.pos_x and self.pos_y >= other.pos_y
-
-    def __gt__(self, other):
-        return self.pos_x > other.pos_x and self.pos_y > other.pos_y
-
-    def euclidean_distance_from(self, other):
-        return sqrt((self.pos_x - other.pos_x) ** 2 + (self.pos_y - other.pos_y) ** 2)
+from constants import BALL_DECAY
+from geometry import is_angle_in_range, find_mean_angle, Coordinate, direction_of_movement
 
 
 class PrecariousData:
@@ -95,32 +70,83 @@ UPPER_FIELD_BOUND = Coordinate(60, 40)
 
 
 class Ball:
-    def __init__(self, distance: float, direction: int, dist_chng, dir_chng, coord, last_pos: PrecariousData
-                 , last_pos_2: PrecariousData, last_distance: PrecariousData) -> None:
+    MAX_HISTORY_LEN = 8
+
+    def __init__(self, distance: float, direction: int, coord: Coordinate, time, pos_history: deque=None) -> None:
         super().__init__()
         self.distance = distance
         self.direction = direction
-        self.dist_chng = dir_chng
-        self.dir_chng = dist_chng
         self.coord: Coordinate = coord
-        self.last_distance: PrecariousData = PrecariousData.unknown()
-        self.last_position: PrecariousData = PrecariousData.unknown()
-        self.last_position_2: PrecariousData = PrecariousData.unknown()
+        if pos_history is None:
+            self.position_history: deque = deque([])
+        else:
+            self.position_history: deque = pos_history
 
-        if last_distance.is_value_known():
-            self.last_distance = last_distance
-        if last_pos.is_value_known():
-            self.last_position = last_pos
-        if last_pos_2.is_value_known():
-            self.last_position_2 = last_pos_2
+        self.position_history.appendleft((coord, time))
+        if len(self.position_history) > self.MAX_HISTORY_LEN:
+            self.position_history.pop()  # Pop oldest element
+
+    def approximate_position_direction_speed(self) -> (int, int):
+        if len(self.position_history) <= 1:
+            return None, None, None  # No information can be deduced about movement of ball
+        history = self.position_history
+
+        def predict_speed_direction(time_1, coord_1, time_2, coord_2, age):
+            pass
+
+        time_1 = history[0][1]
+        time_2 = history[1][1]
+        c1: Coordinate = history[0][0]
+        c2: Coordinate = history[1][0]
+
+        if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.1:
+            return c1, 0, 0
+
+        final_speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * BALL_DECAY
+        final_direction = direction_of_movement(from_coord=c2, to_coord=c1)
+        angles = [final_direction]  # Used for calculating 'average' angle
+
+        max_deviation = 8  # angle deviation
+        max_speed_deviation = 0.4
+        age = time_1 - time_2
+        max_age = 10
+
+        for i, pos_and_time in enumerate(islice(history, 2, len(history))):
+            c1 = c2
+            c2 = pos_and_time[0]
+            time_1 = time_2
+            time_2 = pos_and_time[1]
+
+            if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.05:
+                break
+
+            age += time_1 - time_2
+            speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * pow(BALL_DECAY, age)
+            direction = direction_of_movement(from_coord=c2, to_coord=c1)
+            print("direction", direction, "finaldir: ", final_direction)
+            direction_similar = is_angle_in_range(direction, (final_direction - max_deviation) % 360,
+                                                  (final_direction + max_deviation) % 360)
+            speed_similar = (final_speed - max_speed_deviation) <= speed <= (final_speed + max_speed_deviation)
+
+            if direction_similar and speed_similar and age < max_age:
+                angles.append(direction)
+                final_speed = (final_speed * age + speed) / (age + 1)  # calculate average with new value
+                final_direction = find_mean_angle(angles, max_deviation)
+                print("used ", i + 3, "data points for prediction")
+            else:
+                print("Previous points did not match. Speed : ", speed, "| Direction :", direction)
+                break  # This vector did not fit projection, so no more history is used in the projection
+
+        return self.position_history[0][0], final_speed, final_direction
 
     def __repr__(self) -> str:
         return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
                                                                        , self.last_position, self.last_position_2)
-
     def __str__(self) -> str:
         return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
                                                         , self.last_position, self.last_position_2)
+
+
 
 
 class Goal:

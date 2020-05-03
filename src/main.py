@@ -51,7 +51,7 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH = 6000, 6001, 6002
 if trainer_mode:
     soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true server::clang_mess_delay = 0 player::player_types = 1"], shell=True)
 else:
-    soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0 player::player_types = 1"], shell=True)
+    soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true server::clang_mess_delay = 0 player::player_types = 1"], shell=True)
 
 # Use soccerwindow2: soccerwindow2 --kill-server
 # Use regular monitor: rcssmonitor

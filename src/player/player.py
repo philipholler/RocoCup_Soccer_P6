@@ -1,7 +1,7 @@
 import math
 
 import constants
-from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
+from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference, get_xy_vector
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from player.world_objects import PrecariousData, Coordinate, Ball, ObservedPlayer
 
@@ -89,7 +89,7 @@ class PlayerState:
         minimum_last_update_time = self.now() - 3
         ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
         if ball_known and self.position.is_value_known():
-            ball_positions = self.project_ball_position(self.world_view.ball.get_value(), ticks)
+            ball_positions = self.project_ball_position(ticks)
             if len(ball_positions) < ticks:
                 return False
             pos_in_ticks: Coordinate = ball_positions[ticks - 1]
@@ -144,37 +144,40 @@ class PlayerState:
         return sorted_distances[degree - 1] > ball_position.euclidean_distance_from(self.position.get_value())
 
     def ball_interception(self):
+
         wv = self.world_view
-        if wv.ball.is_value_known(self.now() - 4) and wv.ball.get_value().last_position.is_value_known(self.now() - 6):
-            if wv.ball_speed() < 0.5:
+        if wv.ball.is_value_known(self.now() - 4) and True: # todo: should know previous position
+            print("Prediction: ", wv.ball.get_value().approximate_position_direction_speed())
+            return None
+            if wv.ball_speed() < 0.3:
                 return None, None
 
-            project_positions = self.project_ball_position(wv.ball.get_value(), 8)
+            project_positions = self.project_ball_position(10)
+            if project_positions is None:
+                return None, None
+
             for i, position in enumerate(project_positions):
+                print(self.now() + i + 1, " : ", position)
                 if self.can_player_reach(position, i + 1):
                     return position, i + 1
 
         return None, None
 
-    def project_ball_position(self, ball: Ball, ticks: int):
+    def project_ball_position(self, ticks: int):
         positions = []
+        ball = self.world_view.ball.get_value()
 
         def advance(previous_location: Coordinate, vx, vy):
             return Coordinate(previous_location.pos_x + vx, previous_location.pos_y + vy)
 
-        if ball.last_position.is_value_known(self.now() - 5) and ball.last_position.last_updated_time <= self.now() - 1:
-            last_position = ball.last_position.get_value()
-            delta_time = self.world_view.ball.last_updated_time - ball.last_position.last_updated_time
-
-            if delta_time != 0:
-                velocity_x = ((ball.coord.pos_x - last_position.pos_x) / delta_time) * BALL_DECAY
-                velocity_y = ((ball.coord.pos_y - last_position.pos_y) / delta_time) * BALL_DECAY
-            else:
-                velocity_x = 0
-                velocity_y = 0
-
-            positions.append(advance(ball.coord, velocity_x, velocity_y))
+        if self.world_view.ball.last_updated_time > (self.now() - 5):
             offset = self.now() - self.world_view.ball.last_updated_time
+            position, direction, speed = ball.approximate_position_direction_speed()
+            if speed is None:
+                return None
+
+            velocity_x, velocity_y = get_xy_vector(direction=direction, length=speed)
+            positions.append(advance(position, velocity_x, velocity_y))
 
             for i in range(1, ticks + offset):
                 velocity_x *= BALL_DECAY
@@ -183,7 +186,8 @@ class PlayerState:
 
             return positions[offset:]
         else:
-            return []
+            return None
+
 
     def can_player_reach(self, position: Coordinate, ticks):
         run_speed = 1.05 * 0.7  # Account for initial acceleration
@@ -202,10 +206,6 @@ class PlayerState:
         # print("PARSED : ", time, " | Position: ", new_position)
         self.action_history.projected_position = new_position
 
-    def update_ball_position(self, new_ball, param):
-        self.world_view.ball.set_value(new_ball, param)
-        self._ball_seen_since_missing = False
-
     def on_see_update(self):
         self.action_history.three_see_updates_ago = self.action_history.two_see_updates_ago
         self.action_history.two_see_updates_ago = self.action_history.last_see_update
@@ -217,6 +217,11 @@ class PlayerState:
         elif self.is_ball_missing():
             # We're looking in the direction of the ball and not seeing it, so it must be missing
             self._ball_seen_since_missing = False
+
+    def update_ball(self, new_ball, time):
+        self.world_view.ball.set_value(new_ball, time)
+        self._ball_seen_since_missing = True
+
 
 
 class ActionHistory:

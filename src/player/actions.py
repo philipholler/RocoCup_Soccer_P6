@@ -113,6 +113,9 @@ class CommandBuilder:
     def current_command(self):
         return self.command_list[self.ticks]
 
+    def append_kick(self, state, power, direction):
+        self.current_command().append_action("(kick {0} {1})".format(power, direction))
+
 
 def renew_angle(state: PlayerState, angle_to_turn, fov):
     target_dir = (state.body_angle.get_value() + state.body_state.neck_angle + angle_to_turn) % 360
@@ -351,7 +354,7 @@ def idle_neck_orientation(state):
 def append_neck_orientation(state: PlayerState, command_builder, body_dir_change=0):
     body_angle = state.body_angle.get_value() + body_dir_change
     if state.action_history.last_orientation_action < state.now() - IDLE_ORIENTATION_INTERVAL \
-            and state.world_view.ball.is_value_known(state.action_history.last_see_update):
+            and state.world_view.ball.is_value_known(state.action_history.last_see_update) and False: # todo
         # Orient to least updated place within neck angle
         print("NECK ORIENTING")
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
@@ -434,6 +437,14 @@ def append_fov_update(state: PlayerState, command_builder):
     return FOV_WIDE
 
 
+def pass_to(state: PlayerState, target: Coordinate):
+    command_builder = CommandBuilder()
+    distance_to_target = target.euclidean_distance_from(state.position.get_value())
+    direction = calculate_relative_angle(state, target)
+    power = calculate_kick_power(state, distance_to_target)
+    command_builder.append_kick(state, power, direction)
+    return command_builder.command_list
+
 # ----------------------------------- UNADJUSTED --------------------------------------------#
 
 
@@ -515,7 +526,7 @@ def choose_rand_player(player_passing: PlayerState):
     return None
 
 
-def pass_ball_to(target: ObservedPlayer, state: PlayerState):
+def pass_ball_to(state: PlayerState, target: ObservedPlayer):
     world = state.world_view
 
     if world.ball.is_value_known(world.ticks_ago(5)) and state.position.is_value_known(world.ticks_ago(5)):
@@ -643,9 +654,11 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
     elif distance >= 30:
         time_to_target = int(distance * 1.35)
     elif distance >= 20:
-        time_to_target = int(distance * 1.25)
+        print("medium!")
+        time_to_target = int(distance)
     elif distance >= 10:
-        time_to_target = int(distance * 1.15)
+        print("close!")
+        time_to_target = int(distance)
     else:
         time_to_target = 3
 

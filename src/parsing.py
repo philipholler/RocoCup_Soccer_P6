@@ -3,7 +3,7 @@ import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
-    calculate_full_origin_angle_radians, smallest_angle_difference
+    calculate_full_origin_angle_radians, smallest_angle_difference, find_mean_angle
 from player import player, world_objects
 from math import sqrt
 
@@ -222,7 +222,9 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         ps.on_see_update()
 
         if ps.is_test_player():
-            print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle, " | ball position", ps.world_view.ball.get_value().coord, ps.world_view.ball.last_updated_time, " | ", msg)
+            print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle,
+                  " | ball position", ps.world_view.ball.get_value().coord, ps.world_view.ball.last_updated_time, " | ",
+                  msg)
 
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
@@ -372,53 +374,6 @@ def create_flags(flag_strings, state: PlayerState):
     return flags
 
 
-# Note that the mean value of angles is not well defined (fx. what is the mean angle of (0, 90, 180, 270)?)
-# This function averages angles that are close together.
-def average(numbers):
-    return sum(numbers) / len(numbers)
-
-
-def find_mean_angle(angles):
-    if len(angles) == 0:
-        return None
-
-    if len(angles) == 1:
-        return angles[0]
-
-    # We expect more than half of the angles to be close together (eliminate outliers)
-    expected_close_angles = int(len(angles) / 2 + 1)
-    acceptable_variance = 3.0
-    cluster_size_best_solution = 0
-    best_cluster = []
-
-    for i, first_angle in enumerate(angles):
-        cluster = [first_angle]
-        for other_angle in angles[i + 1:]:
-            # Handle wrap-around 360 degrees
-            if first_angle < 0 + acceptable_variance:
-                if other_angle > 360 - acceptable_variance:
-                    other_angle = -(360 - other_angle)
-            # Handle other case of wrap-around 360 degrees
-            elif first_angle > 360 - acceptable_variance:
-                if other_angle < acceptable_variance:
-                    other_angle = 360 + other_angle
-
-            if abs(first_angle - other_angle) <= acceptable_variance:
-                cluster.append(other_angle)
-
-        if len(cluster) >= expected_close_angles:
-            return average(cluster)
-
-        if len(cluster) > cluster_size_best_solution:
-            cluster_size_best_solution = len(cluster)
-            best_cluster = cluster
-
-    # No angles were close enough to provide a non-ambiguous solution
-    if len(best_cluster) <= 1:
-        return None
-    return average(best_cluster) % 360
-
-
 def _approx_body_angle(flags: [Flag], state):
     if not state.position.is_value_known():
         return
@@ -434,7 +389,7 @@ def _approx_body_angle(flags: [Flag], state):
 
         estimated_angles.append(estimated_body_angle)
 
-    mean_angle = find_mean_angle(estimated_angles)
+    mean_angle = find_mean_angle(estimated_angles, acceptable_variance=3.0)
 
     if mean_angle is not None:
         new_body_angle = mean_angle % 360
@@ -474,7 +429,8 @@ def _approx_body_angle(flags: [Flag], state):
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
-                print(state.now(), "Turn missed in see update! (expected,actual) body : ", expected_body_delta, actual_body_delta, " neck: ", expected_neck_delta, actual_neck_delta)
+                print(state.now(), "Turn missed in see update! (expected,actual) body : ", expected_body_delta,
+                      actual_body_delta, " neck: ", expected_neck_delta, actual_neck_delta)
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
@@ -556,21 +512,14 @@ def _parse_ball(ball: str, ps: player.PlayerState):
                                                      my_global_angle=ps.get_global_angle().get_value())
 
         # Save old ball information
-        last_pos_2 = PrecariousData.unknown()
-        last_pos_1 = PrecariousData.unknown()
-        old_ball_distance = PrecariousData.unknown()
+        old_position_history = None
         if ps.world_view.ball.is_value_known():
-            old_ball: Ball = ps.world_view.ball.get_value()
-            old_ball_distance.set_value(old_ball.distance, ps.world_view.ball.last_updated_time)
-            old_ball_time = ps.world_view.ball.last_updated_time
-            if old_ball.last_position.is_value_known():
-                last_pos_2 = old_ball.last_position
-            last_pos_1.set_value(old_ball.coord, old_ball_time)
-        new_ball = world_objects.Ball(distance=distance, direction=direction, dist_chng=distance_chng,
-                                      dir_chng=dir_chng,
-                                      coord=ball_coord, last_pos=last_pos_1, last_pos_2=last_pos_2,
-                                      last_distance=old_ball_distance)
-        ps.update_ball_position(new_ball, ps.now())
+            old_position_history = ps.world_view.ball.get_value().position_history
+
+        new_ball = Ball(distance=distance, direction=direction, coord=ball_coord,
+                        pos_history=old_position_history, time=ps.now())
+
+        ps.update_ball(new_ball, ps.now())
 
 
 # Parse this: (p "team"? num? goalie?)
