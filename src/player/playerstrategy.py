@@ -59,8 +59,17 @@ def team_has_corner_kick(state):
 
 
 def determine_objective(state: PlayerState):
-    state.ball_interception()
     last_see_update = state.action_history.last_see_update
+    if state.num == 2:
+        if state.is_ball_missing() or not state.world_view.ball.is_value_known(
+                state.action_history.three_see_updates_ago):
+            return Objective(state, lambda: actions.locate_ball(state),
+                             lambda: state.world_view.ball.is_value_known(last_see_update), 1)
+        else:
+            intercept_point, ticks = state.ball_interception()
+            if intercept_point is not None:
+                return Objective(state, lambda : actions.intercept(state, intercept_point), lambda: True, 1)
+            return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
     if state.is_near_ball():
         return Objective(state, lambda: actions.pass_to(state, Coordinate(0, 0)), lambda: True, 1)

@@ -32,7 +32,7 @@ def shut_down_gracefully():
 
 
 TEAM_NAMES = ["Team1"]
-NUM_PLAYERS = 1
+NUM_PLAYERS = 2
 
 trainer_mode = False
 coaches_enabled = False

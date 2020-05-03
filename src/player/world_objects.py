@@ -3,7 +3,8 @@ from itertools import islice
 from math import sqrt, atan, degrees
 
 from constants import BALL_DECAY
-from geometry import is_angle_in_range, find_mean_angle, Coordinate, direction_of_movement
+from geometry import is_angle_in_range, find_mean_angle, Coordinate, \
+    calculate_full_origin_angle_radians, get_xy_vector
 
 
 class PrecariousData:
@@ -86,7 +87,7 @@ class Ball:
         if len(self.position_history) > self.MAX_HISTORY_LEN:
             self.position_history.pop()  # Pop oldest element
 
-    def approximate_position_direction_speed(self) -> (int, int):
+    def approximate_position_direction_speed(self) -> (Coordinate, int, int):
         if len(self.position_history) <= 1:
             return None, None, None  # No information can be deduced about movement of ball
         history = self.position_history
@@ -98,18 +99,20 @@ class Ball:
         time_2 = history[1][1]
         c1: Coordinate = history[0][0]
         c2: Coordinate = history[1][0]
+        first_coord = c1
+        last_coord = c2
 
         if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.1:
             return c1, 0, 0
 
         final_speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * BALL_DECAY
-        final_direction = direction_of_movement(from_coord=c2, to_coord=c1)
+        final_direction = degrees(calculate_full_origin_angle_radians(c1, c2))
         angles = [final_direction]  # Used for calculating 'average' angle
 
-        max_deviation = 8  # angle deviation
-        max_speed_deviation = 0.4
+        max_deviation = 60  # angle deviation
+        max_speed_deviation = 1.2
         age = time_1 - time_2
-        max_age = 10
+        max_age = 12
 
         for i, pos_and_time in enumerate(islice(history, 2, len(history))):
             c1 = c2
@@ -122,22 +125,46 @@ class Ball:
 
             age += time_1 - time_2
             speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * pow(BALL_DECAY, age)
-            direction = direction_of_movement(from_coord=c2, to_coord=c1)
+            direction = degrees(calculate_full_origin_angle_radians(c1, c2))
             print("direction", direction, "finaldir: ", final_direction)
             direction_similar = is_angle_in_range(direction, (final_direction - max_deviation) % 360,
                                                   (final_direction + max_deviation) % 360)
             speed_similar = (final_speed - max_speed_deviation) <= speed <= (final_speed + max_speed_deviation)
 
             if direction_similar and speed_similar and age < max_age:
+                last_coord = c2
                 angles.append(direction)
                 final_speed = (final_speed * age + speed) / (age + 1)  # calculate average with new value
                 final_direction = find_mean_angle(angles, max_deviation)
                 print("used ", i + 3, "data points for prediction")
             else:
-                print("Previous points did not match. Speed : ", speed, "| Direction :", direction)
+                print("Previous points did not match. Speed : ", speed, "vs.", final_speed, "| Direction :", direction, "vs.", final_direction, "| age: ", age, c1, c2)
                 break  # This vector did not fit projection, so no more history is used in the projection
+        print(self.position_history)
+        return self.position_history[0][0], degrees(calculate_full_origin_angle_radians(first_coord, last_coord)), final_speed
 
-        return self.position_history[0][0], final_speed, final_direction
+    def project_ball_position(self, ticks: int, offset: int):
+        positions = []
+        coord, direction, speed = self.approximate_position_direction_speed()
+
+        if direction is None:
+            return None  # No prediction can be made
+
+        def advance(previous_location: Coordinate, vx, vy):
+            return Coordinate(previous_location.pos_x + vx, previous_location.pos_y + vy)
+
+        velocity = get_xy_vector(direction=-direction, length=speed)
+        positions.append(advance(coord, velocity.pos_x, velocity.pos_y))
+
+        for i in range(1, ticks + offset):
+            velocity *= BALL_DECAY
+            positions.append(advance(positions[i - 1], velocity.pos_x, velocity.pos_y))
+
+        return positions[offset:]
+
+
+
+
 
     def __repr__(self) -> str:
         return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord

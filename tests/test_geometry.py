@@ -1,3 +1,4 @@
+import math
 import unittest
 from unittest import TestCase
 import geometry
@@ -86,18 +87,4 @@ class Test(TestCase):
         expected_mean = 359.5
         self.assertAlmostEqual(mean_angle, expected_mean, 1)
 
-    def test_direction_of_movement_180(self):
-        direction = geometry.direction_of_movement(Coordinate(0, 5), Coordinate(-5, 5))
-        self.assertAlmostEqual(direction, 180, 1)
 
-    def test_direction_of_movement_0(self):
-        direction = geometry.direction_of_movement(Coordinate(0, 5), Coordinate(5, 5))
-        self.assertAlmostEqual(direction, 0, 1)
-
-    def test_direction_of_movement_270(self):
-        direction = geometry.direction_of_movement(Coordinate(0, -5), Coordinate(0, 5))
-        self.assertAlmostEqual(direction, 270, 1)
-
-    def test_direction_of_movement_90(self):
-        direction = geometry.direction_of_movement(Coordinate(0, 5), Coordinate(0, -5))
-        self.assertAlmostEqual(direction, 270, 1)

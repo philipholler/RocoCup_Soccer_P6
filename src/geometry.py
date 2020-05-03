@@ -3,7 +3,6 @@ import math
 from math import atan2
 
 
-
 class Coordinate:
     def __init__(self, pos_x: float, pos_y: float):
         self.pos_x: float = pos_x
@@ -17,6 +16,9 @@ class Coordinate:
 
     def __sub__(self, other):
         return Coordinate(self.pos_x - other.pos_x, self.pos_y - other.pos_y)
+
+    def __mul__(self, factor):
+        return Coordinate(self.pos_x * factor, self.pos_y * factor)
 
     def __le__(self, other):
         return self.pos_x <= other.pos_x and self.pos_y <= other.pos_y
@@ -65,8 +67,8 @@ def rotate_coordinate(coord, radians_to_rotate):
     return Coordinate(new_x, new_y)
 
 
-def smallest_angle_difference(a1, a2):
-    a = a1 - a2
+def smallest_angle_difference(to_angle, from_angle):
+    a = to_angle - from_angle
     return (a + 180) % 360 - 180
 
 
@@ -100,18 +102,6 @@ def get_distance_between_coords(c1, c2):
     y = c2.pos_y - c1.pos_y
 
     return math.sqrt(pow(x, 2) + pow(y, 2))
-
-
-def direction_of_movement(from_coord: Coordinate, to_coord: Coordinate):
-    dif = to_coord - from_coord
-    dx = dif.pos_x
-    dy = dif.pos_y
-    if dy == 0:  # avoid division by 0
-        if dx > 0:
-            return 0
-        else:
-            return 180
-    return (math.degrees(math.atan(dx / dy)) - 90) % 360
 
 
 def is_angle_in_range(angle, from_angle, to_angle):

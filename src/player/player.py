@@ -147,55 +147,24 @@ class PlayerState:
 
         wv = self.world_view
         if wv.ball.is_value_known(self.now() - 4) and True: # todo: should know previous position
-            print("Prediction: ", wv.ball.get_value().approximate_position_direction_speed())
-            return None
-            if wv.ball_speed() < 0.3:
-                return None, None
 
-            project_positions = self.project_ball_position(10)
+            project_positions = wv.ball.get_value().project_ball_position(10, self.now() - wv.ball.last_updated_time)
             if project_positions is None:
                 return None, None
 
             for i, position in enumerate(project_positions):
-                print(self.now() + i + 1, " : ", position)
                 if self.can_player_reach(position, i + 1):
                     return position, i + 1
 
         return None, None
 
-    def project_ball_position(self, ticks: int):
-        positions = []
-        ball = self.world_view.ball.get_value()
-
-        def advance(previous_location: Coordinate, vx, vy):
-            return Coordinate(previous_location.pos_x + vx, previous_location.pos_y + vy)
-
-        if self.world_view.ball.last_updated_time > (self.now() - 5):
-            offset = self.now() - self.world_view.ball.last_updated_time
-            position, direction, speed = ball.approximate_position_direction_speed()
-            if speed is None:
-                return None
-
-            velocity_x, velocity_y = get_xy_vector(direction=direction, length=speed)
-            positions.append(advance(position, velocity_x, velocity_y))
-
-            for i in range(1, ticks + offset):
-                velocity_x *= BALL_DECAY
-                velocity_y *= BALL_DECAY
-                positions.append(advance(positions[i - 1], velocity_x, velocity_y))
-
-            return positions[offset:]
-        else:
-            return None
-
-
     def can_player_reach(self, position: Coordinate, ticks):
         run_speed = 1.05 * 0.7  # Account for initial acceleration
         distance = position.euclidean_distance_from(self.position.get_value())
         if self.body_facing(position, delta=20):
-            return (ticks - 2) * run_speed >= distance
+            return ticks * run_speed >= distance
         else:
-            return (ticks - 4) * run_speed >= distance
+            return (ticks - 1) * run_speed >= distance
 
     def update_body_angle(self, new_angle, time):
         # If value is uninitialized, then accept new_angle as actual angle
