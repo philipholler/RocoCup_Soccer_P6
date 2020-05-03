@@ -159,7 +159,7 @@ class PlayerState:
         return None, None
 
     def can_player_reach(self, position: Coordinate, ticks):
-        run_speed = 1.05 * 0.7  # Account for initial acceleration
+        run_speed = 1.05 * 0.6  # Account for initial acceleration
         distance = position.euclidean_distance_from(self.position.get_value())
         if self.body_facing(position, delta=20):
             return ticks * run_speed >= distance

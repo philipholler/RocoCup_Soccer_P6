@@ -87,13 +87,10 @@ class Ball:
         if len(self.position_history) > self.MAX_HISTORY_LEN:
             self.position_history.pop()  # Pop oldest element
 
-    def approximate_position_direction_speed(self) -> (Coordinate, int, int):
+    def approximate_position_direction_speed(self, minimum_data_points_used) -> (Coordinate, int, int):
         if len(self.position_history) <= 1:
             return None, None, None  # No information can be deduced about movement of ball
         history = self.position_history
-
-        def predict_speed_direction(time_1, coord_1, time_2, coord_2, age):
-            pass
 
         time_1 = history[0][1]
         time_2 = history[1][1]
@@ -114,6 +111,7 @@ class Ball:
         age = time_1 - time_2
         max_age = 12
 
+        data_points_used = 2
         for i, pos_and_time in enumerate(islice(history, 2, len(history))):
             c1 = c2
             c2 = pos_and_time[0]
@@ -132,20 +130,23 @@ class Ball:
             speed_similar = (final_speed - max_speed_deviation) <= speed <= (final_speed + max_speed_deviation)
 
             if direction_similar and speed_similar and age < max_age:
+                data_points_used += 1
                 last_coord = c2
                 angles.append(direction)
                 final_speed = (final_speed * age + speed) / (age + 1)  # calculate average with new value
                 final_direction = find_mean_angle(angles, max_deviation)
-                print("used ", i + 3, "data points for prediction")
             else:
                 print("Previous points did not match. Speed : ", speed, "vs.", final_speed, "| Direction :", direction, "vs.", final_direction, "| age: ", age, c1, c2)
                 break  # This vector did not fit projection, so no more history is used in the projection
-        print(self.position_history)
+
+        if data_points_used < minimum_data_points_used:
+            return None, None, None
+        print("Prediction based on {0} data points".format(data_points_used))
         return self.position_history[0][0], degrees(calculate_full_origin_angle_radians(first_coord, last_coord)), final_speed
 
     def project_ball_position(self, ticks: int, offset: int):
         positions = []
-        coord, direction, speed = self.approximate_position_direction_speed()
+        coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points_used=4)
 
         if direction is None:
             return None  # No prediction can be made
