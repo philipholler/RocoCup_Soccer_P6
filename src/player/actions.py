@@ -428,8 +428,13 @@ def idle_orientation(state):
     return command_builder.command_list
 
 
-def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, body_dir_change=0):
-    fov_size = append_fov_update(state, command_builder)
+def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, body_dir_change=0, fov=None):
+    if fov is None:
+        fov_size = append_fov_update(state, command_builder)
+    else:
+        fov_size = fov
+        command_builder.append_fov_change(state, fov)
+
     body_angle = state.body_angle.get_value() + body_dir_change
     turn_history = state.action_history.turn_history
 
@@ -476,7 +481,7 @@ def append_fov_update(state: PlayerState, command_builder):
     return FOV_WIDE
 
 
-def pass_to(state: PlayerState, target: Coordinate):
+def shoot_to(state: PlayerState, target: Coordinate):
     command_builder = CommandBuilder()
     distance_to_target = target.euclidean_distance_from(state.position.get_value())
     direction = calculate_relative_angle(state, target)
@@ -484,10 +489,29 @@ def pass_to(state: PlayerState, target: Coordinate):
     command_builder.append_kick(state, power, direction)
     return command_builder.command_list
 
+
+def pass_to_player(state, player: ObservedPlayer):
+    target: Coordinate = player.coord
+    command_builder = CommandBuilder()
+    distance_to_target = target.euclidean_distance_from(state.position.get_value())
+    direction = calculate_relative_angle(state, target)
+    power = calculate_kick_power(state, distance_to_target)
+    command_builder.append_kick(state, power, direction)
+    return command_builder.command_list
+
+
+def look_for_pass_target(state):
+    command_builder = CommandBuilder()
+    # Perform an orientation with boundaries of neck movement
+    _append_orient(state, neck_movement_only=False, command_builder=command_builder, fov=FOV_NORMAL)
+    state.action_history.last_orientation_action = state.now()
+    return command_builder.command_list
+
+
 # ----------------------------------- UNADJUSTED --------------------------------------------#
 
 
-def dribble_towards(state: PlayerState, target_position: Coordinate):
+"""def dribble_towards(state: PlayerState, target_position: Coordinate):
     minimum_last_update_time = state.now() - 3
     angle_known = state.body_angle.is_value_known(minimum_last_update_time)
     position_known = state.position.is_value_known(minimum_last_update_time)
@@ -500,52 +524,10 @@ def dribble_towards(state: PlayerState, target_position: Coordinate):
         actions: [] = ["(kick {0} {1})".format("20", direction), "(dash 70)"]
         return actions
     else:
-        return run_towards_ball(state)
+        return run_towards_ball(state)"""
 
 
-def jog_towards(state: PlayerState, target_position: Coordinate, speed=PLAYER_JOG_POWER):
-    actions = [SET_FOV_NARROW]
-    history = state.action_history
-    minimum_last_update_time = state.now() - 3
-    angle_known = state.body_angle.is_value_known(minimum_last_update_time)
-    position_known = state.position.is_value_known(minimum_last_update_time)
-
-    dist = -state.position.get_value().pos_x
-    print(str(dist))
-    if dist > 0:
-        if state.action_history.should_break:
-            return ["(dash -80)"]
-        else:
-            # state.action_history.last_dash_time = state.now()  - removed
-            if dist < 2.5:
-                state.action_history.should_break = True
-            return [SET_FOV_NARROW, "(dash 100)"]
-    else:
-        return []
-
-    if not angle_known or not position_known:
-        return idle_orientation(state)
-
-    distance = target_position.euclidean_distance_from(state.position.get_value())
-    if distance < 0.6:
-        return append_orient_neck(state)
-
-    if not state.action_history.turn_in_progress and not state.body_facing(target_position, 5):
-        rotation = calculate_relative_angle(state, target_position)
-        print(rotation)
-        history.last_turn_time = state.now()
-        actions.append("(turn " + str(calculate_turn_moment(state, rotation)) + ")")
-    else:
-        if distance > 3 or state.action_history.last_dash_time < state.action_history.last_see_update:
-            distance = state.position.get_value().euclidean_distance_from(target_position)
-            actions.append("(dash {0})".format(str(calculate_dash_power(state, distance, speed))))
-            state.action_history.last_dash_time = state.now()
-
-    actions.extend(append_neck_orientation(state))
-    return actions
-
-
-def run_towards_ball(state: PlayerState):
+"""def run_towards_ball(state: PlayerState):
     minimum_last_update_time = state.now() - 5
     ball_known = state.world_view.ball.is_value_known(minimum_last_update_time)
 
@@ -555,17 +537,17 @@ def run_towards_ball(state: PlayerState):
     if state.world_view.ball.get_value().distance < 2.5:
         pass  # todo
 
-    return jog_towards(state, state.world_view.ball.get_value().coord, PLAYER_RUSH_POWER)
+    return jog_towards(state, state.world_view.ball.get_value().coord, PLAYER_RUSH_POWER)"""
 
-
+"""
 def choose_rand_player(player_passing: PlayerState):
     team_mates = player_passing.world_view.get_teammates(player_passing.team_name, 10)
     if len(team_mates) != 0:
         return choice(team_mates)
-    return None
+    return None"""
 
 
-def pass_ball_to(state: PlayerState, target: ObservedPlayer):
+"""def pass_ball_to(state: PlayerState, target: ObservedPlayer):
     world = state.world_view
 
     if world.ball.is_value_known(world.ticks_ago(5)) and state.position.is_value_known(world.ticks_ago(5)):
@@ -581,10 +563,10 @@ def pass_ball_to(state: PlayerState, target: ObservedPlayer):
         else:
             return run_towards_ball(state)
     else:
-        return append_neck_orientation(state)
+        return append_neck_orientation(state)"""
 
 
-def pass_ball_to_random(state: PlayerState):
+"""def pass_ball_to_random(state: PlayerState):
     target: ObservedPlayer = choose_rand_player(state)
     if target is None:
         return append_neck_orientation(state)
@@ -592,10 +574,10 @@ def pass_ball_to_random(state: PlayerState):
     direction = calculate_relative_angle(state, target.coord)
     power = calculate_kick_power(state, target.distance)
 
-    return ["(kick " + str(power) + " " + str(direction) + ")"]
+    return ["(kick " + str(power) + " " + str(direction) + ")"]"""
 
 
-def kick_to_goal(player: PlayerState):
+"""def kick_to_goal(player: PlayerState):
     if player.team_name == "Team1":
         target = Coordinate(53.0, 0)
     else:
@@ -603,17 +585,17 @@ def kick_to_goal(player: PlayerState):
 
     direction = calculate_relative_angle(player, target)
 
-    return ["(kick " + str(160) + " " + str(direction) + ")"]
+    return ["(kick " + str(160) + " " + str(direction) + ")"]"""
 
 
-def look_for_pass_target(state: PlayerState):
+"""def look_for_pass_target(state: PlayerState):
     # Perform an orientation with boundaries of neck movement
     if state.action_history.last_orientation_action >= POSSESSION_ORIENTATION_INTERVAL:
         state.action_history.last_orientation_action = 0
         return _append_orient(state, False)
     else:
         state.action_history.last_orientation_action += 1
-        return append_orient_neck(state)
+        return append_orient_neck(state)"""
 
 
 def calculate_relative_angle(player_state, target_position):
@@ -630,16 +612,16 @@ def calculate_relative_angle(player_state, target_position):
     return rotation
 
 
-def _calculate_ball_velocity_vector(state: PlayerState):
+"""def _calculate_ball_velocity_vector(state: PlayerState):
     if state.world_view.ball.is_value_known():
         ball: Ball = state.world_view.ball.get_value()
         last_position = ball.last_position.get_value()
         delta_time = state.world_view.ball.last_updated_time - ball.last_position.last_updated_time
         velocity_x = ((ball.coord.pos_x - last_position.pos_x) / delta_time) * BALL_DECAY
         velocity_y = ((ball.coord.pos_y - last_position.pos_y) / delta_time) * BALL_DECAY
-        return velocity_x, velocity_y
+        return velocity_x, velocity_y"""
 
-
+"""
 def stop_ball(state: PlayerState):
     if state.world_view.ball.is_value_known(state.now() - 1) and state.body_angle.is_value_known(state.now() - 1):
         ball: Ball = state.world_view.ball.get_value()
@@ -680,7 +662,7 @@ def stop_ball(state: PlayerState):
         return ["(kick {0} {1})".format(kick_power, relative_kick_angle)]
 
     return []
-
+"""
 
 def calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()

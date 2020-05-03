@@ -159,12 +159,29 @@ class PlayerState:
         return None, None
 
     def can_player_reach(self, position: Coordinate, ticks):
-        run_speed = 1.05 * 0.6  # Account for initial acceleration
         distance = position.euclidean_distance_from(self.position.get_value())
-        if self.body_facing(position, delta=20):
-            return ticks * run_speed >= distance
+        if self.body_facing(position, delta=5):
+            return self.time_to_rush_distance(distance) <= ticks
         else:
-            return (ticks - 1) * run_speed >= distance
+            return self.time_to_rush_distance(distance) + 1 <= ticks
+
+    def time_to_rush_distance(self, distance):
+        def distance_in_n_ticks(speed, ticks):
+            if ticks == 0:
+                return 0
+            return speed + distance_in_n_ticks(speed * constants.PLAYER_SPEED_DECAY, ticks - 1)
+
+        projected_speed = 0
+        ticks = 0
+        while distance > distance_in_n_ticks(projected_speed, 3):
+            ticks += 1
+            projected_speed += constants.DASH_POWER_RATE * 100
+            distance -= projected_speed
+            projected_speed *= constants.PLAYER_SPEED_DECAY
+        return ticks + 3
+
+
+
 
     def update_body_angle(self, new_angle, time):
         # If value is uninitialized, then accept new_angle as actual angle

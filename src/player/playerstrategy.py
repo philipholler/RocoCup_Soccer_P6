@@ -67,16 +67,19 @@ def determine_objective(state: PlayerState):
                              lambda: state.world_view.ball.is_value_known(last_see_update), 1)
         else:
             if state.is_near_ball():
-                return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+                return Objective(state, lambda: actions.shoot_to(state, Coordinate(-25, 0)), lambda: True, 1)
 
             intercept_point, ticks = state.ball_interception()
             if intercept_point is not None:
-                return Objective(state, lambda : actions.intercept(state, intercept_point), lambda: True, 1)
+                return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: True, 1)
 
             return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
     if state.is_near_ball():
-        return Objective(state, lambda: actions.pass_to(state, Coordinate(0, 0)), lambda: True, 1)
+        pass_target = _choose_pass_target(state)
+        if pass_target is None:
+            return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
+        return Objective(state, lambda: actions.pass_to_player(state, pass_target), lambda: True, 1)
 
     if state.is_ball_missing() or not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
         print(state.now(), " DETERMINE OBJECTIVE: LOCATE BALL. Last seen", state.world_view.ball.last_updated_time)
@@ -184,17 +187,18 @@ def find_player(state, player_num):
     return None
 
 
-def _find_pass_target(state: PlayerState):
-    if state.coach_command.is_value_known(state.now() - 7 * 10):
+def _choose_pass_target(state: PlayerState):
+
+    """if state.coach_command.is_value_known(state.now() - 7 * 10):
         coach_command = state.coach_command.get_value()
         if "pass" in coach_command:
             pass_pairs = parsing.parse_pass_command(coach_command)
 
             for from_player, to_player in pass_pairs:
                 if state.num == from_player:
-                    return find_player(state, to_player)
+                    return find_player(state, to_player)"""
 
-    team_members = state.world_view.get_teammates(state.team_name, max_data_age=4)
+    team_members = state.world_view.get_teammates(state.team_name, max_data_age=5)
     if len(team_members) is 0:
         return None
-    return choice(team_members)
+    return sorted(team_members, key=lambda p: p.coord.pos_x)[0]
