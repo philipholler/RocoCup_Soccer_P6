@@ -19,7 +19,7 @@ team_names = ["Team1", "Team2"]
 num_players = 5
 
 # Enable for more runs
-MORE_SCENARIOS_MODE = False
+MORE_SCENARIOS_MODE = True
 NUM_SIMULATIONS = 3
 TICKS_PER_RUN = 50
 
@@ -56,7 +56,6 @@ if MORE_SCENARIOS_MODE:
         soccersim.stop()
         soccersim.join()
         print('_' * 200)
-
 
 # Run a single game
 else:
