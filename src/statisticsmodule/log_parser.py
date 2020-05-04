@@ -108,7 +108,7 @@ def parse_goal_action(txt, game: Game):
 
 # Parses log name (game id, team names and goals)
 def parse_log_name(log_name, game: Game):
-    id_regex = "({1})\\-({0})\\_({1})\\-.*\\-({0})\\_({1})\\.".format(_ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX)
+    id_regex = "({1})\\-({0})\\_({1})\\-.*\\-({0})\\_?({1})?\\.".format(_ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX)
     regular_expression = re.compile(id_regex)
     matched = regular_expression.match(log_name)
 
@@ -121,13 +121,15 @@ def parse_log_name(log_name, game: Game):
     game.gameID = matched.group(1)
     team1.name = matched.group(2)
     team1.goals = matched.group(3)
-    team2.name = matched.group(4)
-    team2.goals = matched.group(5)
+
+    if matched.group(4) == "null":
+        team2.name = "null"
+    else:
+        team2.name = matched.group(4)
+        team2.goals = matched.group(5)
 
     game.teams.append(team1)
     game.teams.append(team2)
-
-    print(matched.group(1))
 
 
 # Parses the lines of the server log starting with "((show"
