@@ -221,11 +221,6 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         _parse_see(msg, ps)
         ps.on_see_update()
 
-        if ps.is_test_player():
-            print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle,
-                  " | ball position", ps.world_view.ball.get_value().coord, ps.world_view.ball.last_updated_time, " | ",
-                  msg)
-
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
@@ -513,11 +508,13 @@ def _parse_ball(ball: str, ps: player.PlayerState):
 
         # Save old ball information
         old_position_history = None
+        old_dist_history = None
         if ps.world_view.ball.is_value_known():
             old_position_history = ps.world_view.ball.get_value().position_history
+            old_dist_history = ps.world_view.ball.get_value().dist_history
 
         new_ball = Ball(distance=distance, direction=direction, coord=ball_coord,
-                        pos_history=old_position_history, time=ps.now())
+                        pos_history=old_position_history, time=ps.now(), dist_history=old_dist_history)
 
         ps.update_ball(new_ball, ps.now())
 

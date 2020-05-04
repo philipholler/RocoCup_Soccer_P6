@@ -83,8 +83,9 @@ class Thinker(threading.Thread):
             self.current_objective = determine_objective(self.player_state)
 
         commands = self.current_objective.get_next_commands(self.player_state)
-        if self.player_state.is_test_player():
-            print("ball distance", self.player_state.world_view.ball.get_value().distance)
+        if self.player_state.is_test_player() and self.player_state.world_view.ball.get_value() is not None:
+            print(self.player_state.now(), "ball distance", self.player_state.world_view.ball.get_value().distance, self.player_state.world_view.ball.get_value().project_ball_collision_time())
+
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)

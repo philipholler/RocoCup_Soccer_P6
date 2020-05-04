@@ -117,6 +117,16 @@ class CommandBuilder:
         self.current_command().append_action("(kick {0} {1})".format(power, direction))
 
 
+def kick_if_collision(state: PlayerState, command: Command, power=50, direction: int=0):
+    now = state.now()
+    ball = state.world_view.ball.get_value()
+    if ball is not None and not state.action_history.has_just_kicked:
+        collision_time = ball.project_ball_collision_time()
+        if collision_time is not None and collision_time == now + 1:
+            print("KICK")
+            command.messages = ["(kick {0} {1})".format(power, direction)]
+
+
 def renew_angle(state: PlayerState, angle_to_turn, fov):
     target_dir = (state.body_angle.get_value() + state.body_state.neck_angle + angle_to_turn) % 360
     state.action_history.turn_history.renew_angle(target_dir, fov)
@@ -179,9 +189,19 @@ def require_angle_update(function):
 
 
 def intercept(state: PlayerState, intercept_point: Coordinate):
-    print("intercepting at: ", intercept_point)
+    command_builder = CommandBuilder()
+    #print("intercepting at: ", intercept_point)
     delta: Coordinate = intercept_point - state.position.get_value()
-    return adjust_position(state, delta.pos_x, delta.pos_y)
+    append_adjust_position(state, delta.pos_x, delta.pos_y, command_builder)
+    command_builder.next_tick()
+    command_builder.next_tick()
+    command_builder.next_tick()
+    command_builder.next_tick()
+    command_builder.next_tick()
+    for com in command_builder.command_list:
+        com.add_function(lambda: kick_if_collision(state, com))
+
+    return command_builder.command_list
 
 
 def rush_to_ball(state: PlayerState):
@@ -193,8 +213,8 @@ def rush_to_ball(state: PlayerState):
 
 
 # Calculates urgent actions to quickly reposition player at the cost of precision
-def adjust_position(state: PlayerState, delta_x, delta_y, focus_ball=True):
-    command_builder = CommandBuilder()
+def append_adjust_position(state: PlayerState, delta_x, delta_y, command_builder: CommandBuilder, focus_ball=True):
+
     target = Coordinate(delta_x, delta_y)
     distance = Coordinate(0, 0).euclidean_distance_from(target)
     if state.body_state.speed <= 0.1:
@@ -208,12 +228,12 @@ def adjust_position(state: PlayerState, delta_x, delta_y, focus_ball=True):
             append_look_at_ball_neck_only(state, command_builder, body_dir_change=actual_turn_angle)
             command_builder.next_tick()
 
-        append_last_dash_actions(state, state.body_state.speed, distance, command_builder)
+        append_last_dash_actions(state, state.body_state.speed, distance, command_builder, final_action="(kick 0 50)")
         print("distance: ", distance, "| speed : ", state.body_state.speed, command_builder.command_list)
     else:
         pass
         # TODO Speed not zero
-    return command_builder.command_list
+    return
 
 
 def jog_to(state: PlayerState, target: Coordinate):
@@ -289,7 +309,7 @@ def project_position(current_pos, current_speed, current_dir):
     return current_pos + geometry.get_xy_vector(direction=current_dir, length=current_speed)
 
 
-def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder):
+def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder, final_action=None):
     print("distance", distance, "speed:", projected_speed)
     if distance >= 1.68:
         command_builder.append_dash_action(state, 100)
@@ -313,6 +333,8 @@ def append_last_dash_actions(state, projected_speed, distance, command_builder: 
 
     # deceleration 2
     command_builder.next_tick(urgent=True)  # idle deceleration tick 2
+    if final_action is not None:
+        command_builder._append_action(final_action)
     projected_speed *= PLAYER_SPEED_DECAY
 
 
@@ -404,6 +426,8 @@ def idle_orientation(state):
     else:
         append_look_at_ball(state, command_builder)
 
+    for com in command_builder.command_list:
+        com.add_function(lambda: kick_if_collision(state, com))
     return command_builder.command_list
 
 
@@ -456,19 +480,20 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
 
         # Adjust to be within range of neck turn
         target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
-        new_total_angle = target_neck_angle + state.body_angle.get_value()
+        new_total_angle = target_neck_angle + body_angle
+
 
         # Calculate which fov to use based on what is required to see the ball
         preferred_fov = calculate_fov(state)
         required_view_angle = abs(smallest_angle_difference(new_total_angle, global_ball_angle) * 2.0)
         minimum_fov = FOV_WIDE
         if required_view_angle < FOV_WIDE:
-            required_view_angle = FOV_NORMAL
-        elif required_view_angle < FOV_NORMAL:
-            required_view_angle = FOV_NARROW
+            minimum_fov = FOV_NORMAL
+        if required_view_angle < FOV_NORMAL:
+            minimum_fov = FOV_NARROW
         fov = max(minimum_fov, preferred_fov)
         command_builder.append_fov_change(state, fov)
-
+        print("global ball:", global_ball_angle, "global neck:", new_total_angle, "required fov: ", minimum_fov, "view angle: ", required_view_angle)
         neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
 
@@ -477,9 +502,9 @@ def calculate_fov(state: PlayerState):
     if state.world_view.ball.is_value_known(state.now() - 6) and state.position.is_value_known(state.now() - 6):
         dist_to_ball = state.world_view.ball.get_value().coord.euclidean_distance_from(state.position.get_value())
 
-        if dist_to_ball < 15:
+        if dist_to_ball < 25:
             return FOV_NARROW
-        elif dist_to_ball < 25:
+        elif dist_to_ball < 35:
             return FOV_NORMAL
         else:
             return FOV_WIDE
@@ -683,10 +708,10 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
         time_to_target = int(distance * 1.35)
     elif distance >= 20:
         print("medium!")
-        time_to_target = int(distance)
+        time_to_target = int(distance * 1.35)
     elif distance >= 10:
         print("close!")
-        time_to_target = int(distance)
+        time_to_target = int(distance * 1.35)
     else:
         time_to_target = 3
 
