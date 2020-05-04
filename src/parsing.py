@@ -11,6 +11,7 @@ from player.player import PlayerState
 from player.world_objects import Coordinate, Ball
 from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
+from utils import debug_msg
 
 _REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 _SIGNED_INT_REGEX = "[-0-9]+"
@@ -222,10 +223,10 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         ps.on_see_update()
 
         if ps.is_test_player():
-            pass
-            '''print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle,
-                  " | ball position", ps.world_view.ball.get_value().coord, ps.world_view.ball.last_updated_time, " | ",
-                  msg)'''
+            debug_msg(ps.now() + "body_angle : " + str(ps.body_angle.get_value()) + " | neck angle: " + str(ps.body_state.neck_angle) +
+                      " | ball position" + str(ps.world_view.ball.get_value().coord) + ps.world_view.ball.last_updated_time + " | " +
+                      msg, "POSITIONAL")
+
 
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
@@ -430,8 +431,8 @@ def _approx_body_angle(flags: [Flag], state):
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
-                '''print(state.now(), "Turn missed in see update! (expected,actual) body : ", expected_body_delta,
-                      actual_body_delta, " neck: ", expected_neck_delta, actual_neck_delta)'''
+                debug_msg(state.now() + "Turn missed in see update! (expected,actual) body : " + str(expected_body_delta) +
+                          actual_body_delta + " neck: " + expected_neck_delta + actual_neck_delta, "POSITIONAL")
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
@@ -514,11 +515,13 @@ def _parse_ball(ball: str, ps: player.PlayerState):
 
         # Save old ball information
         old_position_history = None
+        old_dist_history = None
         if ps.world_view.ball.is_value_known():
             old_position_history = ps.world_view.ball.get_value().position_history
+            old_dist_history = ps.world_view.ball.get_value().dist_history
 
         new_ball = Ball(distance=distance, direction=direction, coord=ball_coord,
-                        pos_history=old_position_history, time=ps.now())
+                        pos_history=old_position_history, time=ps.now(), dist_history=old_dist_history)
 
         ps.update_ball(new_ball, ps.now())
 
@@ -816,7 +819,7 @@ def _parse_hear(text: str, ps: PlayerState):
         if ps.world_view.side == "l":
             coach_command_pattern = '.*"(.*)".*'
             matches = re.match(coach_command_pattern, text)
-            ps.coach_command.set_value(matches.group(1))  # todo Time?
+            ps.coach_command.set_value(matches.group(1), time)  # todo Time?
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":

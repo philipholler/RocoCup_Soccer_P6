@@ -89,7 +89,7 @@ class PlayerState:
         minimum_last_update_time = self.now() - 3
         ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
         if ball_known and self.position.is_value_known():
-            ball_positions = self.project_ball_position(ticks)
+            ball_positions = self.world_view.ball.get_value().project_ball_position(ticks)
             if len(ball_positions) < ticks:
                 return False
             pos_in_ticks: Coordinate = ball_positions[ticks - 1]
@@ -130,7 +130,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 1 and self.team_name == "Team1"
+        return self.num == 2 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -145,7 +145,6 @@ class PlayerState:
         return sorted_distances[degree - 1] > ball_position.euclidean_distance_from(self.position.get_value())
 
     def ball_interception(self):
-
         wv = self.world_view
         if wv.ball.is_value_known(self.now() - 4) and True: # todo: should know previous position
 
@@ -153,14 +152,21 @@ class PlayerState:
             if project_positions is None:
                 return None, None
 
-            for i, position in enumerate(project_positions):
-                if self.can_player_reach(position, i + 1):
-                    return position, i + 1
+            all_ticks = range(1, 11)
+            positions_and_ticks = zip(project_positions, all_ticks)
+
+            for (position, tick) in positions_and_ticks:
+                if self.can_player_reach(position, tick):
+                    return position, tick
 
         return None, None
 
     def can_player_reach(self, position: Coordinate, ticks):
         distance = position.euclidean_distance_from(self.position.get_value())
+
+        if distance <= KICKABLE_MARGIN:
+            return True
+
         if self.body_facing(position, delta=5):
             return self.time_to_rush_distance(distance) <= ticks
         else:
@@ -210,7 +216,6 @@ class PlayerState:
         self._ball_seen_since_missing = True
 
 
-
 class ActionHistory:
     def __init__(self) -> None:
         self.turn_history = ViewFrequency()
@@ -219,6 +224,7 @@ class ActionHistory:
         self.last_see_update = 0
         self.two_see_updates_ago = 0
         self.three_see_updates_ago = 0
+        self.has_just_intercept_kicked = False
         self.turn_in_progress = False
         self.missed_turn_last_see = False
         self.expected_body_angle = None

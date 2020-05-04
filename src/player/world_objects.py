@@ -1,8 +1,8 @@
 from collections import deque
 from itertools import islice
-from math import sqrt, atan, degrees
+from math import sqrt, atan, degrees, exp
 
-from constants import BALL_DECAY
+from constants import BALL_DECAY, KICKABLE_MARGIN
 from geometry import is_angle_in_range, find_mean_angle, Coordinate, \
     calculate_full_origin_angle_radians, get_xy_vector
 
@@ -31,13 +31,15 @@ class PrecariousData:
 
     def __str__(self) -> str:
         if self.is_value_known():
-            return "(Precarious_data: value= {0}, last_updated_time= {1})".format(self.get_value(), self.last_updated_time)
+            return "(Precarious_data: value= {0}, last_updated_time= {1})".format(self.get_value(),
+                                                                                  self.last_updated_time)
         else:
             return "(Precarious_data: unknown value)"
 
     def __repr__(self) -> str:
         if self.is_value_known():
-            return "(Precarious_data: value= {0}, last_updated_time= {1})".format(str(self._value), str(self.last_updated_time))
+            return "(Precarious_data: value= {0}, last_updated_time= {1})".format(str(self._value),
+                                                                                  str(self.last_updated_time))
         else:
             return "(Precarious_data: unknown value)"
 
@@ -73,7 +75,8 @@ UPPER_FIELD_BOUND = Coordinate(60, 40)
 class Ball:
     MAX_HISTORY_LEN = 8
 
-    def __init__(self, distance: float, direction: int, coord: Coordinate, time, pos_history: deque=None) -> None:
+    def __init__(self, distance: float, direction: int, coord: Coordinate, time, pos_history: deque = None,
+                 dist_history: deque = None) -> None:
         super().__init__()
         self.distance = distance
         self.direction = direction
@@ -83,9 +86,18 @@ class Ball:
         else:
             self.position_history: deque = pos_history
 
+        if dist_history is None:
+            self.dist_history: deque = deque([])
+        else:
+            self.dist_history: deque = dist_history
+
         self.position_history.appendleft((coord, time))
+        self.dist_history.appendleft((distance, time))
+
         if len(self.position_history) > self.MAX_HISTORY_LEN:
             self.position_history.pop()  # Pop oldest element
+        if len(self.dist_history) > self.MAX_HISTORY_LEN:
+            self.dist_history.pop()  # Pop oldest element
 
     def approximate_position_direction_speed(self, minimum_data_points_used) -> (Coordinate, int, int):
         if len(self.position_history) <= 1:
@@ -124,7 +136,7 @@ class Ball:
             age += time_1 - time_2
             speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * pow(BALL_DECAY, age)
             direction = degrees(calculate_full_origin_angle_radians(c1, c2))
-            print("direction", direction, "finaldir: ", final_direction)
+
             direction_similar = is_angle_in_range(direction, (final_direction - max_deviation) % 360,
                                                   (final_direction + max_deviation) % 360)
             speed_similar = (final_speed - max_speed_deviation) <= speed <= (final_speed + max_speed_deviation)
@@ -136,13 +148,15 @@ class Ball:
                 final_speed = (final_speed * age + speed) / (age + 1)  # calculate average with new value
                 final_direction = find_mean_angle(angles, max_deviation)
             else:
-                print("Previous points did not match. Speed : ", speed, "vs.", final_speed, "| Direction :", direction, "vs.", final_direction, "| age: ", age, c1, c2)
+                print("Previous points did not match. Speed : ", speed, "vs.", final_speed, "| Direction :", direction,
+                      "vs.", final_direction, "| age: ", age, c1, c2)
                 break  # This vector did not fit projection, so no more history is used in the projection
 
         if data_points_used < minimum_data_points_used:
             return None, None, None
         print("Prediction based on {0} data points".format(data_points_used))
-        return self.position_history[0][0], degrees(calculate_full_origin_angle_radians(first_coord, last_coord)), final_speed
+        return self.position_history[0][0], degrees(
+            calculate_full_origin_angle_radians(first_coord, last_coord)), final_speed
 
     def project_ball_position(self, ticks: int, offset: int):
         positions = []
@@ -163,18 +177,52 @@ class Ball:
 
         return positions[offset:]
 
+    def project_ball_collision_time(self):
+        start_time = self.dist_history[0][1]
+        start_dist = self.dist_history[0][0]
+        previous_dist = start_dist
+        previous_tick = start_time
+        avg_speed = 0
 
+        for i, (dist, tick) in enumerate(islice(self.dist_history, 1, len(self.dist_history))):
+            dist_delta = dist - previous_dist
+            time_delta = previous_tick - tick
 
+            age = start_time - tick
 
+            speed = dist_delta / time_delta
+            if speed < 0.1:
+                break  # Ball is not rolling in same direction (or only insignificantly so)
+
+            projected_speed = speed * exp((BALL_DECAY - 1) * age)  # V = V0 * e^(0.06*t)
+            avg_speed = (i * avg_speed + projected_speed) / (i + 1)
+
+            previous_dist = dist
+            previous_tick = tick
+
+        if avg_speed <= 0:
+            return None
+
+        dist_left = start_dist
+        ticks_until_collision = 0
+        while dist_left > KICKABLE_MARGIN:
+            dist_left -= avg_speed
+            avg_speed *= BALL_DECAY
+            ticks_until_collision += 1
+            if ticks_until_collision > 10:
+                return None
+
+        return start_time + ticks_until_collision
 
     def __repr__(self) -> str:
-        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
-                                                                       , self.last_position, self.last_position_2)
+        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(
+            self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
+            , self.last_position, self.last_position_2)
+
     def __str__(self) -> str:
-        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
-                                                        , self.last_position, self.last_position_2)
-
-
+        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(
+            self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
+            , self.last_position, self.last_position_2)
 
 
 class Goal:

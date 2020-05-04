@@ -13,6 +13,7 @@ import parsing
 from player.playerstrategy import determine_objective
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
+from utils import debug_msg
 
 
 class Thinker(threading.Thread):
@@ -83,9 +84,8 @@ class Thinker(threading.Thread):
             self.current_objective = determine_objective(self.player_state)
 
         commands = self.current_objective.get_next_commands(self.player_state)
-        if self.player_state.is_test_player():
-            pass
-            # print("ball distance", self.player_state.world_view.ball.get_value().distance)
+        if self.player_state.is_test_player() and self.player_state.world_view.ball.get_value() is not None:
+            debug_msg(self.player_state.now() + "ball distance" + self.player_state.world_view.ball.get_value().distance + self.player_state.world_view.ball.get_value().project_ball_collision_time(), "POSITIONAL")
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)
