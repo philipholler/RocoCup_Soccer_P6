@@ -1,4 +1,3 @@
-import os
 import threading
 import time
 
@@ -98,9 +97,8 @@ class SoccerSim(threading.Thread):
         if self.trainer_mode:
             self.trainer.stop()
             self.trainer.join()
-
         self.soccer_monitor.kill()
         self.soccer_monitor.wait(3)
         self.soccer_sim.kill()
         self.soccer_sim.wait(3)
-        # log_parser.parse_logs()
+        log_parser.parse_logs()
