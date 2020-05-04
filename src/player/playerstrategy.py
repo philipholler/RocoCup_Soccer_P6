@@ -178,7 +178,7 @@ def determine_objective(state: PlayerState):
 
 
 def orient_objective(state: PlayerState):
-    return Objective(lambda: actions.append_neck_orientation(state), maximum_duration=3)
+    return Objective(lambda: actions._append_neck_orientation(state), maximum_duration=3)
 
 
 def find_player(state, player_num):
