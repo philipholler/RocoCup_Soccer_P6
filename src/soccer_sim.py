@@ -98,8 +98,8 @@ class SoccerSim(threading.Thread):
         if self.trainer_mode:
             self.trainer.stop()
             self.trainer.join()
-        self.soccer_monitor.kill()
+        self.soccer_monitor.send_signal(signal.SIGINT)
         self.soccer_monitor.wait(3)
-        self.soccer_sim.kill()
+        self.soccer_sim.send_signal(signal.SIGINT)
         self.soccer_sim.wait(3)
         log_parser.parse_logs()
