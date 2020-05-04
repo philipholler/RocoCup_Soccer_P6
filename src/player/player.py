@@ -223,7 +223,7 @@ class ActionHistory:
         self.last_see_update = 0
         self.two_see_updates_ago = 0
         self.three_see_updates_ago = 0
-        self.has_just_kicked = False
+        self.has_just_intercept_kicked = False
         self.turn_in_progress = False
         self.missed_turn_last_see = False
         self.expected_body_angle = None

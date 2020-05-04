@@ -120,11 +120,12 @@ class CommandBuilder:
 def kick_if_collision(state: PlayerState, command: Command, power=50, direction: int=0):
     now = state.now()
     ball = state.world_view.ball.get_value()
-    if ball is not None and not state.action_history.has_just_kicked:
+    if ball is not None:
         collision_time = ball.project_ball_collision_time()
-        if collision_time is not None and collision_time == now + 1:
-            print("KICK")
+        if collision_time is not None and collision_time <= now + 1:
+            print(state.now(), " | KICK")
             command.messages = ["(kick {0} {1})".format(power, direction)]
+            state.action_history.has_just_intercept_kicked = True
 
 
 def renew_angle(state: PlayerState, angle_to_turn, fov):
@@ -189,8 +190,8 @@ def require_angle_update(function):
 
 
 def intercept(state: PlayerState, intercept_point: Coordinate):
+    state.action_history.has_just_intercept_kicked = False
     command_builder = CommandBuilder()
-    #print("intercepting at: ", intercept_point)
     delta: Coordinate = intercept_point - state.position.get_value()
     append_adjust_position(state, delta.pos_x, delta.pos_y, command_builder)
     command_builder.next_tick()
