@@ -124,7 +124,7 @@ def kick_if_collision(state: PlayerState, command: Command, power=50, direction:
     if ball is not None:
         collision_time = ball.project_ball_collision_time()
         if collision_time is not None and collision_time <= now + 1:
-            print(state.now(), " | KICK")
+            debug_msg(str(state.now()) + " | KICK", "INTERCEPTION")
             command.messages = ["(kick {0} {1})".format(power, direction)]
             state.action_history.has_just_intercept_kicked = True
 

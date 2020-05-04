@@ -5,6 +5,7 @@ from player import actions
 from player.actions import Command
 from player.player import PlayerState
 from player.world_objects import Coordinate
+from utils import debug_msg
 
 
 class Objective:
@@ -71,7 +72,7 @@ def determine_objective(state: PlayerState):
 
             intercept_point, ticks = state.ball_interception()
             if intercept_point is not None:
-                print(state.now(), "intercept at :", intercept_point, " at time: ", state.now() + ticks - 2)
+                debug_msg(str(state.now()) + "intercept at :" + str(intercept_point) + " at time: " + str(state.now() + ticks - 2), "INTERCEPTION")
                 return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: True, 1)
 
             return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)

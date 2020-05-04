@@ -435,7 +435,7 @@ def _approx_body_angle(flags: [Flag], state):
         state.update_body_angle(mean_angle, state.now())
         # state.body_angle.set_value(mean_angle, state.position.last_updated_time)
     else:
-        print("No angle could be found")
+        debug_msg("No angle could be found", "POSITIONAL")
 
 
 # ((flag g r b) 99.5 -5)
@@ -654,10 +654,11 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
         play.has_ball = False
 
     # Find closest player to ball
-    possessor: PlayerViewCoach = wv.get_closest_players_to_ball(1)[0]
-    # If closest player less than 1 meter away from ball, give possession.
-    if possessor.coord.euclidean_distance_from(wv.ball.coord) < 1:
-        possessor.has_ball = True
+    if len(wv.get_closest_players_to_ball(1)) < 0:
+        possessor: PlayerViewCoach = wv.get_closest_players_to_ball(1)[0]
+        # If closest player less than 1 meter away from ball, give possession.
+        if possessor.coord.euclidean_distance_from(wv.ball.coord) < 1:
+            possessor.has_ball = True
 
 
 # ((p "team"? num?) Distance Direction DistChng? DirChng? BodyFacingDir? HeadFacingDir? [PointDir]?)

@@ -33,6 +33,8 @@ class SoccerSim(threading.Thread):
         self.soccer_sim = None
         self.soccer_monitor = None
 
+        self.has_init_clients = False
+
     def start(self) -> None:
         super().start()
         # server::say_coach_cnt_max=-1
@@ -67,18 +69,20 @@ class SoccerSim(threading.Thread):
                 self.player_threads.append(t)
 
         if self.trainer_mode:
-            trainer = Trainer(self.udp_port_trainer, self.udp_ip)
-            trainer.start()
+            self.trainer = Trainer(self.udp_port_trainer, self.udp_ip)
+            self.trainer.start()
 
         if self.coaches_enabled:
-            coach_1 = Coach(self.team_names[0], self.udp_port_trainer, self.udp_ip)
-            coach_1.start()
+            self.coach_1 = Coach(self.team_names[0], self.udp_port_coach, self.udp_ip)
+            self.coach_1.start()
 
-            coach_2 = Coach(self.team_names[1], self.udp_port_trainer, self.udp_ip)
-            coach_2.start()
+            if len(self.team_names) > 1:
+                self.coach_2 = Coach(self.team_names[1], self.udp_port_coach, self.udp_ip)
+                self.coach_2.start()
+
+        self.has_init_clients = True
 
     def stop(self) -> None:
-        print("Shutting down...")
         for player in self.player_threads:
             player.stop()
             player.join()
@@ -86,8 +90,9 @@ class SoccerSim(threading.Thread):
         if self.coaches_enabled:
             self.coach_1.stop()
             self.coach_1.join()
-            self.coach_2.stop()
-            self.coach_2.join()
+            if len(self.team_names) > 1:
+                self.coach_2.stop()
+                self.coach_2.join()
 
         if self.trainer_mode:
             self.trainer.stop()
@@ -96,4 +101,4 @@ class SoccerSim(threading.Thread):
         self.soccer_monitor.wait(3)
         self.soccer_sim.send_signal(signal.SIGINT)
         self.soccer_sim.wait(3)
-        log_parser.parse_logs()
+        # log_parser.parse_logs()

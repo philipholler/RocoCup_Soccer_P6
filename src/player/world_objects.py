@@ -5,6 +5,7 @@ from math import sqrt, atan, degrees, exp
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from geometry import is_angle_in_range, find_mean_angle, Coordinate, \
     calculate_full_origin_angle_radians, get_xy_vector
+from utils import debug_msg
 
 
 class PrecariousData:
@@ -148,13 +149,13 @@ class Ball:
                 final_speed = (final_speed * age + speed) / (age + 1)  # calculate average with new value
                 final_direction = find_mean_angle(angles, max_deviation)
             else:
-                print("Previous points did not match. Speed : ", speed, "vs.", final_speed, "| Direction :", direction,
-                      "vs.", final_direction, "| age: ", age, c1, c2)
+                debug_msg("Previous points did not match. Speed : " + str(speed) + "vs." + str(final_speed) + "| Direction :" + str(direction) +
+                          "vs." + str(final_direction) + "| age: " + str(age) + str(c1) + str(c2), "POSITIONAL")
                 break  # This vector did not fit projection, so no more history is used in the projection
 
         if data_points_used < minimum_data_points_used:
             return None, None, None
-        print("Prediction based on {0} data points".format(data_points_used))
+        debug_msg("Prediction based on {0} data points".format(data_points_used), "POSITIONAL")
         return self.position_history[0][0], degrees(
             calculate_full_origin_angle_radians(first_coord, last_coord)), final_speed
 
@@ -189,6 +190,9 @@ class Ball:
             time_delta = previous_tick - tick
 
             age = start_time - tick
+
+            if time_delta == 0:
+                break
 
             speed = dist_delta / time_delta
             if speed < 0.1:
