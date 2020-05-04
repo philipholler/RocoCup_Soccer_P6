@@ -83,6 +83,7 @@ class SoccerSim(threading.Thread):
 
         self.has_init_clients = True
 
+
     def stop(self) -> None:
         for player in self.player_threads:
             player.stop()
