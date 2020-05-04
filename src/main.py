@@ -16,11 +16,7 @@ team_names = ["Team1"]
 NUM_SIMULATIONS = 2
 NUM_TICKS = 20
 
-constants.DEBUG_MODE_ALL = False
-constants.
-
-
-DEBUG_MODE_POSITIONAL, DEBUG_MODE_ALL, DEBUG_MODE_SCENARIOS = False, False, False
+constants.DEBUG_DICT["POSITIONAL"] = True
 
 for sim in range(NUM_SIMULATIONS):
     soccersim: SoccerSim = SoccerSim(team_names=team_names,
@@ -39,7 +35,6 @@ for sim in range(NUM_SIMULATIONS):
 
     first_player: Client = soccersim.player_threads[0]
     while first_player.think.player_state.world_view.sim_time < NUM_TICKS:
-        print("First_player time: ", first_player.think.player_state.world_view.sim_time)
         time.sleep(0.001)
 
     print('_'*20)

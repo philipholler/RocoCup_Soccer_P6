@@ -102,7 +102,7 @@ class CommandBuilder:
         elif fov == 180:
             action = SET_FOV_WIDE
         else:
-            debug_msg(WARNING_PREFIX + " Turn angle not supported (append_fov_change): " + fov, "POSITIONAL")
+            debug_msg(WARNING_PREFIX + " Turn angle not supported (append_fov_change): " + str(fov), "POSITIONAL")
             action = SET_FOV_NORMAL
         self.current_command().append_action(action)
         self.append_function(lambda: update_fov(state, fov))
@@ -232,7 +232,7 @@ def append_adjust_position(state: PlayerState, delta_x, delta_y, command_builder
             command_builder.next_tick()
 
         append_last_dash_actions(state, state.body_state.speed, distance, command_builder, final_action="(kick 0 50)")
-        debug_msg("distance: " + distance + "| speed : " + state.body_state.speed + str(command_builder.command_list), "INTERCEPTION")
+        debug_msg("distance: " + str(distance) + "| speed : " + str(state.body_state.speed) + str(command_builder.command_list), "INTERCEPTION")
     else:
         pass
         # TODO Speed not zero
@@ -255,7 +255,7 @@ def go_to(state: PlayerState, target: Coordinate, max_ticks=MAX_TICKS_PER_SEE_UP
         rotation = calculate_relative_angle(state, target)
         turn_moment = round(calculate_turn_moment(state, rotation), 2)
 
-        debug_msg(state.now() + "global angle: " + state.last_see_global_angle + " off by: " + rotation, "POSITIONAL")
+        debug_msg(str(state.now()) + "global angle: " + str(state.last_see_global_angle) + " off by: " + str(rotation), "POSITIONAL")
 
         if turn_moment < 0:
             first_turn_moment = max(turn_moment, -180)
@@ -496,7 +496,7 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
             minimum_fov = FOV_NARROW
         fov = max(minimum_fov, preferred_fov)
         command_builder.append_fov_change(state, fov)
-        debug_msg("global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(minimum_fov) + "view angle: " + str(required_view_angle))
+        debug_msg("global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
         neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
 

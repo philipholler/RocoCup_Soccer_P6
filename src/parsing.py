@@ -222,11 +222,6 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         _parse_see(msg, ps)
         ps.on_see_update()
 
-        if ps.is_test_player():
-            debug_msg(ps.now() + "body_angle : " + str(ps.body_angle.get_value()) + " | neck angle: " + str(ps.body_state.neck_angle) +
-                      " | ball position" + str(ps.world_view.ball.get_value().coord) + ps.world_view.ball.last_updated_time + " | " +
-                      msg, "POSITIONAL")
-
 
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
@@ -431,8 +426,8 @@ def _approx_body_angle(flags: [Flag], state):
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
-                debug_msg(state.now() + "Turn missed in see update! (expected,actual) body : " + str(expected_body_delta) +
-                          actual_body_delta + " neck: " + expected_neck_delta + actual_neck_delta, "POSITIONAL")
+                debug_msg(str(state.now()) + "Turn missed in see update! (expected,actual) body : " + str(expected_body_delta) +
+                          str(actual_body_delta) + " neck: " + str(expected_neck_delta) + str(actual_neck_delta), "POSITIONAL")
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
