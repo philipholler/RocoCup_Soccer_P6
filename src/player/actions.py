@@ -4,6 +4,7 @@ from random import choice
 
 from sympy import solve, Eq, Symbol
 
+import constants
 import geometry
 from constants import PLAYER_JOG_POWER, PLAYER_RUSH_POWER, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
@@ -12,7 +13,7 @@ from geometry import calculate_full_origin_angle_radians, is_angle_in_range, sma
 
 from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
-from utils import clamp
+from utils import clamp, debug_msg
 
 ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
 NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
@@ -101,7 +102,7 @@ class CommandBuilder:
         elif fov == 180:
             action = SET_FOV_WIDE
         else:
-            print(WARNING_PREFIX, " Turn angle not supported (append_fov_change): ", fov)
+            debug_msg(WARNING_PREFIX + " Turn angle not supported (append_fov_change): " + fov, "POSITIONAL")
             action = SET_FOV_NORMAL
         self.current_command().append_action(action)
         self.append_function(lambda: update_fov(state, fov))
@@ -159,7 +160,7 @@ def orient_if_position_or_angle_unknown(function):
         state: PlayerState = args[0]
         time_limit = state.action_history.two_see_updates_ago
         if (not state.position.is_value_known(time_limit)) or not state.body_angle.is_value_known(time_limit):
-            print("Oriented instead of : " + str(function) + " because position or angle is unknown")
+            debug_msg("Oriented instead of : " + str(function) + " because position or angle is unknown", "POSITIONAL")
             return blind_orient(state)
         else:
             return function(*args, **kwargs)
@@ -179,14 +180,14 @@ def require_angle_update(function):
 
 
 def intercept(state: PlayerState, intercept_point: Coordinate):
-    print("intercepting at: ", intercept_point)
+    debug_msg("intercepting at: " + str(intercept_point), "INTERCEPTION")
     delta: Coordinate = intercept_point - state.position.get_value()
     return adjust_position(state, delta.pos_x, delta.pos_y)
 
 
 def rush_to_ball(state: PlayerState):
     if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
-        print("ACTION: LOCATE BALL")
+        debug_msg("ACTION: LOCATE BALL", "INTERCEPTION")
         return locate_ball(state)
 
     return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
@@ -209,7 +210,7 @@ def adjust_position(state: PlayerState, delta_x, delta_y, focus_ball=True):
             command_builder.next_tick()
 
         append_last_dash_actions(state, state.body_state.speed, distance, command_builder)
-        print("distance: ", distance, "| speed : ", state.body_state.speed, command_builder.command_list)
+        debug_msg("distance: " + distance + "| speed : " + state.body_state.speed + str(command_builder.command_list), "INTERCEPTION")
     else:
         pass
         # TODO Speed not zero
@@ -232,7 +233,7 @@ def go_to(state: PlayerState, target: Coordinate, max_ticks=MAX_TICKS_PER_SEE_UP
         rotation = calculate_relative_angle(state, target)
         turn_moment = round(calculate_turn_moment(state, rotation), 2)
 
-        print(state.now(), "global angle: ", state.last_see_global_angle, " off by: ", rotation)
+        debug_msg(state.now() + "global angle: " + state.last_see_global_angle + " off by: " + rotation, "POSITIONAL")
 
         if turn_moment < 0:
             first_turn_moment = max(turn_moment, -180)
@@ -290,7 +291,7 @@ def project_position(current_pos, current_speed, current_dir):
 
 
 def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder):
-    print("distance", distance, "speed:", projected_speed)
+    # print("distance", distance, "speed:", projected_speed)
     if distance >= 1.68:
         command_builder.append_dash_action(state, 100)
         command_builder.next_tick()
@@ -377,7 +378,7 @@ def idle_neck_orientation(state):
     command_builder = CommandBuilder()
     append_neck_orientation(state, command_builder)
     if state.is_test_player():
-        print("inside idle neck orient : ", command_builder.command_list)
+        debug_msg("inside idle neck orient : " + str(command_builder.command_list), "POSITIONAL")
     return command_builder.command_list
 
 
@@ -386,7 +387,7 @@ def append_neck_orientation(state: PlayerState, command_builder, body_dir_change
     if state.action_history.last_orientation_action < state.now() - IDLE_ORIENTATION_INTERVAL \
             and state.world_view.ball.is_value_known(state.action_history.last_see_update) and False:  # todo
         # Orient to least updated place within neck angle
-        print("NECK ORIENTING")
+        debug_msg("NECK ORIENTING", "POSITIONAL")
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
         state.action_history.last_orientation_action = state.now()
     else:
@@ -682,10 +683,10 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
     elif distance >= 30:
         time_to_target = int(distance * 1.35)
     elif distance >= 20:
-        print("medium!")
+        debug_msg("medium!", "KICK")
         time_to_target = int(distance)
     elif distance >= 10:
-        print("close!")
+        debug_msg("close!", "KICK")
         time_to_target = int(distance)
     else:
         time_to_target = 3
@@ -697,9 +698,8 @@ def calculate_kick_power(state: PlayerState, distance: float) -> int:
                    * BALL_DECAY ** i) for i in range(0, time_to_target)]), distance)
     solution = solve(eqn)
     if len(solution) == 0:
-        print(solution)
-        print("Time_to_target: {0}, dist_ball: {1}, dir_diff: {2}, player: {3}".format(time_to_target, dist_ball,
-                                                                                       dir_diff, state))
+        debug_msg("Time_to_target: {0}, dist_ball: {1}, dir_diff: {2}, player: {3}".format(time_to_target, dist_ball,
+                                                                                           dir_diff, state), "KICK")
     needed_kick_power = solve(eqn)[0]
 
     if needed_kick_power < 0:

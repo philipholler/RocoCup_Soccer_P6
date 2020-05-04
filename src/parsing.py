@@ -222,9 +222,10 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         ps.on_see_update()
 
         if ps.is_test_player():
-            print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle,
+            pass
+            '''print(ps.now(), "body_angle : ", ps.body_angle.get_value(), " | neck angle: ", ps.body_state.neck_angle,
                   " | ball position", ps.world_view.ball.get_value().coord, ps.world_view.ball.last_updated_time, " | ",
-                  msg)
+                  msg)'''
 
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
@@ -429,8 +430,8 @@ def _approx_body_angle(flags: [Flag], state):
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
-                print(state.now(), "Turn missed in see update! (expected,actual) body : ", expected_body_delta,
-                      actual_body_delta, " neck: ", expected_neck_delta, actual_neck_delta)
+                '''print(state.now(), "Turn missed in see update! (expected,actual) body : ", expected_body_delta,
+                      actual_body_delta, " neck: ", expected_neck_delta, actual_neck_delta)'''
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
@@ -815,7 +816,7 @@ def _parse_hear(text: str, ps: PlayerState):
         if ps.world_view.side == "l":
             coach_command_pattern = '.*"(.*)".*'
             matches = re.match(coach_command_pattern, text)
-            ps.coach_command.set_value(matches.group(1), time)  # todo Time?
+            ps.coach_command.set_value(matches.group(1))  # todo Time?
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":

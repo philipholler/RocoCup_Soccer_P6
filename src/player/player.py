@@ -110,7 +110,7 @@ class PlayerState:
     # True if looking towards last known ball position and not seeing the ball
     def is_ball_missing(self):
         if self.world_view.ball.get_value() is None or not self._ball_seen_since_missing:
-            print("ball missing!")
+            # print("ball missing!")
             self._ball_seen_since_missing = False
             return True
 
@@ -121,7 +121,8 @@ class PlayerState:
         looking_towards_ball = angle_difference < self.body_state.fov * 0.25
         can_see_ball = self.world_view.ball.is_value_known(self.action_history.last_see_update)
         if looking_towards_ball and not can_see_ball:
-            print("ball missing!")
+            pass
+            # print("ball missing!")
 
         return looking_towards_ball and not can_see_ball
 

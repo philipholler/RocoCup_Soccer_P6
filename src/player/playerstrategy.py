@@ -82,7 +82,7 @@ def determine_objective(state: PlayerState):
         return Objective(state, lambda: actions.pass_to_player(state, pass_target), lambda: True, 1)
 
     if state.is_ball_missing() or not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
-        print(state.now(), " DETERMINE OBJECTIVE: LOCATE BALL. Last seen", state.world_view.ball.last_updated_time)
+        # print(state.now(), " DETERMINE OBJECTIVE: LOCATE BALL. Last seen", state.world_view.ball.last_updated_time)
         return Objective(state, lambda: actions.locate_ball(state),
                          lambda: state.world_view.ball.is_value_known(last_see_update), 1)
 
