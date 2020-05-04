@@ -6,15 +6,17 @@ from player.player_client import Client
 from soccer_sim import SoccerSim
 from utils import debug_msg
 
+
 def shut_down_gracefully() -> None:
     soccersim.stop()
     soccersim.join()
 
-UDP_IP = "127.0.0.1"
-UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH,  = 6000, 6001, 6002
 
-team_names = ["Team1"]
-num_players = 2
+UDP_IP = "127.0.0.1"
+UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
+
+team_names = ["Team1", "Team2"]
+num_players = 5
 
 # Enable for more runs
 MORE_SCENARIOS_MODE = False
@@ -53,7 +55,7 @@ if MORE_SCENARIOS_MODE:
 
         soccersim.stop()
         soccersim.join()
-        print('_'*200)
+        print('_' * 200)
 
 
 # Run a single game
@@ -67,9 +69,3 @@ else:
                                      udp_coach=UDP_PORT_COACH,
                                      udp_ip=UDP_IP)
     soccersim.start()
-
-
-
-
-
-
