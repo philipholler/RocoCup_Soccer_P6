@@ -54,8 +54,6 @@ if MORE_SCENARIOS_MODE:
         soccersim.stop()
         soccersim.join()
         print('_'*200)
-        time.sleep(2)
-
 
 # Run a single game
 else:
@@ -68,9 +66,3 @@ else:
                                      udp_coach=UDP_PORT_COACH,
                                      udp_ip=UDP_IP)
     soccersim.start()
-
-
-
-
-
-

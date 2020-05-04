@@ -51,6 +51,7 @@ class SoccerSim(threading.Thread):
         # Use regular monitor: rcssmonitor
         self.soccer_monitor = subprocess.Popen(["exec rcssmonitor"], shell=True)
 
+
     def run(self) -> None:
         super().run()
         # Make sure the server is running before connecting players
