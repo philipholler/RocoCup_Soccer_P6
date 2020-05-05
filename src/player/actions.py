@@ -1,10 +1,4 @@
 import math
-from logging import debug
-from random import choice
-
-from sympy import solve, Eq, Symbol
-
-import constants
 import geometry
 from constants import PLAYER_JOG_POWER, PLAYER_RUSH_POWER, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
@@ -15,17 +9,14 @@ from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
 from utils import clamp, debug_msg
 
-ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)", "(turn 180)", "(turn_neck 90)"]
-NECK_ORIENTATION_ACTIONS = ["(turn_neck 90)", "(turn_neck -180)"]
-
-IDLE_ORIENTATION_INTERVAL = 8
-POSSESSION_ORIENTATION_INTERVAL = 2
+_IDLE_ORIENTATION_INTERVAL = 8
+_POSSESSION_ORIENTATION_INTERVAL = 2
 
 SET_FOV_NORMAL = "(change_view normal high)"
 SET_FOV_NARROW = "(change_view narrow high)"
 SET_FOV_WIDE = "(change_view wide high)"
 
-MAX_TICKS_PER_SEE_UPDATE = 5  # todo Correct?
+_MAX_TICKS_PER_SEE_UPDATE = 4  # todo Correct?
 
 
 class Command:
@@ -118,14 +109,22 @@ class CommandBuilder:
         self.current_command().append_action("(kick {0} {1})".format(power, direction))
 
 
-def kick_if_collision(state: PlayerState, command: Command, power=50, direction: int=0):
+def kick_if_collision(state: PlayerState, command: Command, speed=40, ball_dir: int=0):
+    #todo consider ball speedd
     now = state.now()
     ball = state.world_view.ball.get_value()
-    if ball is not None:
+    if ball is not None and not state.action_history.has_just_intercept_kicked:
         collision_time = ball.project_ball_collision_time()
         if collision_time is not None and collision_time <= now + 1:
             debug_msg(str(state.now()) + " | KICK", "INTERCEPTION")
-            command.messages = ["(kick {0} {1})".format(power, direction)]
+            kick_dir = (ball_dir + 180) % 360
+
+            if state.action_history.turn_in_progress and state.action_history.expected_body_angle is not None:
+                relative_dir = smallest_angle_difference(from_angle=state.action_history.expected_body_angle, to_angle=kick_dir)
+            else:
+                relative_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=kick_dir)
+
+            command.messages = ["(kick {0} {1})".format(10, relative_dir)]
             state.action_history.has_just_intercept_kicked = True
 
 
@@ -145,13 +144,14 @@ def register_neck_turn(state: PlayerState, angle):
 
 
 def register_body_turn(state: PlayerState, body_turn_moment=0):
-    turn_angle = calculate_actual_turn_angle(state, body_turn_moment)
-    state.action_history.expected_body_angle = (state.body_angle.get_value() + turn_angle) % 360
+    turn_angle = _calculate_actual_turn_angle(state, body_turn_moment)
+    if state.body_angle.is_value_known(state.action_history.two_see_updates_ago):
+        state.action_history.expected_body_angle = (state.body_angle.get_value() + turn_angle) % 360
     state.action_history.turn_in_progress = True
 
 
 def project_dash(state: PlayerState, dash_power):
-    actual_speed = calculate_actual_speed(state.body_state.speed, dash_power)
+    actual_speed = _calculate_actual_speed(state.body_state.speed, dash_power)
     state.body_state.speed = actual_speed * PLAYER_SPEED_DECAY
     """exp_angle = state.action_history.expected_angle
 
@@ -192,19 +192,43 @@ def require_angle_update(function):
 
 def intercept(state: PlayerState, intercept_point: Coordinate):
     debug_msg("intercepting at: " + str(intercept_point), "INTERCEPTION")
+
     state.action_history.has_just_intercept_kicked = False
     command_builder = CommandBuilder()
     delta: Coordinate = intercept_point - state.position.get_value()
-    append_adjust_position(state, delta.pos_x, delta.pos_y, command_builder)
-    command_builder.next_tick()
-    command_builder.next_tick()
-    command_builder.next_tick()
-    command_builder.next_tick()
-    command_builder.next_tick()
+    _append_rushed_position_adjustment(state, delta.pos_x, delta.pos_y, command_builder)
+
+    coord, speed, direction = state.world_view.ball.get_value().approximate_position_direction_speed(4)
+
     for com in command_builder.command_list:
-        com.add_function(lambda: kick_if_collision(state, com))
+        com.add_function(lambda: kick_if_collision(state, com, speed=speed, ball_dir=direction))
 
     return command_builder.command_list
+
+
+# Calculates urgent actions to quickly reposition player at the cost of precision
+def _append_rushed_position_adjustment(state: PlayerState, delta_x, delta_y, command_builder: CommandBuilder, focus_ball=True):
+    target = Coordinate(delta_x, delta_y)
+    distance = Coordinate(0, 0).euclidean_distance_from(target)
+
+    if state.body_state.speed >= 0.2:
+        # TODO ! Brake to mitigate current speed (unless facing correct direction)
+        pass
+
+    target_body_angle = math.degrees(calculate_full_origin_angle_radians(target, Coordinate(0, 0)))
+    turn_angle = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=target_body_angle)
+
+    if abs(turn_angle) > _allowed_angle_delta(distance):  # Need to turn body first
+        moment = _calculate_turn_moment(state, turn_angle)
+        command_builder.append_turn_action(state, moment, True)
+        actual_turn_angle = _calculate_actual_turn_angle(state, moment)
+        append_look_at_ball_neck_only(state, command_builder, body_dir_change=actual_turn_angle)
+        command_builder.next_tick()
+
+    append_last_dash_actions(state, state.body_state.speed, distance, command_builder, urgent=True)
+    debug_msg("distance: " + str(distance) + "| speed : " + str(state.body_state.speed) + str(command_builder.command_list), "INTERCEPTION")
+
+    return
 
 
 def rush_to_ball(state: PlayerState):
@@ -215,45 +239,20 @@ def rush_to_ball(state: PlayerState):
     return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
 
 
-# Calculates urgent actions to quickly reposition player at the cost of precision
-def append_adjust_position(state: PlayerState, delta_x, delta_y, command_builder: CommandBuilder, focus_ball=True):
-
-    target = Coordinate(delta_x, delta_y)
-    distance = Coordinate(0, 0).euclidean_distance_from(target)
-    if state.body_state.speed <= 0.1:
-        target_body_angle = math.degrees(calculate_full_origin_angle_radians(target, Coordinate(0, 0)))
-        turn_angle = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=target_body_angle)
-
-        if abs(turn_angle) > 5:  # Need to turn body first
-            moment = calculate_turn_moment(state, turn_angle)
-            command_builder.append_turn_action(state, moment, True)
-            actual_turn_angle = calculate_actual_turn_angle(state, moment)
-            append_look_at_ball_neck_only(state, command_builder, body_dir_change=actual_turn_angle)
-            command_builder.next_tick()
-
-        append_last_dash_actions(state, state.body_state.speed, distance, command_builder, final_action="(kick 0 50)")
-        debug_msg("distance: " + str(distance) + "| speed : " + str(state.body_state.speed) + str(command_builder.command_list), "INTERCEPTION")
-    else:
-        pass
-        # TODO Speed not zero
-    return
-
-
 def jog_to(state: PlayerState, target: Coordinate):
     return go_to(state, target, dash_power_limit=PLAYER_JOG_POWER)
 
 
-# todo max ticks integration for rush to ball?
 @orient_if_position_or_angle_unknown
-def go_to(state: PlayerState, target: Coordinate, max_ticks=MAX_TICKS_PER_SEE_UPDATE, dash_power_limit=100):
+def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
     command_builder = CommandBuilder()
     projected_dir = state.body_angle.get_value()
     dist = target.euclidean_distance_from(state.position.get_value())
     body_dir_change = 0
 
-    if not state.body_facing(target, allowed_angle_delta(dist)) and not state.action_history.turn_in_progress:
-        rotation = calculate_relative_angle(state, target)
-        turn_moment = round(calculate_turn_moment(state, rotation), 2)
+    if not state.body_facing(target, _allowed_angle_delta(dist)) and not state.action_history.turn_in_progress:
+        rotation = _calculate_relative_angle(state, target)
+        turn_moment = round(_calculate_turn_moment(state, rotation), 2)
 
         debug_msg(str(state.now()) + "global angle: " + str(state.last_see_global_angle) + " off by: " + str(rotation), "POSITIONAL")
 
@@ -262,10 +261,10 @@ def go_to(state: PlayerState, target: Coordinate, max_ticks=MAX_TICKS_PER_SEE_UP
         else:
             first_turn_moment = min(turn_moment, 180)
         command_builder.append_turn_action(state, first_turn_moment)
-        append_neck_orientation(state, command_builder, body_dir_change)
+        _append_neck_orientation(state, command_builder, body_dir_change)
         command_builder.next_tick()
-        projected_dir += calculate_actual_turn_angle(state, first_turn_moment)
-        body_dir_change = calculate_actual_turn_angle(state, moment=first_turn_moment)
+        projected_dir += _calculate_actual_turn_angle(state, first_turn_moment)
+        body_dir_change = _calculate_actual_turn_angle(state, moment=first_turn_moment)
         """
         # if necessary to turn again:  todo : moment should be recalculated based on projected speed
         second_turn_moment = turn_moment - first_turn_moment
@@ -275,7 +274,7 @@ def go_to(state: PlayerState, target: Coordinate, max_ticks=MAX_TICKS_PER_SEE_UP
             command_builder.append_turn_action(state, second_turn_moment)
             command_builder.next_tick()"""
     elif not state.action_history.turn_in_progress:
-        append_neck_orientation(state, command_builder, body_dir_change)
+        _append_neck_orientation(state, command_builder, body_dir_change)
 
     # Might need to account for direction after turning
     projected_speed = state.body_state.speed
@@ -286,16 +285,16 @@ def go_to(state: PlayerState, target: Coordinate, max_ticks=MAX_TICKS_PER_SEE_UP
         projected_pos = project_position(projected_pos, projected_speed, -projected_dir)
 
     # Add dash commands for remaining amount of ticks
-    for i in range(command_builder.ticks, MAX_TICKS_PER_SEE_UPDATE):
+    for i in range(command_builder.ticks, _MAX_TICKS_PER_SEE_UPDATE):
         projected_dist = target.euclidean_distance_from(projected_pos)
 
         if projected_dist < 1.5:
-            append_last_dash_actions(state, projected_speed, projected_dist - projected_speed, command_builder)
+            append_last_dash_actions(state, projected_speed, projected_dist - projected_speed, command_builder, True)
             return command_builder.command_list
 
-        possible_speed = calculate_actual_speed(projected_speed, dash_power_limit)
+        possible_speed = _calculate_actual_speed(projected_speed, dash_power_limit)
         target_speed = min(projected_dist, possible_speed)
-        power, projected_speed = calculate_dash_power(projected_speed, target_speed)
+        power, projected_speed = _calculate_dash_power(projected_speed, target_speed)
         command_builder.append_dash_action(state, power)
         command_builder.next_tick()
 
@@ -312,49 +311,35 @@ def project_position(current_pos, current_speed, current_dir):
     return current_pos + geometry.get_xy_vector(direction=current_dir, length=current_speed)
 
 
-def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder, final_action=None):
+def distance_in_three_ticks(speed):
+    return speed + speed * BALL_DECAY + speed * BALL_DECAY * BALL_DECAY
+
+
+def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder, urgent, max_power=100):
     # print("distance", distance, "speed:", projected_speed)
-    if distance >= 1.68:
-        command_builder.append_dash_action(state, 100)
+    if distance >= distance_in_three_ticks(projected_speed + _calculate_actual_speed(projected_speed, max_power)):
+        command_builder.append_dash_action(state, max_power)
         command_builder.next_tick()
-        projected_speed = calculate_actual_speed(projected_speed, 100)
+        projected_speed = _calculate_actual_speed(projected_speed, max_power)
         distance -= projected_speed
         projected_speed *= PLAYER_SPEED_DECAY
-        append_last_dash_actions(state, projected_speed, distance, command_builder)
+        append_last_dash_actions(state, projected_speed, distance, command_builder, urgent)
         return
 
     # one dash + two empty commands
     # dash:
     target_speed = projected_speed + (25.0 * distance - 39.0 * projected_speed) / 39.0
-    dash_power, projected_speed = calculate_dash_power(projected_speed, target_speed)
-    command_builder.append_dash_action(state, dash_power, urgent=True)
+    dash_power, projected_speed = _calculate_dash_power(projected_speed, target_speed)
+    command_builder.append_dash_action(state, dash_power, urgent)
     projected_speed *= PLAYER_SPEED_DECAY
 
     # deceleration 1
-    command_builder.next_tick(urgent=True)  # idle deceleration tick 1
+    command_builder.next_tick(urgent)  # idle deceleration tick 1
     projected_speed *= PLAYER_SPEED_DECAY
 
     # deceleration 2
-    command_builder.next_tick(urgent=True)  # idle deceleration tick 2
-    if final_action is not None:
-        command_builder._append_action(final_action)
+    command_builder.next_tick(urgent)  # idle deceleration tick 2
     projected_speed *= PLAYER_SPEED_DECAY
-
-
-def append_dash_and_brake(dist, state, command_builder):
-    projected_speed = state.body_state.speed
-    if state.body_state.speed < dist:
-        # Dash last distance
-        target_speed = dist
-        power, projected_speed = calculate_dash_power(projected_speed, target_speed)
-        command_builder.append_dash_action(state, power, urgent=True)
-        command_builder.next_tick()
-
-    # Brake to speed 0
-    dist -= projected_speed
-    projected_speed *= PLAYER_SPEED_DECAY
-    power, projected_speed = calculate_dash_power(projected_speed, 0)
-    command_builder.append_dash_action(state, power, urgent=True)
 
 
 @require_angle_update
@@ -400,18 +385,16 @@ def append_look_direction(state: PlayerState, target_direction, fov, command_bui
 @require_angle_update
 def idle_neck_orientation(state):
     command_builder = CommandBuilder()
-    append_neck_orientation(state, command_builder)
+    _append_neck_orientation(state, command_builder)
     if state.is_test_player():
         debug_msg("inside idle neck orient : " + str(command_builder.command_list), "POSITIONAL")
     return command_builder.command_list
 
 
-def append_neck_orientation(state: PlayerState, command_builder, body_dir_change=0):
-    body_angle = state.body_angle.get_value() + body_dir_change
-    if state.action_history.last_orientation_action < state.now() - IDLE_ORIENTATION_INTERVAL \
+def _append_neck_orientation(state: PlayerState, command_builder, body_dir_change=0):
+    if state.action_history.last_orientation_action < state.now() - _IDLE_ORIENTATION_INTERVAL \
             and state.world_view.ball.is_value_known(state.action_history.last_see_update) and False:  # todo
         # Orient to least updated place within neck angle
-        debug_msg("NECK ORIENTING", "POSITIONAL")
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
         state.action_history.last_orientation_action = state.now()
     else:
@@ -420,10 +403,13 @@ def append_neck_orientation(state: PlayerState, command_builder, body_dir_change
 
 
 @require_angle_update
-def idle_orientation(state):
+def idle_orientation(state: PlayerState):
     command_builder = CommandBuilder()
+    if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
+        return blind_orient(state)
+
     # Perform an orientation with boundaries of neck movement
-    if state.action_history.last_orientation_action < state.now() - IDLE_ORIENTATION_INTERVAL and False: # todo testing
+    if state.action_history.last_orientation_action < state.now() - _IDLE_ORIENTATION_INTERVAL and False: # todo testing
         _append_orient(state, False, command_builder)
         state.action_history.last_orientation_action = state.now()
     else:
@@ -436,7 +422,7 @@ def idle_orientation(state):
 
 def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, body_dir_change=0, fov=None):
     if fov is None:
-        fov_size = calculate_fov(state)
+        fov_size = _determine_fov(state)
         command_builder.append_fov_change(state, fov_size)
     else:
         fov_size = fov
@@ -454,19 +440,15 @@ def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, b
 
     angle = turn_history.least_updated_angle(fov_size, lower_bound, upper_bound)
     append_look_direction(state, angle, fov_size, command_builder)
-
-    # if neck_movement_only and state.is_test_player():
-    #    print("NECK MOVEMENT ONLY: ",  command_builder.current_command())
-
     state.action_history.last_orientation_action = 0
 
 
-def append_look_at_ball(state, command_builder):
+def append_look_at_ball(state: PlayerState, command_builder):
     ball_position = state.world_view.ball.get_value().coord
     ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
     angle_difference = abs((state.body_angle.get_value() + state.body_state.neck_angle) - ball_angle)
     if angle_difference > 0.9:
-        fov = calculate_fov(state)
+        fov = _determine_fov(state)
         command_builder.append_fov_change(state, fov)
         append_look_direction(state, ball_angle, fov, command_builder)
 
@@ -487,7 +469,7 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
 
 
         # Calculate which fov to use based on what is required to see the ball
-        preferred_fov = calculate_fov(state)
+        preferred_fov = _determine_fov(state)
         required_view_angle = abs(smallest_angle_difference(new_total_angle, global_ball_angle) * 2.0)
         minimum_fov = FOV_WIDE
         if required_view_angle < FOV_WIDE:
@@ -501,7 +483,57 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
 
 
-def calculate_fov(state: PlayerState):
+def shoot_to(state: PlayerState, target: Coordinate):
+    command_builder = CommandBuilder()
+    distance_to_target = target.euclidean_distance_from(state.position.get_value())
+    direction = _calculate_relative_angle(state, target)
+    power = _calculate_kick_power(state, distance_to_target)
+    command_builder.append_kick(state, power, direction)
+    return command_builder.command_list
+
+
+def pass_to_player(state, player: ObservedPlayer):
+    target: Coordinate = player.coord
+    command_builder = CommandBuilder()
+    distance_to_target = target.euclidean_distance_from(state.position.get_value())
+    direction = _calculate_relative_angle(state, target)
+    power = _calculate_kick_power(state, distance_to_target)
+    command_builder.append_kick(state, power, direction)
+    return command_builder.command_list
+
+
+def positional_adjustment(state, adjustment: Coordinate):
+    command_builder = CommandBuilder()
+
+    max_power = PLAYER_JOG_POWER
+    distance = Coordinate(0, 0).euclidean_distance_from(adjustment)
+
+    target_body_angle = math.degrees(calculate_full_origin_angle_radians(adjustment, Coordinate(0, 0)))
+    turn_angle = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=target_body_angle)
+
+    if abs(turn_angle) >= _allowed_angle_delta(distance):
+        turn_moment = _calculate_turn_moment(state, turn_angle)
+        command_builder.append_turn_action(state, _calculate_turn_moment(state, turn_angle))
+        _append_neck_orientation(state, command_builder, turn_moment)
+        command_builder.next_tick(_calculate_actual_turn_angle(state, turn_moment))
+    else:
+        _append_neck_orientation(state, command_builder)
+
+    append_last_dash_actions(state, state.body_state.speed, distance, command_builder, False, max_power)
+
+    return command_builder.command_list
+
+
+@require_angle_update
+def look_for_pass_target(state):
+    command_builder = CommandBuilder()
+    # Perform an orientation with boundaries of neck movement
+    _append_orient(state, neck_movement_only=False, command_builder=command_builder, fov=FOV_NORMAL)
+    state.action_history.last_orientation_action = state.now()
+    return command_builder.command_list
+
+
+def _determine_fov(state: PlayerState):
     if state.world_view.ball.is_value_known(state.now() - 6) and state.position.is_value_known(state.now() - 6):
         dist_to_ball = state.world_view.ball.get_value().coord.euclidean_distance_from(state.position.get_value())
 
@@ -515,128 +547,14 @@ def calculate_fov(state: PlayerState):
     return FOV_WIDE
 
 
-def shoot_to(state: PlayerState, target: Coordinate):
-    command_builder = CommandBuilder()
-    distance_to_target = target.euclidean_distance_from(state.position.get_value())
-    direction = calculate_relative_angle(state, target)
-    power = calculate_kick_power(state, distance_to_target)
-    command_builder.append_kick(state, power, direction)
-    return command_builder.command_list
-
-
-def pass_to_player(state, player: ObservedPlayer):
-    target: Coordinate = player.coord
-    command_builder = CommandBuilder()
-    distance_to_target = target.euclidean_distance_from(state.position.get_value())
-    direction = calculate_relative_angle(state, target)
-    power = calculate_kick_power(state, distance_to_target)
-    command_builder.append_kick(state, power, direction)
-    return command_builder.command_list
-
-
-@require_angle_update
-def look_for_pass_target(state):
-    command_builder = CommandBuilder()
-    # Perform an orientation with boundaries of neck movement
-    _append_orient(state, neck_movement_only=False, command_builder=command_builder, fov=FOV_NORMAL)
-    state.action_history.last_orientation_action = state.now()
-    return command_builder.command_list
-
-
-# ----------------------------------- UNADJUSTED --------------------------------------------#
-
-
-"""def dribble_towards(state: PlayerState, target_position: Coordinate):
-    minimum_last_update_time = state.now() - 3
-    angle_known = state.body_angle.is_value_known(minimum_last_update_time)
-    position_known = state.position.is_value_known(minimum_last_update_time)
-
-    if not angle_known or not position_known:
-        return append_neck_orientation(state)
-
-    if state.is_near_ball(KICKABLE_MARGIN):
-        direction = calculate_relative_angle(state, target_position)
-        actions: [] = ["(kick {0} {1})".format("20", direction), "(dash 70)"]
-        return actions
-    else:
-        return run_towards_ball(state)"""
-
-
-"""def run_towards_ball(state: PlayerState):
-    minimum_last_update_time = state.now() - 5
-    ball_known = state.world_view.ball.is_value_known(minimum_last_update_time)
-
-    if not ball_known:
-        return locate_ball(state)
-
-    if state.world_view.ball.get_value().distance < 2.5:
-        pass  # todo
-
-    return jog_towards(state, state.world_view.ball.get_value().coord, PLAYER_RUSH_POWER)"""
-
-"""
-def choose_rand_player(player_passing: PlayerState):
-    team_mates = player_passing.world_view.get_teammates(player_passing.team_name, 10)
-    if len(team_mates) != 0:
-        return choice(team_mates)
-    return None"""
-
-
-"""def pass_ball_to(state: PlayerState, target: ObservedPlayer):
-    world = state.world_view
-
-    if world.ball.is_value_known(world.ticks_ago(5)) and state.position.is_value_known(world.ticks_ago(5)):
-        ball = world.ball.get_value()
-        if state.is_near_ball(KICKABLE_MARGIN):
-            if target is not None:
-                print("Kicking from player {0} to player {1}".format(str(state.num), str(target.num)))
-                direction = calculate_relative_angle(state, target.coord)
-                distance = state.position.get_value().euclidean_distance_from(target.coord)
-                return ["(kick " + str(calculate_kick_power(state, distance) * 0.8) + " " + str(direction) + ")"]
-            else:
-                return append_neck_orientation(state)
-        else:
-            return run_towards_ball(state)
-    else:
-        return append_neck_orientation(state)"""
-
-
-"""def pass_ball_to_random(state: PlayerState):
-    target: ObservedPlayer = choose_rand_player(state)
-    if target is None:
-        return append_neck_orientation(state)
-
-    direction = calculate_relative_angle(state, target.coord)
-    power = calculate_kick_power(state, target.distance)
-
-    return ["(kick " + str(power) + " " + str(direction) + ")"]"""
-
-
-"""def kick_to_goal(player: PlayerState):
-    if player.team_name == "Team1":
-        target = Coordinate(53.0, 0)
-    else:
-        target = Coordinate(-53.0, 0)
-
-    direction = calculate_relative_angle(player, target)
-
-    return ["(kick " + str(160) + " " + str(direction) + ")"]"""
-
-
-"""def look_for_pass_target(state: PlayerState):
-    # Perform an orientation with boundaries of neck movement
-    if state.action_history.last_orientation_action >= POSSESSION_ORIENTATION_INTERVAL:
-        state.action_history.last_orientation_action = 0
-        return _append_orient(state, False)
-    else:
-        state.action_history.last_orientation_action += 1
-        return append_orient_neck(state)"""
-
-
-def calculate_relative_angle(player_state, target_position):
-    rotation = calculate_full_origin_angle_radians(target_position, player_state.position.get_value())
+def _calculate_relative_angle(state, target_position):
+    rotation = calculate_full_origin_angle_radians(target_position, state.position.get_value())
     rotation = math.degrees(rotation)
-    rotation -= player_state.body_angle.get_value()
+
+    if state.action_history.turn_in_progress and state.action_history.expected_body_angle is not None:
+        rotation -= state.action_history.expected_body_angle
+    else:
+        rotation -= state.body_angle.get_value()
 
     # Pick the short way around (<180 degrees)
     if rotation > 180:
@@ -647,106 +565,28 @@ def calculate_relative_angle(player_state, target_position):
     return rotation
 
 
-"""def _calculate_ball_velocity_vector(state: PlayerState):
-    if state.world_view.ball.is_value_known():
-        ball: Ball = state.world_view.ball.get_value()
-        last_position = ball.last_position.get_value()
-        delta_time = state.world_view.ball.last_updated_time - ball.last_position.last_updated_time
-        velocity_x = ((ball.coord.pos_x - last_position.pos_x) / delta_time) * BALL_DECAY
-        velocity_y = ((ball.coord.pos_y - last_position.pos_y) / delta_time) * BALL_DECAY
-        return velocity_x, velocity_y"""
-
-"""
-def stop_ball(state: PlayerState):
-    if state.world_view.ball.is_value_known(state.now() - 1) and state.body_angle.is_value_known(state.now() - 1):
-        ball: Ball = state.world_view.ball.get_value()
-
-        velocity_vector_x, velocity_vector_y = _calculate_ball_velocity_vector(state)
-
-        # Calculate ball direction from origin
-        ball_global_dir = math.degrees(
-            calculate_full_origin_angle_radians(Coordinate(velocity_vector_x, velocity_vector_y), Coordinate(0, 0)))
-
-        # Kick angle should be opposite of ball direction
-        global_kick_angle = (ball_global_dir - 180) % 360
-        # x = kickpower (0-100)
-        kick_difference = Symbol('kick_difference', real=True)
-        eq = Eq(state.body_angle.get_value() + kick_difference, global_kick_angle)
-        relative_kick_angle = solve(eq)[0]
-
-        # Get ball speed needed to calculate power of stopping kick
-        ball_speed = state.world_view.ball_speed()
-
-        # Find kick power depending on ball direction from player, ball distance from player, ball speed decay, kickable margin as well as ball speed
-        # x = kickpower (0-100)
-        x = Symbol('x', real=True)
-        eqn = Eq(((x * KICK_POWER_RATE) * (
-                1 - 0.25 * (abs(ball.direction) / 180) - 0.25 * (ball.distance / KICKABLE_MARGIN)) * BALL_DECAY),
-                 ball_speed)
-        kick_power = solve(eqn)[0]
-
-        '''
-        print("Vel_vec: ", velocity_vector)
-        print("Ball_global_dir: ", ball_global_dir)
-        print("kick_angle", relative_kick_angle)
-        print("ball_speed", ball_speed)
-        print("kick_power", kick_power)
-        '''
-        print("Stopping ball... kick_power={0}, kick_angle={1}, ball_speed={2}".format(kick_power, relative_kick_angle,
-                                                                                       ball_speed))
-        return ["(kick {0} {1})".format(kick_power, relative_kick_angle)]
-
-    return []
-"""
-
-def calculate_kick_power(state: PlayerState, distance: float) -> int:
+def _calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()
     dir_diff = abs(ball.direction)
     dist_ball = ball.distance
+    target_delivery_velocity = 0.6  # The velocity of the ball after traveling the given distance
 
-    # voodoo parameters
-    if distance > 40:
-        time_to_target = int(distance * 1.4)
-    elif distance >= 30:
-        time_to_target = int(distance * 1.35)
-    elif distance >= 20:
-        debug_msg("medium!", "KICK")
-        time_to_target = int(distance * 1.35)
-    elif distance >= 10:
-        debug_msg("close!", "KICK")
-        time_to_target = int(distance * 1.35)
-    else:
-        time_to_target = 3
+    time_to_travel_distance = 50*math.log((3*distance+50*target_delivery_velocity)/(50*target_delivery_velocity))/3
+    start_velocity = target_delivery_velocity / math.exp(-0.06 * time_to_travel_distance)
 
-    # Solve for the initial kick power needed to get to the distance after time_to_target ticks
-    # x = kickpower (0-100)
-    x = Symbol('x', real=True)
-    eqn = Eq(sum([(((x * KICK_POWER_RATE) * (1 - 0.25 * (dir_diff / 180) - 0.25 * (dist_ball / KICKABLE_MARGIN)))
-                   * BALL_DECAY ** i) for i in range(0, time_to_target)]), distance)
-    solution = solve(eqn)
-    if len(solution) == 0:
-        debug_msg("Time_to_target: {0}, dist_ball: {1}, dir_diff: {2}, player: {3}".format(time_to_target, dist_ball,
-                                                                                           dir_diff, state), "KICK")
-    needed_kick_power = solve(eqn)[0]
-
-    if needed_kick_power < 0:
-        raise Exception("Should not be able to be negative. What the hell - Philip")
-    elif needed_kick_power > 100:
-        pass
-        # print("Tried to kick with higher than 100 power: ", str(needed_kick_power), ", player: ", state)
-
-    return needed_kick_power
+    power = start_velocity / (KICK_POWER_RATE * (1 - 0.25*(dir_diff/180)-0.25*(dist_ball/KICKABLE_MARGIN)))
+    return min(power, 100)
 
 
-def calculate_turn_moment(state: PlayerState, target_angle):
+def _calculate_turn_moment(state: PlayerState, target_angle):
     return target_angle * (1 + 5 * state.body_state.speed)
 
 
-def calculate_actual_turn_angle(state: PlayerState, moment):
+def _calculate_actual_turn_angle(state: PlayerState, moment):
     return moment / (1 + 5 * state.body_state.speed)
 
 
-def calculate_dash_power(current_speed, target_speed):
+def _calculate_dash_power(current_speed, target_speed):
     delta = target_speed - current_speed
     power = delta / DASH_POWER_RATE
 
@@ -759,18 +599,16 @@ def calculate_dash_power(current_speed, target_speed):
     return power, projected_speed
 
 
-def calculate_actual_speed(current_speed, dash_power):
+def _calculate_actual_speed(current_speed, dash_power):
     return current_speed + dash_power * DASH_POWER_RATE
 
 
-def allowed_angle_delta(distance, max_distance_deviation=0.5):
+def _allowed_angle_delta(distance, max_distance_deviation=0.5):
     if distance > 15:
         return 4
     else:
         return 5
 
-    if distance < 0.1:
+    """if distance < 0.1:
         return 90
-    return math.degrees(math.acos(distance / math.sqrt(pow(max_distance_deviation, 2) + pow(distance, 2))))
-
-
+    return math.degrees(math.acos(distance / math.sqrt(pow(max_distance_deviation, 2) + pow(distance, 2))))"""

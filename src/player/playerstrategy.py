@@ -1,11 +1,12 @@
 from random import choice
 
 import parsing
+from constants import KICKABLE_MARGIN
 from player import actions
 from player.actions import Command
 from player.player import PlayerState
-from player.world_objects import Coordinate
-from utils import debug_msg
+from player.world_objects import Coordinate, Ball
+from utils import clamp
 
 
 class Objective:
@@ -48,34 +49,65 @@ class Objective:
         return False
 
 
-def team_has_corner_kick(state):
-    if state.world_view.side == "l":
-        if state.world_view.game_state == "corner_kick_l":
-            return True
-    elif state.world_view.side == "r":
-        if state.world_view.game_state == "corner_kick_r":
-            return True
+class CompositeObjective:
 
-    return False
+    def __init__(self, *args: [Objective]) -> None:
+        self.objectives = []
+        for o in args:
+            self.objectives.append(o)
+        self.completed_objectives = 0
+
+    def should_recalculate(self, state: PlayerState):
+        # Don't recalculate if there are any un-executed urgent commands
+        if self.completed_objectives >= len(self.objectives):
+            return True
+        if self.completed_objectives == len(self.objectives) - 1:
+            return self.objectives[len(self.objectives) - 1].should_recalculate(state)
+
+    def get_next_commands(self, state: PlayerState):
+        if self._current_objective().should_recalculate(state):
+            self.completed_objectives += 1
+
+        if self.completed_objectives >= len(self.objectives):
+            return []
+
+        return self._current_objective().get_next_commands(state)
+
+    def has_urgent_commands(self):
+        for objective in self.objectives:
+            if objective.has_urgent_commands():
+                return True
+        return False
+
+    def _current_objective(self) -> Objective:
+        return self.objectives[self.completed_objectives]
 
 
 def determine_objective(state: PlayerState):
     last_see_update = state.action_history.last_see_update
-    if state.num == 2:
-        if state.is_ball_missing() or not state.world_view.ball.is_value_known(
-                state.action_history.three_see_updates_ago):
-            return Objective(state, lambda: actions.locate_ball(state),
-                             lambda: state.world_view.ball.is_value_known(last_see_update), 1)
-        else:
-            if state.is_near_ball(1.0):
-                return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+    if state.num != 1: # Every player except for goalie
+        # Look for the ball when it's position is entirely unknown
+        if _ball_unknown(state):
+            return _locate_ball_objective(state)
 
-            intercept_point, ticks = state.ball_interception()
-            if intercept_point is not None:
-                debug_msg(str(state.now()) + "intercept at :" + str(intercept_point) + " at time: " + str(state.now() + ticks - 2), "INTERCEPTION")
-                return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: True, 1)
-
+        # If in possession of the ball
+        if state.is_near_ball(KICKABLE_MARGIN):
             return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+
+        # Try to perform an interception of the ball if possible
+        intercept_point, ticks = state.ball_interception()
+        if intercept_point is not None:
+            return _intercept_rush_to_objective(state, intercept_point)
+
+        # Retrieve the ball if you are one of the two closest players to the ball
+        if state.is_nearest_ball(2) and False: # TODO TEMPORARY FOR TESTING
+            return _rush_to_ball_objective(state)
+
+        # Finally, reposition while looking at the ball if no other
+        # task needs to be performed right now
+        return _position_optimally_objective(state)
+
+    return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
     if state.is_near_ball():
         pass_target = _choose_pass_target(state)
@@ -92,96 +124,55 @@ def determine_objective(state: PlayerState):
         return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 5)
 
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
-    return Objective(state, lambda: [], lambda: True, 1)
 
-    target = state.get_global_play_pos()
-    if state.num == 10:
-        print(target)
-    if not state.is_near(target, 0.5):
-        return Objective(state, lambda: actions.go_to(state, state.get_global_play_pos()), lambda: True,
-                         maximum_duration=10)
 
-    return Objective(state, lambda: [], lambda: True, 1)
+def _ball_unknown(state):
+    seen_recently = state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago)
+    return state.is_ball_missing() or not seen_recently
 
-    if state.is_near(target, 0.5):
-        return Objective(state, lambda: []
-                         , lambda: False, maximum_duration=100)
 
-    return Objective(state, lambda: actions.go_to(state, target)
-                     , lambda: state.is_near(target, 0.5) and state.body_state.speed < 0.1, 100)
+def _locate_ball_objective(state: PlayerState):
+    return Objective(state, lambda: actions.locate_ball(state),
+                     lambda: state.world_view.ball.is_value_known(state.action_history.last_see_update), 1)
 
-    if not state.world_view.ball.is_value_known(state.now() - 3):
-        return Objective(lambda: actions.locate_ball(state))
-    if state.is_near_ball():
-        return Objective(lambda: actions.pass_ball_to_random(state))
 
-    # Attempt interception if possible
-    interception_position, interception_time = state.ball_interception()
-    if interception_position is not None:
-        print("Player " + str(state.num) + " intercepting at : " + str(interception_position) + " in " + str(
-            interception_time))
-        print(state.world_view.ball_speed())
-        return Objective(lambda: actions.go_to(state, interception_position),
-                         interception_time + 80)
+def _intercept_rush_to_objective(state, intercept_point):
+    interception = Objective(state, lambda: actions.intercept(state, intercept_point), lambda: True, 15)
+    follow_up = Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 10)
+    return CompositeObjective(interception, follow_up)
 
-    return Objective(lambda: actions.run_towards_ball(state))
 
-    if current_objective is not None and not current_objective.should_recalculate() and not state.is_near_ball():
-        return current_objective
+def _rush_to_ball_objective(state):
+    return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 10)
 
-    if team_has_corner_kick(state):
-        # Left midfielder
-        if state.num == 6:
-            return Objective(lambda: actions.run_towards_ball(state), maximum_duration=5)
 
-    if state.is_near_ball():
-        if state.world_view.ball_speed() > 1.2:
-            return Objective(lambda: actions.stop_ball(state))
-        # If close to goal, dribble closer
-        if state.is_approaching_goal():
-            if state.world_view.side == "l":
-                goal_pos = parsing._FLAG_COORDS.get("gr")
-                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])),
-                                 maximum_duration=5)
-            if state.world_view.side == "r":
-                goal_pos = parsing._FLAG_COORDS.get("gl")
-                return Objective(lambda: actions.dribble_towards(state, Coordinate(goal_pos[0], goal_pos[1])),
-                                 maximum_duration=5)
+def _position_optimally_objective(state: PlayerState):
+    ball_position: Coordinate = state.world_view.ball.get_value().coord
+    positional_offset: Coordinate = ball_position
+    play_position = state.get_global_play_pos()
 
-        # otherwise find a pass target
-        pass_target = _find_pass_target(state)
-        if pass_target is None:
-            if state.is_near_goal():
-                return Objective(lambda: actions.kick_to_goal(state))
-            return Objective(lambda: actions.look_for_pass_target(state))
-        return Objective(lambda: actions.pass_ball_to(pass_target, state), maximum_duration=1)
+    # Position player according to their starting position and the current ball position
+    optimal_x = clamp(play_position.pos_x + positional_offset.pos_x * 0.5, -45, 45)
 
-    # Attempt interception if possible
-    interception_position, interception_time = state.ball_interception()
-    if interception_position is not None:
-        print("Player " + str(state.num) + " intercepting at : " + str(interception_position))
-        return Objective(lambda: actions.go_to(state, interception_position),
-                         interception_time - 1)
+    # Used to make players position themselves closer to the goal on the y-axis when far up/down the field
+    y_goal_factor = 1 - (abs(optimal_x) - 35) * 0.05 if abs(optimal_x) > 35 else 1
+    optimal_y = clamp(play_position.pos_y + positional_offset.pos_y * 0.2, -25, 25) * y_goal_factor
+    optimal_position = Coordinate(optimal_x, optimal_y)
 
-    # If less than 15 meters from ball and one of two closest team players, then attempt to retrieve it
-    if state.world_view.game_state == 'play_on' and state.world_view.ball.is_value_known(state.now() - 5):
-        if state.is_nearest_ball(1):
-            return Objective(lambda: actions.run_towards_ball(state), maximum_duration=1)
+    current_position: Coordinate = state.position.get_value()
+    dist = current_position.euclidean_distance_from(optimal_position)
 
-    target_position = state.get_global_play_pos()
-
-    return Objective(lambda: actions.idle_orientation(state))
-    if state.is_near(target_position):
-        pass
+    if dist > 6.0:
+        target = optimal_position
+        return Objective(state, lambda: actions.jog_to(state, target), lambda: True)
+    if dist > 2.0:  # todo: if dist > 6 jog towards?
+        difference = optimal_position - current_position
+        return Objective(state, lambda: actions.positional_adjustment(state, difference), lambda: True)
     else:
-        return Objective(lambda: actions.jog_towards(state, target_position))
+        return Objective(state, lambda: actions.idle_orientation(state), lambda: True)
 
 
-def orient_objective(state: PlayerState):
-    return Objective(lambda: actions.append_neck_orientation(state), maximum_duration=3)
-
-
-def find_player(state, player_num):
+def _find_player(state, player_num):
     team_players = state.world_view.get_teammates(state.team_name, max_data_age=4)
     for p in team_players:
         if p.num is not None and int(p.num) == int(player_num):
@@ -190,7 +181,6 @@ def find_player(state, player_num):
 
 
 def _choose_pass_target(state: PlayerState):
-
     """if state.coach_command.is_value_known(state.now() - 7 * 10):
         coach_command = state.coach_command.get_value()
         if "pass" in coach_command:
@@ -204,3 +194,14 @@ def _choose_pass_target(state: PlayerState):
     if len(team_members) is 0:
         return None
     return sorted(team_members, key=lambda p: p.coord.pos_x)[0]
+
+
+def team_has_corner_kick(state):
+    if state.world_view.side == "l":
+        if state.world_view.game_state == "corner_kick_l":
+            return True
+    elif state.world_view.side == "r":
+        if state.world_view.game_state == "corner_kick_r":
+            return True
+
+    return False

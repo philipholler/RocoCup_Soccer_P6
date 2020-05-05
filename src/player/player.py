@@ -21,7 +21,7 @@ class PlayerState:
         self.player_type = None
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
-        self.body_angle: PrecariousData = PrecariousData.unknown()
+        self.body_angle: PrecariousData = PrecariousData(0,0)
         self.action_history = ActionHistory()
         self.body_state = BodyState()
         self.players_close_behind = 0
@@ -85,20 +85,7 @@ class PlayerState:
             return float(self.world_view.ball.get_value().distance) <= delta
         return False
 
-    def is_near_ball_in_ticks(self, ticks: int, delta=KICKABLE_MARGIN):
-        minimum_last_update_time = self.now() - 3
-        ball_known = self.world_view.ball.is_value_known(minimum_last_update_time)
-        if ball_known and self.position.is_value_known():
-            ball_positions = self.world_view.ball.get_value().project_ball_position(ticks)
-            if len(ball_positions) < ticks:
-                return False
-            pos_in_ticks: Coordinate = ball_positions[ticks - 1]
-            if self.position.get_value().euclidean_distance_from(pos_in_ticks) <= delta:
-                return True
-        return False
-
     def is_near_goal(self, delta=10.0):
-
         if self.world_view.goals[0] is not None and self.world_view.side != self.world_view.goals[0].goal_side:
             return float(self.world_view.goals[0].distance) <= delta
 
@@ -146,14 +133,14 @@ class PlayerState:
 
     def ball_interception(self):
         wv = self.world_view
-        if wv.ball.is_value_known(self.now() - 4) and True: # todo: should know previous position
-
+        if wv.ball.is_value_known(self.now() - 4):
             project_positions = wv.ball.get_value().project_ball_position(10, self.now() - wv.ball.last_updated_time)
             if project_positions is None:
                 return None, None
 
             all_ticks = range(1, 11)
             positions_and_ticks = zip(project_positions, all_ticks)
+            positions_and_ticks = sorted(positions_and_ticks, key=lambda pos_and_t: pos_and_t[0].euclidean_distance_from(self.position.get_value()))
 
             for (position, tick) in positions_and_ticks:
                 if self.can_player_reach(position, tick):
@@ -233,7 +220,7 @@ class ActionHistory:
 
 
 class ViewFrequency:
-    SLICE_WIDTH = 30  # The amount of degrees between each view 'slice'
+    SLICE_WIDTH = 15  # The amount of degrees between each view 'slice'
     SLICES = round(360 / SLICE_WIDTH)
 
     def __init__(self) -> None:
@@ -267,14 +254,14 @@ class ViewFrequency:
 
         # Increment all timers
         for i in range(0, len(self.last_update_time)):
-            self.last_update_time[i] = max(self.last_update_time[i] + 1, 20)
+            self.last_update_time[i] = min(self.last_update_time[i] + 1, 20)
 
         # Reset now visible angles
         for i in view_range:
             self.last_update_time[i % self.SLICES] = 0
 
     def _get_viewable_slices_to_each_side(self, field_of_view) -> int:
-        viewable_slices = round(field_of_view / self.SLICE_WIDTH)
+        viewable_slices = math.floor(field_of_view / self.SLICE_WIDTH)
         if viewable_slices % 2 == 0:
             viewable_slices -= 1
         return max(math.floor(viewable_slices / 2), 0)
