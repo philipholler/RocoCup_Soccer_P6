@@ -480,11 +480,10 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
     body_angle = state.body_angle.get_value() + body_dir_change
     ball_position: Coordinate = state.world_view.ball.get_value().coord
     global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
-    angle_difference = abs(smallest_angle_difference(body_angle + state.body_state.neck_angle, global_ball_angle))
+    angle_difference = smallest_angle_difference(body_angle + state.body_state.neck_angle, global_ball_angle)
 
-    if angle_difference > 0.9:
+    if abs(angle_difference) > 0.9:
         target_neck_angle = smallest_angle_difference(global_ball_angle, body_angle)
-
         # Adjust to be within range of neck turn
         target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
         new_total_angle = target_neck_angle + body_angle
@@ -502,7 +501,14 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         command_builder.append_fov_change(state, fov)
         debug_msg("global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
         neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
+        if 90 < state.body_state.neck_angle + neck_turn_angle or state.body_state.neck_angle + neck_turn_angle < -90:
+            # The smallest angle difference between 90 and -90 has two solutions: 180 and -180
+            # If the wrong one is chosen, then switch sign
+            neck_turn_angle *= -1
+
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
+
+        print("target_neck_angle", target_neck_angle, " actual turn angle:", neck_turn_angle)
 
 
 def shoot_to(state: PlayerState, target: Coordinate):
