@@ -1,3 +1,5 @@
+import math
+
 class Game:
 
     def __init__(self):
@@ -5,6 +7,7 @@ class Game:
         self.goals = []
         self.gameID = ""
         self.teams = []
+        self.possession_length = 0
 
         # The stage at tick 40, is in place 40 in the array
         self.show_time = []
@@ -35,6 +38,15 @@ class Stage:
         for player in self.players:
             player.print_player()
 
+    def closest_player_team(self):
+        closest_player = self.players[0]
+
+        for player in self.players:
+            if closest_player.distance_to_ball > player.distance_to_ball:
+                closest_player = player
+
+        return closest_player.side
+
 
 class Ball:
 
@@ -43,10 +55,12 @@ class Ball:
         self.y_coord = 0
         self.delta_x = 0
         self.delta_y = 0
+        self.abs_delta = 0
 
     def print_ball(self):
         print("ball coords:" + str(self.y_coord) + " " + str(self.y_coord) +
               "\nball deltas: " + str(self.delta_x) + " " + str(self.delta_y))
+
 
 
 class Player:
@@ -57,9 +71,8 @@ class Player:
         self.x_coord = 0
         self.y_coord = 0
         self.kicks = 0
+        self.distance_to_ball = 1000
 
     def print_player(self):
         print("player side: " + self.side + " no: " + str(self.no) +
               " player coords: " + str(self.x_coord) + " " + str(self.y_coord) + "kick count: " + str(self.kicks))
-
-

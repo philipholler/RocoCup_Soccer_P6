@@ -2,10 +2,13 @@ import fnmatch
 import re
 from pathlib import Path
 import os
+from datetime import datetime
+import math
 
-from statisticsmodule.statistics import Game, Team, Stage, Player
+from statisticsmodule.statistics import Game, Team, Stage, Player, Ball
 from statisticsmodule import statistics
 from parsing import _ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX, _REAL_NUM_REGEX
+from geometry import get_distance_between_coords, Coordinate
 
 SERVER_LOG_PATTERN = '*.rcg'
 ACTION_LOG_PATTERN = '*.rcl'
@@ -35,6 +38,8 @@ def parse_logs():
             else:
                 continue
 
+    calculate_possession(game)
+
     log_directory = Path(__file__).parent.parent / game.gameID
     os.makedirs(log_directory)
 
@@ -43,26 +48,59 @@ def parse_logs():
             file.write(goal + "\n")
 
     file_left = open(os.path.join(log_directory, "%s_leftkicks.txt" % game.teams[0].name), "w")
-    file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
+    # file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
     file_l_goalie_kicks = open(os.path.join(log_directory, "%s_left_goalie_kicks.txt" % game.teams[0].name), "w")
-    file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
+    # file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
 
-    files = [file_left, file_right, file_l_goalie_kicks, file_r_goalie_kicks]
+    write_possession_file(game)
+
+    files = [file_left, file_l_goalie_kicks]
 
     for stage in game.show_time:
         # print(game.show_time.index(stage))
         # print(stage.print_stage())
         file_left.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_l_kicks) + "\n")
-        file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
+        # file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
         for player in stage.players:
             if player.no == 1:
                 if player.side == "l":
                     file_l_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
-                if player.side == "r":
-                    file_r_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
 
     for file in files:
         file.close()
+
+
+def calculate_possession(game: Game):
+    last_ball = None
+    last_stage = game.show_time[0]
+    for stage in game.show_time:
+        if stage.ball.abs_delta > last_stage.ball.abs_delta and stage.closest_player_team() == "l":
+            last_ball = stage.ball
+        if stage.ball.abs_delta > last_stage.ball.abs_delta and stage.closest_player_team() == "r":
+            if last_ball is not None:
+                game.possession_length = calculate_possession_length(last_ball)
+            else:
+                game.possession_length = 0
+
+
+def calculate_possession_length(last_ball: Ball):
+
+    # TODO very hard code
+    goal_x = 52.5
+    goal_y = 0
+
+    return get_distance_between_coords(Coordinate(goal_x, goal_y), Coordinate(last_ball.x_coord, last_ball.y_coord))
+
+
+def write_possession_file(game: Game):
+    possession_dir = Path(__file__).parent.parent / "possessions"
+    if not possession_dir.exists():
+        os.makedirs(possession_dir)
+
+    now = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_name = "possession_" + now
+    file_possession = open(possession_dir / file_name, "w")
+    file_possession.write(str(game.possession_length))
 
 
 # Gets the newest server log ".rcg"
@@ -100,6 +138,7 @@ def parse_goal_action(txt, game: Game):
     goal_re = re.compile(goal_regex)
     matched = goal_re.match(txt)
 
+    # It may seem like it is not suicide, but last that tried to kick could be opposing team.
     if game.last_kicker.side == matched.group(2):
         game.goals.append("%s goal to %s" % (matched.group(1), matched.group(2)))
     else:
@@ -150,17 +189,10 @@ def parse_show_line(txt, game: Game):
     for player in players:
         parse_player(player, stage)
 
-    # Inserts the stage in the correct array slot (tick)
-    for player in stage.players:
-        if player.side == "l" and player.kicks != 0:
-            # print(str(stage.team_l_kicks) + " + " + str(player.kicks))
-            stage.team_l_kicks = stage.team_l_kicks + player.kicks
-            # print(str(stage.team_l_kicks))
-        if player.side == "r" and player.kicks != 0:
-            # print(str(stage.team_r_kicks) + " + " + str(player.kicks))
-            stage.team_r_kicks = stage.team_r_kicks + player.kicks
-            # print(str(stage.team_r_kicks))
+    distance_to_ball(stage)
+    insert_kicks(stage)
 
+    # Inserts the stage in the correct array slot (tick)
     game.show_time.insert(tick, stage)
 
 
@@ -174,11 +206,27 @@ def parse_ball(txt, stage: Stage):
     stage.ball.y_coord = float(matched.group(2))
     stage.ball.delta_x = float(matched.group(3))
     stage.ball.delta_y = float(matched.group(4))
+    stage.ball.abs_delta = abs(stage.ball.delta_x) + abs(stage.ball.delta_y)
+
+
+def distance_to_ball(stage: Stage):
+    for player in stage.players:
+        player.distance_to_ball = math.sqrt(math.pow((player.x_coord - stage.ball.x_coord), 2)
+                                            + math.pow((player.y_coord - stage.ball.y_coord), 2))
+
+
+def insert_kicks(stage: Stage):
+    for player in stage.players:
+        if player.side == "l" and player.kicks != 0:
+            # print(str(stage.team_l_kicks) + " + " + str(player.kicks))
+            stage.team_l_kicks = stage.team_l_kicks + player.kicks
+            # print(str(stage.team_l_kicks))
 
 
 # Examples:
 # ((Side unum) playertype goalkeeper_bool x_coord y_coord delta_x delta_y body_angle neck_angle
-# (view high narrow/normal(90)/wide) stamina (etc etc) counts ? dash turn ? move turn_neck ? ? ? ? ?
+# (view high narrow/normal(90)/wide) stamina (etc etc) counts ? dash turn ? move turn_neck ? ? ? ?
+
 # ((l 1) 0 0x9 -50 0 0 0 35.618 -90 (v h 90) (s 8000 1 1 130300) (c 0 5 4 0 1 17 0 0 0 0 0))
 # ((r 10) 0 0 30 -37 0 0 0 0 (v h 90) (s 8000 1 1 130600) (c 0 0 0 0 0 0 0 0 0 0 0))
 

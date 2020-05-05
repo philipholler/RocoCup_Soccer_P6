@@ -85,14 +85,16 @@ class CompositeObjective:
 
 def determine_objective(state: PlayerState):
     last_see_update = state.action_history.last_see_update
-    if state.num != 1: # Every player except for goalie
+    if state.num != 1 and state.is_test_player(): # Every player except for goalie
         # Look for the ball when it's position is entirely unknown
         if _ball_unknown(state):
             return _locate_ball_objective(state)
 
         # If in possession of the ball
         if state.is_near_ball(KICKABLE_MARGIN):
-            return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+            return Objective(state, lambda: actions.shoot_to(state, Coordinate(52.5, 0)), lambda: True)
+
+        return _rush_to_ball_objective(state)
 
         # Try to perform an interception of the ball if possible
         intercept_point, ticks = state.ball_interception()
