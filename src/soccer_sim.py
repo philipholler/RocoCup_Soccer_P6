@@ -41,15 +41,16 @@ class SoccerSim(threading.Thread):
         # server::freeform_send_period=1
         # server::freeform_wait_period=0
         if self.trainer_mode:
-            self.soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true server::clang_mess_delay = 0 player::player_types = 1"],
-                                               shell=True)
+            self.soccer_sim = subprocess.Popen(["exec rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true server::clang_mess_delay = 0 player::player_types = 1"],
+                                                shell=True)
         else:
-            self.soccer_sim = subprocess.Popen(["rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0 player::player_types = 1"],
-                                               shell=True)
+            self.soccer_sim = subprocess.Popen(["exec rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0 player::player_types = 1"],
+                                                shell=True)
 
         # Use soccerwindow2: soccerwindow2 --kill-server
         # Use regular monitor: rcssmonitor
-        self.soccer_monitor = subprocess.Popen(["rcssmonitor"], shell=True)
+        self.soccer_monitor = subprocess.Popen(["exec rcssmonitor"], shell=True)
+
 
     def run(self) -> None:
         super().run()
@@ -82,6 +83,7 @@ class SoccerSim(threading.Thread):
 
         self.has_init_clients = True
 
+
     def stop(self) -> None:
         for player in self.player_threads:
             player.stop()
@@ -97,8 +99,8 @@ class SoccerSim(threading.Thread):
         if self.trainer_mode:
             self.trainer.stop()
             self.trainer.join()
-        self.soccer_monitor.send_signal(signal.CTRL_BREAK_EVENT)
+        self.soccer_monitor.send_signal(signal.SIGINT)
         self.soccer_monitor.wait(3)
-        self.soccer_sim.send_signal(signal.CTRL_BREAK_EVENT)
+        self.soccer_sim.send_signal(signal.SIGINT)
         self.soccer_sim.wait(3)
-        # log_parser.parse_logs()
+        log_parser.parse_logs()
