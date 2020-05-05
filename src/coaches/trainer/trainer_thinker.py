@@ -43,7 +43,7 @@ class TrainerThinker(threading.Thread):
 
     def _think(self) -> None:
         time.sleep(0.1)
-        if self.world_view.game_state != "play_on" and self.is_scenario_set:
+        if self.world_view.game_state == "before_kick_off" and self.is_scenario_set:
             self.say_command("(change_mode play_on)")
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
