@@ -31,7 +31,7 @@ passing_strat = [
 ]
 
 
-def generate_passing_strat(random_seed: int, wv: WorldViewCoach):
+def generate_commands_coachmsg_passing_strat(random_seed: int, wv: WorldViewCoach):
     """
     :param random_seed:
     :return: 1: list of commands to move objects into scenario, 2: say msg for coach
@@ -57,7 +57,7 @@ def _generate_players_passing_strat() -> []:
             # Generate possessor
             if team == 0 and player == 0:
                 cur_team: str = "Team{0}".format(str(int(team) + 1))
-                unum: int = player
+                unum: int = player + 1
                 x_pos = random.randint(-50, 20)
                 y_pos = random.randint(-20, 20)
                 players.append((cur_team, unum, x_pos, y_pos))
@@ -65,10 +65,10 @@ def _generate_players_passing_strat() -> []:
             # Generate other players
             else:
                 cur_team: str = "Team{0}".format(str(int(team) + 1))
-                unum: int = player
+                unum: int = player + 1
                 # Position should not be closer than 10 meters
-                x_pos = random.randint(possessor[2] + 10, 30)
-                y_pos = random.randint(possessor[3] - 10, possessor[3] + 10)
+                x_pos = random.randint(possessor[2] + 10, possessor[2] + 30)
+                y_pos = random.randint(possessor[3] - 20, possessor[3] + 20)
                 players.append((cur_team, unum, x_pos, y_pos))
 
     return players
@@ -76,7 +76,7 @@ def _generate_players_passing_strat() -> []:
 def _update_world_view_passing_strat(wv: WorldViewCoach, players, ball_pos):
     # Add all players to world view
     for player in players:
-        if player[0] == "Team1" and player[1] == 0:
+        if player[0] == "Team1" and player[1] == 1:
             new_player: PlayerViewCoach = PlayerViewCoach(player[0], player[1], False, Coordinate(player[2], player[3])
                                                           , 0, 0, 0, 0, True)
         else:
@@ -96,8 +96,6 @@ def _generate_commands_passing_strat(players, ball_pos):
         commands.append("(move (player {0} {1}) {2} {3}))".format(player[0], player[1], player[2], player[3]))
 
     # Move ball to position
-    commands.append("(move (ball) {0} {1})".format(ball_pos[0], ball_pos[1]))
+    commands.append("(move (ball) {0} {1} 0 0 0)".format(ball_pos[0], ball_pos[1]))
 
     return commands
-
-generate_passing_strat(5, WorldViewCoach(0, "Team1"))

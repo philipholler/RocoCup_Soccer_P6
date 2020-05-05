@@ -19,7 +19,6 @@ class CoachThinker(threading.Thread):
         # Non processed inputs from server
         self.input_queue = queue.Queue()
 
-
     def start(self) -> None:
         super().start()
 
@@ -45,8 +44,6 @@ class CoachThinker(threading.Thread):
             msg: str = self.input_queue.get()
             parsing.parse_message_online_coach(msg, self.team, self.world_view)
 
-        self.update_strategy()
-
         # USE THIS FOR SENDING MESSAGES TO PLAYERS
         # self.connection.action_queue.put('(say (freeform "MSG"))')
 
@@ -60,3 +57,6 @@ class CoachThinker(threading.Thread):
 
     def say(self, msg):
         self.connection.action_queue.put('(say (freeform "{0}"))'.format(msg, self.world_view.sim_time))
+
+    def say_strat(self, strat):
+        self.say(' '.join(strat))
