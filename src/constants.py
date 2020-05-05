@@ -17,13 +17,3 @@ KICK_POWER_RATE = 0.027
 
 WARNING_PREFIX = '\033[93m'
 
-DEBUG_DICT = {
-    "POSITIONAL": False,
-    "ALL": False,
-    "SCENARIOS": False,
-    "INTERCEPTION": False,
-    "KICK": False,
-    "ACTIONS": True,
-    "ORIENTATION": True
-}
-

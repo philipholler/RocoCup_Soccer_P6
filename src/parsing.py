@@ -222,7 +222,6 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         _parse_see(msg, ps)
         ps.on_see_update()
 
-
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):

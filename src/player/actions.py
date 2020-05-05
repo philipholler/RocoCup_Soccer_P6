@@ -231,6 +231,10 @@ def _append_rushed_position_adjustment(state: PlayerState, delta_x, delta_y, com
     return
 
 
+def rush_to(state: PlayerState, target: Coordinate):
+    return go_to(state, target, dash_power_limit=PLAYER_RUSH_POWER)
+
+
 def rush_to_ball(state: PlayerState):
     if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
         debug_msg("ACTION: LOCATE BALL", "INTERCEPTION")
@@ -521,7 +525,7 @@ def pass_to_player(state, player: ObservedPlayer):
 def positional_adjustment(state, adjustment: Coordinate):
     command_builder = CommandBuilder()
 
-    max_power = PLAYER_JOG_POWER
+    max_power = PLAYER_RUSH_POWER
     distance = Coordinate(0, 0).euclidean_distance_from(adjustment)
 
     target_body_angle = math.degrees(calculate_full_origin_angle_radians(adjustment, Coordinate(0, 0)))
