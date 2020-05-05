@@ -64,7 +64,7 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
             play_in_poss += 1
 
     if play_in_poss == 1:
-        return _StrategyGenerator("PassingModel", _update_passing_model, _extract_passes)
+        return _StrategyGenerator("PassingModel", _update_passing_model, _extract_actions)
 
     return None
 
@@ -90,15 +90,19 @@ def _update_passing_model(wv, model: UppaalModel):
     return closest_players
 
 
-def _extract_passes(strategy: UppaalStrategy, team_members):
-    passes = []
+def _extract_actions(strategy: UppaalStrategy, team_members):
+    actions = []
 
     for r in strategy.regressors:
-        from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
-        to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
-        passes.append("(" + str(from_player.num) + " pass " + str(to_player.num) + ")")
+        if "Passing" in str(strategy.index_to_transition[str(r.get_highest_val_trans()[0])]):
+            from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
+            to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
+            actions.append("(" + str(from_player.num) + " pass " + str(to_player.num) + ")")
+        else:
+            from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
+            actions.append("(" + str(from_player.num) + " dribble" + ")")
 
-    return passes
+    return actions
 
 
 def _get_ball_possessor(regressor: Regressor, locations, team_members):
