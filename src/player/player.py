@@ -21,7 +21,7 @@ class PlayerState:
         self.player_type = None
         self.position: PrecariousData = PrecariousData.unknown()
         self.world_view = WorldView(0)
-        self.body_angle: PrecariousData = PrecariousData(0,0)
+        self.body_angle: PrecariousData = PrecariousData(0, 0)
         self.action_history = ActionHistory()
         self.body_state = BodyState()
         self.players_close_behind = 0

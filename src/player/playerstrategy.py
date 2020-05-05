@@ -147,29 +147,65 @@ def _rush_to_ball_objective(state):
 
 
 def _position_optimally_objective(state: PlayerState):
-    ball_position: Coordinate = state.world_view.ball.get_value().coord
-    positional_offset: Coordinate = ball_position
-    play_position = state.get_global_play_pos()
-
-    # Position player according to their starting position and the current ball position
-    optimal_x = clamp(play_position.pos_x + positional_offset.pos_x * 0.5, -45, 45)
-
-    # Used to make players position themselves closer to the goal on the y-axis when far up/down the field
-    y_goal_factor = 1 - (abs(optimal_x) - 35) * 0.05 if abs(optimal_x) > 35 else 1
-    optimal_y = clamp(play_position.pos_y + positional_offset.pos_y * 0.2, -25, 25) * y_goal_factor
-    optimal_position = Coordinate(optimal_x, optimal_y)
+    if state.player_type == "defender":
+        optimal_position = _optimal_midfielder_pos(state)
+    elif state.player_type == "midfield":
+        optimal_position = _optimal_midfielder_pos(state)
+    else:  # Attacker
+        optimal_position = _optimal_attacker_pos(state) #_optimal_attacker_pos(state)
 
     current_position: Coordinate = state.position.get_value()
     dist = current_position.euclidean_distance_from(optimal_position)
 
-    if dist > 6.0:
+    if dist > 6.0:  # todo: Should they sprint if dist > 10?
         target = optimal_position
         return Objective(state, lambda: actions.jog_to(state, target), lambda: True)
-    if dist > 2.0:  # todo: if dist > 6 jog towards?
+    if dist > 2.0:
         difference = optimal_position - current_position
         return Objective(state, lambda: actions.positional_adjustment(state, difference), lambda: True)
     else:
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True)
+
+
+def _optimal_attacker_pos(state: PlayerState) -> Coordinate:
+    side = 1 if state.world_view.side == 'l' else -1
+    ball: Coordinate = state.world_view.ball.get_value().coord
+    play_position = state.get_global_play_pos()
+
+    if side * ball.pos_x > 0:
+        # Attacking
+        x_offset = ball.pos_x + side * 10
+        optimal_x = clamp(play_position.pos_x + x_offset, -45, 45)
+
+        # Used to make players position themselves closer to the goal on the y-axis when far up/down the field
+        y_goal_factor = 0.982888 + 0.002871167 * abs(optimal_x) - 0.0002807057 * pow(optimal_x, 2)
+
+        ball_delta_y = ball.pos_y - play_position.pos_y
+
+        optimal_y = clamp(play_position.pos_y + ball_delta_y * 0.6, -25, 25) * y_goal_factor
+        return Coordinate(optimal_x, optimal_y)
+    else:
+        # Defending
+        return state.get_global_play_pos()
+
+
+def _optimal_midfielder_pos(state) -> Coordinate:
+    ball: Coordinate = state.world_view.ball.get_value().coord
+    play_position = state.get_global_play_pos()
+    ball_delta_y = ball.pos_y - play_position.pos_y
+
+    # Position player according to their starting position and the current ball position
+    optimal_x = clamp(play_position.pos_x + ball.pos_x * 0.5, -45, 45)
+
+    # Used to make players position themselves closer to the goal on the y-axis when far up/down the field
+    y_goal_factor = 1 - (abs(optimal_x) - 35) * 0.05 if abs(optimal_x) > 35 else 1.0
+    optimal_y = clamp(play_position.pos_y + ball_delta_y * 0.2, -25, 25) * y_goal_factor
+
+    return Coordinate(optimal_x, optimal_y)
+
+
+def _optimal_defender_pos(state) -> Coordinate:
+    pass
 
 
 def _find_player(state, player_num):

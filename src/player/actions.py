@@ -261,7 +261,7 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
         else:
             first_turn_moment = min(turn_moment, 180)
         command_builder.append_turn_action(state, first_turn_moment)
-        _append_neck_orientation(state, command_builder, body_dir_change)
+        _append_neck_orientation(state, command_builder, _calculate_actual_turn_angle(state, first_turn_moment))
         command_builder.next_tick()
         projected_dir += _calculate_actual_turn_angle(state, first_turn_moment)
         body_dir_change = _calculate_actual_turn_angle(state, moment=first_turn_moment)
@@ -345,13 +345,16 @@ def append_last_dash_actions(state, projected_speed, distance, command_builder: 
 @require_angle_update
 @orient_if_position_or_angle_unknown
 def locate_ball(state: PlayerState):
+    if state.is_test_player():
+        debug_msg(str(state.now()) + "locate_ball", "ORIENTATION")
+
     commandBuilder = CommandBuilder()
 
     commandBuilder.append_fov_change(state, FOV_WIDE)
 
     turn_history = state.action_history.turn_history
     angle = turn_history.least_updated_angle(FOV_WIDE)
-    append_look_direction(state, angle, FOV_WIDE, commandBuilder)
+    _append_look_direction(state, angle, FOV_WIDE, commandBuilder)
 
     return commandBuilder.command_list
 
@@ -359,6 +362,9 @@ def locate_ball(state: PlayerState):
 # Used to reorient self in case of not knowing position or body angle
 @require_angle_update
 def blind_orient(state):
+    if state.is_test_player():
+        debug_msg(str(state.now()) + "blind_orient", "ORIENTATION")
+
     command_builder = CommandBuilder()
     command_builder.append_fov_change(state, FOV_WIDE)
     command_builder.append_turn_action(state, 160)
@@ -367,7 +373,10 @@ def blind_orient(state):
 
 # Creates turn commands (both neck and body)
 # to face the total angle of the player in the target direction
-def append_look_direction(state: PlayerState, target_direction, fov, command_builder: CommandBuilder):
+def _append_look_direction(state: PlayerState, target_direction, fov, command_builder: CommandBuilder):
+    if state.is_test_player():
+        debug_msg(str(state.now()) + "_append_look_direction : " + str(target_direction), "ORIENTATION")
+
     current_total_direction = state.body_angle.get_value() + state.body_state.neck_angle
 
     body_angle = state.body_angle.get_value()
@@ -392,6 +401,8 @@ def idle_neck_orientation(state):
 
 
 def _append_neck_orientation(state: PlayerState, command_builder, body_dir_change=0):
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " _append_neck_orientation", "ORIENTATION")
     if state.action_history.last_orientation_action < state.now() - _IDLE_ORIENTATION_INTERVAL \
             and state.world_view.ball.is_value_known(state.action_history.last_see_update) and False:  # todo
         # Orient to least updated place within neck angle
@@ -421,6 +432,9 @@ def idle_orientation(state: PlayerState):
 
 
 def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, body_dir_change=0, fov=None):
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " _append_orient", "ORIENTATION")
+
     if fov is None:
         fov_size = _determine_fov(state)
         command_builder.append_fov_change(state, fov_size)
@@ -439,7 +453,7 @@ def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, b
         upper_bound = 360
 
     angle = turn_history.least_updated_angle(fov_size, lower_bound, upper_bound)
-    append_look_direction(state, angle, fov_size, command_builder)
+    _append_look_direction(state, angle, fov_size, command_builder)
     state.action_history.last_orientation_action = 0
 
 
@@ -450,10 +464,12 @@ def append_look_at_ball(state: PlayerState, command_builder):
     if angle_difference > 0.9:
         fov = _determine_fov(state)
         command_builder.append_fov_change(state, fov)
-        append_look_direction(state, ball_angle, fov, command_builder)
+        _append_look_direction(state, ball_angle, fov, command_builder)
 
 
 def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_change=0):
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " _look_at_ball_neck_only. Body_dir_change=" + str(body_dir_change), "ORIENTATION")
     # Look towards ball as far as possible
     body_angle = state.body_angle.get_value() + body_dir_change
     ball_position: Coordinate = state.world_view.ball.get_value().coord
@@ -467,15 +483,15 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
         new_total_angle = target_neck_angle + body_angle
 
-
         # Calculate which fov to use based on what is required to see the ball
         preferred_fov = _determine_fov(state)
-        required_view_angle = abs(smallest_angle_difference(new_total_angle, global_ball_angle) * 2.0)
-        minimum_fov = FOV_WIDE
-        if required_view_angle < FOV_WIDE:
+        required_view_angle = abs(smallest_angle_difference(new_total_angle, global_ball_angle) * 2.1)
+        minimum_fov = FOV_NARROW
+        if required_view_angle >= FOV_NARROW:
             minimum_fov = FOV_NORMAL
-        if required_view_angle < FOV_NORMAL:
-            minimum_fov = FOV_NARROW
+        if required_view_angle >= FOV_NORMAL:
+            minimum_fov = FOV_WIDE
+
         fov = max(minimum_fov, preferred_fov)
         command_builder.append_fov_change(state, fov)
         debug_msg("global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
@@ -514,7 +530,7 @@ def positional_adjustment(state, adjustment: Coordinate):
     if abs(turn_angle) >= _allowed_angle_delta(distance):
         turn_moment = _calculate_turn_moment(state, turn_angle)
         command_builder.append_turn_action(state, _calculate_turn_moment(state, turn_angle))
-        _append_neck_orientation(state, command_builder, turn_moment)
+        _append_neck_orientation(state, command_builder, _calculate_actual_turn_angle(state, turn_moment))
         command_builder.next_tick(_calculate_actual_turn_angle(state, turn_moment))
     else:
         _append_neck_orientation(state, command_builder)
