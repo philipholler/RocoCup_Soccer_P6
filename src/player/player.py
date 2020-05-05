@@ -220,7 +220,7 @@ class ActionHistory:
 
 
 class ViewFrequency:
-    SLICE_WIDTH = 30  # The amount of degrees between each view 'slice'
+    SLICE_WIDTH = 15  # The amount of degrees between each view 'slice'
     SLICES = round(360 / SLICE_WIDTH)
 
     def __init__(self) -> None:
@@ -254,14 +254,14 @@ class ViewFrequency:
 
         # Increment all timers
         for i in range(0, len(self.last_update_time)):
-            self.last_update_time[i] = max(self.last_update_time[i] + 1, 20)
+            self.last_update_time[i] = min(self.last_update_time[i] + 1, 20)
 
         # Reset now visible angles
         for i in view_range:
             self.last_update_time[i % self.SLICES] = 0
 
     def _get_viewable_slices_to_each_side(self, field_of_view) -> int:
-        viewable_slices = round(field_of_view / self.SLICE_WIDTH)
+        viewable_slices = math.floor(field_of_view / self.SLICE_WIDTH)
         if viewable_slices % 2 == 0:
             viewable_slices -= 1
         return max(math.floor(viewable_slices / 2), 0)
