@@ -21,10 +21,10 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
 
 # Add teams and players here
 team_names = ["Team1"]
-num_players = 2
+num_players = 11
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_MODE = True
+MORE_SCENARIOS_MODE = False
 NUM_SIMULATIONS = 3
 TICKS_PER_RUN = 50
 
