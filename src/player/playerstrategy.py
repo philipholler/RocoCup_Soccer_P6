@@ -6,11 +6,11 @@ from player import actions
 from player.actions import Command
 from player.player import PlayerState
 from player.world_objects import Coordinate, Ball
-from utils import clamp
+from utils import clamp, debug_msg
 
 
 class Objective:
-    def __init__(self, state: PlayerState, command_generator, completion_criteria, maximum_duration=10) -> None:
+    def __init__(self, state: PlayerState, command_generator, completion_criteria, maximum_duration=1) -> None:
         self.command_generator = command_generator
         self.completion_criteria = completion_criteria
         self.deadline = state.now() + maximum_duration
@@ -23,7 +23,7 @@ class Objective:
         if self.has_urgent_commands() or self.last_command_update_time >= state.action_history.last_see_update:
             return False
 
-        deadline_reached = self.deadline >= state.now()
+        deadline_reached = self.deadline <= state.now()
         return deadline_reached or self.completion_criteria()
 
     def get_next_commands(self, state: PlayerState):
@@ -50,8 +50,7 @@ class Objective:
 
 
 class CompositeObjective:
-
-    def __init__(self, *args: [Objective]) -> None:
+    def __init__(self, *args: [Objective]):
         self.objectives = []
         for o in args:
             self.objectives.append(o)
@@ -62,7 +61,8 @@ class CompositeObjective:
         if self.completed_objectives >= len(self.objectives):
             return True
         if self.completed_objectives == len(self.objectives) - 1:
-            return self.objectives[len(self.objectives) - 1].should_recalculate(state)
+            return self.objectives[self.completed_objectives].should_recalculate(state)
+        return False
 
     def get_next_commands(self, state: PlayerState):
         if self._current_objective().should_recalculate(state):
@@ -85,47 +85,34 @@ class CompositeObjective:
 
 def determine_objective(state: PlayerState):
     last_see_update = state.action_history.last_see_update
-    if state.num != 1: # Every player except for goalie
+    if state.num != 1:  # Every player except for goalie
         # Look for the ball when it's position is entirely unknown
         if _ball_unknown(state):
             return _locate_ball_objective(state)
 
         # If in possession of the ball
-        if state.is_near_ball(KICKABLE_MARGIN) and False: # Todo temp for testing
+        if state.is_near_ball(KICKABLE_MARGIN):
             pass_target = _choose_pass_target(state)
             if pass_target is not None:
                 return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
-            else:
-                return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
+
+            # No suitable pass target
+            return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
 
         # Try to perform an interception of the ball if possible
         intercept_point, ticks = state.ball_interception()
         if intercept_point is not None:
+            debug_msg(str(state.now()) + "Player " + str(state.num) + " intercepting on " + str(intercept_point)
+                                         + " at time " + str(state.now() + ticks), "INTERCEPTION")
             return _intercept_rush_to_objective(state, intercept_point)
 
         # Retrieve the ball if you are one of the two closest players to the ball
-        if state.is_nearest_ball(1) and False: # TODO TEMPORARY FOR TESTING
+        if state.is_nearest_ball(1):  # TODO TEMPORARY FOR TESTING
             return _rush_to_ball_objective(state)
 
         # Finally, reposition while looking at the ball if no other
         # task needs to be performed right now
         return _position_optimally_objective(state)
-
-    return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
-
-    if state.is_near_ball():
-        pass_target = _choose_pass_target(state)
-        if pass_target is None:
-            return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
-        return Objective(state, lambda: actions.pass_to_player(state, pass_target), lambda: True, 1)
-
-    if state.is_ball_missing() or not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
-        # print(state.now(), " DETERMINE OBJECTIVE: LOCATE BALL. Last seen", state.world_view.ball.last_updated_time)
-        return Objective(state, lambda: actions.locate_ball(state),
-                         lambda: state.world_view.ball.is_value_known(last_see_update), 1)
-
-    if state.is_nearest_ball(1):
-        return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 5)
 
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
@@ -141,7 +128,7 @@ def _locate_ball_objective(state: PlayerState):
 
 
 def _intercept_rush_to_objective(state, intercept_point):
-    interception = Objective(state, lambda: actions.intercept(state, intercept_point), lambda: True, 15)
+    interception = Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())
     follow_up = Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 10)
     return CompositeObjective(interception, follow_up)
 

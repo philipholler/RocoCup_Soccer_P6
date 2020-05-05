@@ -293,7 +293,7 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
         projected_dist = target.euclidean_distance_from(projected_pos)
 
         if projected_dist < 1.5:
-            append_last_dash_actions(state, projected_speed, projected_dist - projected_speed, command_builder, True)
+            append_last_dash_actions(state, projected_speed, projected_dist, command_builder, True)
             return command_builder.command_list
 
         possible_speed = _calculate_actual_speed(projected_speed, dash_power_limit)
@@ -430,8 +430,8 @@ def idle_orientation(state: PlayerState):
     else:
         append_look_at_ball(state, command_builder)
 
-    for com in command_builder.command_list:
-        com.add_function(lambda: kick_if_collision(state, com))
+    #for com in command_builder.command_list:
+    #    com.add_function(lambda: kick_if_collision(state, com))
     return command_builder.command_list
 
 

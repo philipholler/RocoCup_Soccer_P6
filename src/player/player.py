@@ -121,8 +121,9 @@ class PlayerState:
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
+        print(team_mates)
 
-        if len(team_mates) <= degree:
+        if len(team_mates) < degree:
             return True
 
         ball_position: Coordinate = self.world_view.ball.get_value().coord
@@ -150,14 +151,17 @@ class PlayerState:
 
     def can_player_reach(self, position: Coordinate, ticks):
         distance = position.euclidean_distance_from(self.position.get_value())
+        extra_time = 1
 
         if distance <= KICKABLE_MARGIN:
             return True
 
-        if self.body_facing(position, delta=5):
-            return self.time_to_rush_distance(distance) <= ticks
-        else:
-            return self.time_to_rush_distance(distance) + 1 <= ticks
+        if not self.body_facing(position, delta=5):
+            extra_time += 1
+            if self.body_state.speed > 0.2:
+                extra_time += 1
+
+        return self.time_to_rush_distance(distance) <= ticks + extra_time
 
     def time_to_rush_distance(self, distance):
         def distance_in_n_ticks(speed, ticks):

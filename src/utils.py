@@ -3,9 +3,9 @@ DEBUG_DICT = {
     "POSITIONAL": False,
     "ALL": False,
     "SCENARIOS": False,
-    "INTERCEPTION": False,
+    "INTERCEPTION": True,
     "KICK": False,
-    "ACTIONS": False,
+    "ACTIONS": True,
     "ORIENTATION": False,
     "MESSAGES": True
 }
@@ -22,3 +22,4 @@ def debug_msg(msg: str, key: str):
         print(msg)
     elif DEBUG_DICT[key]:
         print(msg)
+4
