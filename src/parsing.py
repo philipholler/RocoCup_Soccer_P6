@@ -815,7 +815,7 @@ def _parse_hear(text: str, ps: PlayerState):
         if ps.world_view.side == "l":
             coach_command_pattern = '.*"(.*)".*'
             matches = re.match(coach_command_pattern, text)
-            ps.coach_command.set_value(matches.group(1), time)  # todo Time?
+            ps.coach_command.set_value(matches.group(1), 0)  # todo Time?
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":

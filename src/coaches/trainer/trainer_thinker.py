@@ -20,6 +20,7 @@ class TrainerThinker(threading.Thread):
         # Non processed inputs from server
         self.input_queue = queue.Queue()
         self.is_scenario_set = False
+        self.scenario_commands: [] = []
 
     def start(self) -> None:
         super().start()
@@ -43,16 +44,9 @@ class TrainerThinker(threading.Thread):
 
     def _think(self) -> None:
         time.sleep(0.1)
-        if self.world_view.game_state != "play_on" and self.is_scenario_set:
-            self.say_command("(change_mode play_on)")
         while not self.input_queue.empty():
             msg: str = self.input_queue.get()
             parsing.parse_message_trainer(msg, self.world_view)
-
-        if not self.is_scenario_set:
-            for msg in passing_strat:
-                self.say_command(msg)
-            self.is_scenario_set = True
 
 
     def stop(self) -> None:
@@ -66,3 +60,6 @@ class TrainerThinker(threading.Thread):
         :param cmd: Command to send to server
         '''
         self.connection.action_queue.put(cmd)
+
+    def change_game_mode(self, game_mode):
+        self.say_command("(change_mode {0})".format(game_mode))

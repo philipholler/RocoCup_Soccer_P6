@@ -37,7 +37,10 @@ class WorldViewCoach:
         self.game_state = ""
 
     def __repr__(self) -> str:
-        return super().__repr__()
+        return "(sim_time={0}, team={1}, players={2}, ball={3}, side={4}, game_state={5}".format(self.sim_time, self.team, self.players, self.ball, self.side, self.game_state)
+
+    def __str__(self) -> str:
+        return "(sim_time={0}, team={1}, players={2}, ball={3}, side={4}, game_state={5}".format(self.sim_time, self.team, self.players, self.ball, self.side, self.game_state)
 
     def get_closest_team_players_to_ball(self, amount) -> [PlayerViewCoach]:
         # Get only players from same team
