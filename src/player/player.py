@@ -121,7 +121,6 @@ class PlayerState:
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
-        print(team_mates)
 
         if len(team_mates) < degree:
             return True

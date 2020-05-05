@@ -6,7 +6,7 @@ DEBUG_DICT = {
     "INTERCEPTION": True,
     "KICK": False,
     "ACTIONS": True,
-    "ORIENTATION": False,
+    "ORIENTATION": True,
     "MESSAGES": True
 }
 
