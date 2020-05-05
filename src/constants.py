@@ -23,6 +23,6 @@ DEBUG_DICT = {
     "SCENARIOS": False,
     "INTERCEPTION": False,
     "KICK": False,
-    "ACTIONS": True
+    "ACTIONS": False
 }
 

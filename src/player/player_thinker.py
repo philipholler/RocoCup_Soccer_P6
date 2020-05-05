@@ -85,8 +85,7 @@ class Thinker(threading.Thread):
 
         commands = self.current_objective.get_next_commands(self.player_state)
         if self.player_state.is_test_player() and self.player_state.world_view.ball.get_value() is not None:
-            debug_msg(str(self.player_state.now()) + " ball distance " + str(self.player_state.world_view.ball.get_value().distance)
-                      + str(self.player_state.world_view.ball.get_value().project_ball_collision_time()), "ACTIONS")
+            debug_msg(str(self.player_state.now()) + str(commands), "ACTIONS")
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)

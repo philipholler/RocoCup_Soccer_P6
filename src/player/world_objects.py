@@ -82,6 +82,7 @@ class Ball:
         self.distance = distance
         self.direction = direction
         self.coord: Coordinate = coord
+        self.projection = None
         if pos_history is None:
             self.position_history: deque = deque([])
         else:
@@ -101,6 +102,9 @@ class Ball:
             self.dist_history.pop()  # Pop oldest element
 
     def approximate_position_direction_speed(self, minimum_data_points_used) -> (Coordinate, int, int):
+        if self.projection is not None:
+            return self.projection
+
         if len(self.position_history) <= 1:
             return None, None, None  # No information can be deduced about movement of ball
         history = self.position_history
@@ -156,8 +160,9 @@ class Ball:
         if data_points_used < minimum_data_points_used:
             return None, None, None
         debug_msg("Prediction based on {0} data points".format(data_points_used), "POSITIONAL")
-        return self.position_history[0][0], degrees(
-            calculate_full_origin_angle_radians(first_coord, last_coord)), final_speed
+        direction = degrees(calculate_full_origin_angle_radians(first_coord, last_coord))
+        self.projection = self.position_history[0][0], direction, final_speed
+        return self.position_history[0][0], direction, final_speed
 
     def project_ball_position(self, ticks: int, offset: int):
         positions = []

@@ -13,8 +13,8 @@ def shut_down_gracefully() -> None:
 UDP_IP = "127.0.0.1"
 UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH,  = 6000, 6001, 6002
 
-team_names = ["Team1"]
-num_players = 2
+team_names = ["Team1", "Team2"]
+num_players = 11
 
 # Enable for more runs
 MORE_SCENARIOS_MODE = False
