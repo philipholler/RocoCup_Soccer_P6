@@ -216,7 +216,7 @@ def _append_rushed_position_adjustment(state: PlayerState, delta_x, delta_y, com
     projected_speed = state.body_state.speed
 
     if abs(turn_angle) > _allowed_angle_delta(distance):  # Need to turn body first
-        if state.body_state.speed >= 0.1:  # Stop moving if necessary
+        if projected_speed >= 0.1:  # Stop moving if necessary
             dash_power, projected_speed = _calculate_dash_power(state.body_state.speed, 0)
             command_builder.append_dash_action(state, dash_power)
             command_builder.next_tick()
@@ -255,11 +255,18 @@ def jog_to(state: PlayerState, target: Coordinate):
 def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
     command_builder = CommandBuilder()
     projected_dir = state.body_angle.get_value()
+    projected_speed = state.body_state.speed
     dist = target.euclidean_distance_from(state.position.get_value())
 
     if not state.body_facing(target, _allowed_angle_delta(dist)) and not state.action_history.turn_in_progress:
+        if projected_speed >= 0.1:  # Stop moving if necessary
+            dash_power, projected_speed = _calculate_dash_power(state.body_state.speed, 0)
+            command_builder.append_dash_action(state, dash_power)
+            command_builder.next_tick()
+            projected_speed *= PLAYER_SPEED_DECAY
+
         rotation = _calculate_relative_angle(state, target)
-        turn_moment = round(_calculate_turn_moment(state.body_state.speed, rotation), 2)
+        turn_moment = round(_calculate_turn_moment(projected_speed, rotation), 2)
 
         debug_msg(str(state.now()) + "global angle: " + str(state.last_see_global_angle) + " off by: " + str(rotation), "POSITIONAL")
 
@@ -270,26 +277,14 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
         command_builder.append_turn_action(state, first_turn_moment)
         _append_neck_orientation(state, command_builder, _calculate_actual_turn_angle(state.body_state.speed, first_turn_moment))
         command_builder.next_tick()
+
+        # Update projections
         projected_dir += _calculate_actual_turn_angle(state.body_state.speed, first_turn_moment)
-        """
-        # if necessary to turn again:  todo : moment should be recalculated based on projected speed
-        second_turn_moment = turn_moment - first_turn_moment
-        if abs(second_turn_moment) > 0.5:  # If turn could not be completed in one tick, perform it after
-            print("one turn not enough!")
-            projected_dir += calculate_actual_turn_angle(state, first_turn_moment)
-            command_builder.append_turn_action(state, second_turn_moment)
-            command_builder.next_tick()"""
+        projected_speed *= PLAYER_SPEED_DECAY
     elif not state.action_history.turn_in_progress:
         _append_neck_orientation(state, command_builder, 0)
 
-    # Might need to account for direction after turning
-    projected_speed = state.body_state.speed
     projected_pos = state.position.get_value()
-    for i in range(0,
-                   command_builder.ticks):  # Account for position and speed after possible spending some ticks turning
-        projected_speed *= PLAYER_SPEED_DECAY
-        projected_pos = project_position(projected_pos, projected_speed, -projected_dir)
-
     # Add dash commands for remaining amount of ticks
     for i in range(command_builder.ticks, _MAX_TICKS_PER_SEE_UPDATE):
         projected_dist = target.euclidean_distance_from(projected_pos)
@@ -318,7 +313,7 @@ def project_position(current_pos, current_speed, current_dir):
 
 
 def distance_in_three_ticks(speed):
-    return speed + speed * BALL_DECAY + speed * BALL_DECAY * BALL_DECAY
+    return speed + speed * PLAYER_SPEED_DECAY + speed * PLAYER_SPEED_DECAY * PLAYER_SPEED_DECAY
 
 
 def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder, urgent, max_power=100):
@@ -381,7 +376,8 @@ def blind_orient(state):
 # to face the total angle of the player in the target direction
 def _append_look_direction(state: PlayerState, target_direction, fov, command_builder: CommandBuilder):
     if state.is_test_player():
-        debug_msg(str(state.now()) + "_append_look_direction : " + str(target_direction), "ORIENTATION")
+        debug_msg(str(state.now()) + "_append_look_direction : " + str(target_direction) + " Current angle: "
+                  + str(state.body_angle.get_value() + state.body_state.neck_angle), "ORIENTATION")
 
     current_total_direction = state.body_angle.get_value() + state.body_state.neck_angle
 
