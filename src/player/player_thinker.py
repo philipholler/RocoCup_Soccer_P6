@@ -86,6 +86,12 @@ class Thinker(threading.Thread):
         commands = self.current_objective.get_next_commands(self.player_state)
         if self.player_state.is_test_player() and self.player_state.world_view.ball.get_value() is not None:
             debug_msg(str(self.player_state.now()) + str(commands), "ACTIONS")
+            debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "
+                                                     "TurnInProgress : {4}".format(
+                self.player_state.position.get_value(), self.player_state.body_state.speed,
+                self.player_state.body_angle.get_value(), self.player_state.body_state.neck_angle,
+                self.player_state.action_history.turn_in_progress), "STATUS")
+
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)

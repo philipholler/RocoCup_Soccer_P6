@@ -1,4 +1,15 @@
-import constants
+
+DEBUG_DICT = {
+    "POSITIONAL": False,
+    "ALL": False,
+    "SCENARIOS": False,
+    "INTERCEPTION": False,
+    "KICK": False,
+    "ACTIONS": False,
+    "ORIENTATION": False,
+    "MESSAGES": False,
+    "STATUS": False
+}
 
 
 def clamp(value, min, max):
@@ -8,7 +19,8 @@ def clamp(value, min, max):
 
 
 def debug_msg(msg: str, key: str):
-    if constants.DEBUG_DICT["ALL"]:
+    if DEBUG_DICT["ALL"]:
         print(msg)
-    elif constants.DEBUG_DICT[key]:
+    elif DEBUG_DICT[key]:
         print(msg)
+4
