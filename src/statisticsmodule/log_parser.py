@@ -72,24 +72,50 @@ def parse_logs():
 
 def calculate_possession(game: Game):
     last_ball = None
+    counter = 0
+    start_ball = None
     last_stage = game.show_time[0]
+
+    # for all ticks in game
     for stage in game.show_time:
-        if stage.ball.abs_delta > last_stage.ball.abs_delta and stage.closest_player_team() == "l":
-            last_ball = stage.ball
-        if stage.ball.abs_delta > last_stage.ball.abs_delta and stage.closest_player_team() == "r":
-            if last_ball is not None:
-                game.possession_length = calculate_possession_length(last_ball)
+        # if the abs value of either x or y goes up, then the ball has been possessed.
+        if abs(stage.ball.x_coord) > abs(last_stage.ball.x_coord) or \
+                abs(stage.ball.y_coord) > abs(last_stage.ball.y_coord):
+
+            # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
+            if game.show_time.index(stage) == game.last_kicker_tick:
+                team = game.last_kicker.side
             else:
-                game.possession_length = 0
+                team = stage.closest_player_team()
+
+            # if it is our team, and it is the first time, set it as start ball. else set it as last ball.
+            if team == "l":
+                last_ball = stage.ball
+                if counter == 0:
+                    start_ball = last_stage.ball
+                    counter += 1
+
+            # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
+            if team == "r":
+                if last_ball is not None:
+                    game.possession_length = calculate_possession_length(start_ball, last_ball)
+                else:
+                    game.possession_length = 0
 
 
-def calculate_possession_length(last_ball: Ball):
-
+# Calculates the difference between the length to the goal from first possession to length of goal from last possession
+def calculate_possession_length(start_ball: Ball, last_ball: Ball):
     # TODO very hard code
     goal_x = 52.5
     goal_y = 0
+    goal_coord = Coordinate(goal_x, goal_y)
+    start_coord = Coordinate(start_ball.x_coord, start_ball.y_coord)
+    last_coord = Coordinate(last_ball.x_coord, last_ball.y_coord)
 
-    return get_distance_between_coords(Coordinate(goal_x, goal_y), Coordinate(last_ball.x_coord, last_ball.y_coord))
+    start_dist = get_distance_between_coords(start_coord, goal_coord)
+    end_dist = get_distance_between_coords(last_coord, goal_coord)
+
+    return start_dist - end_dist
 
 
 def write_possession_file(game: Game):
@@ -120,17 +146,18 @@ def get_newest_action_log():
 
 
 def parse_kick_action(txt, game: Game):
-    kick_regex = "{0},{0}\tRecv (.*)_{0}: \\(kick {1} {1}\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
+    kick_regex = "({0}),{0}\tRecv (.*)_{0}: \\(kick {1} {1}\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
     kick_re = re.compile(kick_regex)
     matched = kick_re.match(txt)
 
     player = Player()
 
     for team in game.teams:
-        if matched.group(1) == team.name:
+        if matched.group(2) == team.name:
             player.side = team.side
 
     game.last_kicker = player
+    game.last_kicker_tick = int(matched.group(1))
 
 
 def parse_goal_action(txt, game: Game):
@@ -206,7 +233,6 @@ def parse_ball(txt, stage: Stage):
     stage.ball.y_coord = float(matched.group(2))
     stage.ball.delta_x = float(matched.group(3))
     stage.ball.delta_y = float(matched.group(4))
-    stage.ball.abs_delta = abs(stage.ball.delta_x) + abs(stage.ball.delta_y)
 
 
 def distance_to_ball(stage: Stage):

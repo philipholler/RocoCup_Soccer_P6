@@ -4,6 +4,7 @@ class Game:
 
     def __init__(self):
         self.last_kicker = Player()
+        self.last_kicker_tick = 0
         self.goals = []
         self.gameID = ""
         self.teams = []
@@ -55,7 +56,6 @@ class Ball:
         self.y_coord = 0
         self.delta_x = 0
         self.delta_y = 0
-        self.abs_delta = 0
 
     def print_ball(self):
         print("ball coords:" + str(self.y_coord) + " " + str(self.y_coord) +
