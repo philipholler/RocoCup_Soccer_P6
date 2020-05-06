@@ -72,24 +72,35 @@ def parse_logs():
 
 def calculate_possession(game: Game):
     last_ball = None
+    counter = 0
+    start_ball = None
     last_stage = game.show_time[0]
     for stage in game.show_time:
         if stage.ball.abs_delta > last_stage.ball.abs_delta and stage.closest_player_team() == "l":
             last_ball = stage.ball
+            if counter == 0:
+                start_ball = last_stage.ball
         if stage.ball.abs_delta > last_stage.ball.abs_delta and stage.closest_player_team() == "r":
             if last_ball is not None:
-                game.possession_length = calculate_possession_length(last_ball)
+                game.possession_length = calculate_possession_length(start_ball, last_ball)
             else:
                 game.possession_length = 0
 
 
-def calculate_possession_length(last_ball: Ball):
+# Calculates the difference between the length to the goal from first possession to length of goal from last possession
+def calculate_possession_length(start_ball: Ball, last_ball: Ball):
 
     # TODO very hard code
     goal_x = 52.5
     goal_y = 0
+    goal_coord = Coordinate(goal_x, goal_y)
+    start_coord = Coordinate(start_ball.x_coord, start_ball.y_coord)
+    last_coord = Coordinate(last_ball.x_coord, last_ball.y_coord)
 
-    return get_distance_between_coords(Coordinate(goal_x, goal_y), Coordinate(last_ball.x_coord, last_ball.y_coord))
+    start_dist = get_distance_between_coords(start_coord, goal_coord)
+    end_dist = get_distance_between_coords(last_coord, goal_coord)
+
+    return start_dist - end_dist
 
 
 def write_possession_file(game: Game):
