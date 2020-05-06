@@ -224,14 +224,18 @@ class Ball:
         return start_time + ticks_until_collision
 
     def __repr__(self) -> str:
-        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(
-            self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
-            , self.last_position, self.last_position_2)
+        return "(distance= {0}, direction= {1}, coord= {2})".format(
+            self.distance, self.direction, self.coord)
 
     def __str__(self) -> str:
-        return "(distance= {0}, direction= {1}, dist_chng= {2}, dir_chng= {3}, coord= {4}, last_pos= {5}, last_pos_2= {6})".format(
-            self.distance, self.direction, self.dist_chng, self.dir_chng, self.coord
-            , self.last_position, self.last_position_2)
+        return "(distance= {0}, direction= {1}, coord= {2})".format(
+            self.distance, self.direction, self.coord)
+
+    def is_moving_closer(self):
+        if len(self.dist_history) < 2:
+            return False
+
+        return self.dist_history[0][0] < self.dist_history[1][0]
 
 
 class Goal:

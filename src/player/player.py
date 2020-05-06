@@ -4,16 +4,23 @@ import constants
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference, get_xy_vector
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from player.world_objects import PrecariousData, Coordinate, Ball, ObservedPlayer
-
-
+from utils import debug_msg
 
 MAX_MOVE_DISTANCE_PER_TICK = 1.05
 APPROA_GOAL_DISTANCE = 30
+
+DEFAULT_MODE = "DEFAULT"
+INTERCEPT_MODE = "INTERCEPTING"
+DRIBBLING_MODE = "DRIBBLING"
+CHASE_MODE = "CHASE"
+POSSESSION_MODE = "POSSESSION"
+PASSED_MODE = "PASSED"
 
 
 class PlayerState:
 
     def __init__(self):
+        self.mode = DEFAULT_MODE
         self._ball_seen_since_missing = True
         self.power_rate = constants.DASH_POWER_RATE
         self.team_name = ""
@@ -144,6 +151,7 @@ class PlayerState:
 
             for (position, tick) in positions_and_ticks:
                 if self.can_player_reach(position, tick):
+                    debug_msg("Projected (coord, tick_offset): " + str(positions_and_ticks), "INTERCEPTION")
                     return position, tick
 
         return None, None
@@ -204,6 +212,25 @@ class PlayerState:
     def update_ball(self, new_ball, time):
         self.world_view.ball.set_value(new_ball, time)
         self._ball_seen_since_missing = True
+
+    def ball_incoming(self):
+        if not self.world_view.ball.is_value_known(self.action_history.three_see_updates_ago):
+            return False
+
+        ball: Ball = self.world_view.ball.get_value()
+        dist = ball.distance
+        position, projected_direction, speed = ball.approximate_position_direction_speed(2)
+        if projected_direction is None or speed < 0.25:
+            return False
+
+        ball_angle = math.degrees(calculate_full_origin_angle_radians(self.position.get_value(), ball.coord))
+        if abs(ball_angle - projected_direction) < 15 and dist < 40:
+            return True
+
+        return False
+
+
+
 
 
 class ActionHistory:

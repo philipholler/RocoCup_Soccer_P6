@@ -108,24 +108,43 @@ class CommandBuilder:
     def append_kick(self, state, power, direction):
         self.current_command().append_action("(kick {0} {1})".format(power, direction))
 
+    def append_empty_actions(self, amount, urgent=False):
+        for i in range(0, amount):
+            self.next_tick(urgent)
 
-def kick_if_collision(state: PlayerState, command: Command, speed=40, ball_dir: int=0):
-    #todo consider ball speedd
+
+def kick_if_collision(state: PlayerState, command: Command, speed=0.5, ball_dir: int=0):
+    #todo consider ball speed
     now = state.now()
     ball = state.world_view.ball.get_value()
+
     if ball is not None and not state.action_history.has_just_intercept_kicked:
         collision_time = ball.project_ball_collision_time()
+
+        if state.is_test_player():
+            debug_msg("Predicted collision time {0} | Distance history: {1}".format(collision_time, ball.dist_history), "INTERCEPTION")
+
         if collision_time is not None and collision_time <= now + 1:
-            debug_msg(str(state.now()) + " | KICK", "INTERCEPTION")
-            kick_dir = (ball_dir + 180) % 360
-
-            if state.action_history.turn_in_progress and state.action_history.expected_body_angle is not None:
-                relative_dir = smallest_angle_difference(from_angle=state.action_history.expected_body_angle, to_angle=kick_dir)
-            else:
-                relative_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=kick_dir)
-
-            command.messages = ["(kick {0} {1})".format(10, relative_dir)]
+            message = _kick_stop_ball_msg(state, ball_dir=ball_dir, speed=speed)
+            command.messages.clear()
+            command.messages.append(message)
             state.action_history.has_just_intercept_kicked = True
+
+
+def _kick_stop_ball_msg(state, speed, ball_dir):
+    kick_dir = (ball_dir + 180) % 360
+
+    if state.action_history.turn_in_progress and state.action_history.expected_body_angle is not None:
+        relative_dir = smallest_angle_difference(from_angle=state.action_history.expected_body_angle, to_angle=kick_dir)
+    else:
+        relative_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=kick_dir)
+
+    power = round(10 * speed)
+    message = "(kick {0} {1})".format(str(power), str(relative_dir))
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " | STOP BALL KICK. Relative Dir {0} | Power {1}".format(relative_dir, power)
+                  , "INTERCEPTION")
+    return message
 
 
 def renew_angle(state: PlayerState, angle_to_turn, fov):
@@ -198,10 +217,29 @@ def intercept(state: PlayerState, intercept_point: Coordinate):
     delta: Coordinate = intercept_point - state.position.get_value()
     _append_rushed_position_adjustment(state, delta.pos_x, delta.pos_y, command_builder)
 
-    coord, speed, direction = state.world_view.ball.get_value().approximate_position_direction_speed(4)
-
+    coord, direction, speed = state.world_view.ball.get_value().approximate_position_direction_speed(4)
     for com in command_builder.command_list:
         com.add_function(lambda: kick_if_collision(state, com, speed=speed, ball_dir=direction))
+
+    return command_builder.command_list
+
+
+def receive_ball(state: PlayerState):
+    command_builder = CommandBuilder()
+    if not state.action_history.turn_in_progress:
+        append_look_at_ball(state, command_builder)
+    ball = state.world_view.ball.get_value()
+
+    coord, direction, speed = ball.approximate_position_direction_speed(2)
+    collision_time = state.world_view.ball.get_value().project_ball_collision_time()
+    now = state.now()
+
+    for i in range(0, 3):
+        if collision_time is not None and collision_time == now + i + 1:
+            debug_msg(str(state.now()) + " Receive_ball kick at : " + str(i + now), "INTERCEPTION")
+            command_builder._append_action(_kick_stop_ball_msg(state, speed, direction))
+
+        command_builder.next_tick()
 
     return command_builder.command_list
 
@@ -230,7 +268,9 @@ def _append_rushed_position_adjustment(state: PlayerState, delta_x, delta_y, com
         projected_speed *= PLAYER_SPEED_DECAY
 
     append_last_dash_actions(state, projected_speed, distance, command_builder, urgent=True)
-    debug_msg("distance: " + str(distance) + "| speed : " + str(state.body_state.speed) + str(command_builder.command_list), "INTERCEPTION")
+    debug_msg("distance: " + str(distance) + "| speed : " + str(state.body_state.speed) + " | target body direction: "
+              + str(target_body_angle) + " | current body angle: " + str(state.body_angle.get_value())
+              + str(command_builder.command_list), "INTERCEPTION")
 
     return
 
@@ -405,8 +445,8 @@ def idle_neck_orientation(state):
 def _append_neck_orientation(state: PlayerState, command_builder, body_dir_change=0):
     if state.is_test_player():
         debug_msg(str(state.now()) + " _append_neck_orientation", "ORIENTATION")
-    if state.action_history.last_orientation_action < state.now() - _IDLE_ORIENTATION_INTERVAL \
-            and state.world_view.ball.is_value_known(state.action_history.last_see_update) and False:  # todo
+    if state.action_history.last_orientation_action < (state.now() - _IDLE_ORIENTATION_INTERVAL) \
+            and state.world_view.ball.is_value_known(state.action_history.last_see_update) and False:
         # Orient to least updated place within neck angle
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
         state.action_history.last_orientation_action = state.now()
@@ -634,3 +674,4 @@ def _allowed_angle_delta(distance, max_distance_deviation=0.5):
     """if distance < 0.1:
         return 90
     return math.degrees(math.acos(distance / math.sqrt(pow(max_distance_deviation, 2) + pow(distance, 2))))"""
+
