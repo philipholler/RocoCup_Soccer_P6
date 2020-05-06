@@ -28,7 +28,7 @@ team_names = ["Team1"]
 num_players = 3
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_MODE = True
+MORE_SCENARIOS_MODE = False
 NUM_SIMULATIONS = 3
 TICKS_PER_RUN = 50
 

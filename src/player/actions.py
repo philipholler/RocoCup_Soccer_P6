@@ -216,7 +216,7 @@ def _append_rushed_position_adjustment(state: PlayerState, delta_x, delta_y, com
     projected_speed = state.body_state.speed
 
     if abs(turn_angle) > _allowed_angle_delta(distance):  # Need to turn body first
-        if state.body_state.speed >= 0.15:  # Stop moving if necessary
+        if state.body_state.speed >= 0.1:  # Stop moving if necessary
             dash_power, projected_speed = _calculate_dash_power(state.body_state.speed, 0)
             command_builder.append_dash_action(state, dash_power)
             command_builder.next_tick()
@@ -323,7 +323,7 @@ def distance_in_three_ticks(speed):
 
 def append_last_dash_actions(state, projected_speed, distance, command_builder: CommandBuilder, urgent, max_power=100):
     # print("distance", distance, "speed:", projected_speed)
-    if distance >= distance_in_three_ticks(projected_speed + _calculate_actual_speed(projected_speed, max_power)):
+    if distance >= distance_in_three_ticks(_calculate_actual_speed(projected_speed, max_power)):
         command_builder.append_dash_action(state, max_power)
         command_builder.next_tick()
         projected_speed = _calculate_actual_speed(projected_speed, max_power)
@@ -507,8 +507,6 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
             neck_turn_angle *= -1
 
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
-
-        print("target_neck_angle", target_neck_angle, " actual turn angle:", neck_turn_angle)
 
 
 def shoot_to(state: PlayerState, target: Coordinate):
