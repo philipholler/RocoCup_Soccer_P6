@@ -82,8 +82,8 @@ def calculate_possession(game: Game):
         if abs(stage.ball.x_coord) > abs(last_stage.ball.x_coord) or \
                 abs(stage.ball.y_coord) > abs(last_stage.ball.y_coord):
 
-            # if the last kicker kicked in this tick, then it is the last possessor, else it is the closest player
-            if game.show_time.index(stage) + 1 == game.last_kicker_tick:
+            # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
+            if game.show_time.index(stage) == game.last_kicker_tick:
                 team = game.last_kicker.side
             else:
                 team = stage.closest_player_team()
