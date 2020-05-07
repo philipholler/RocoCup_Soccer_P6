@@ -145,12 +145,11 @@ def determine_objective_goalie(state: PlayerState):
         # No suitable pass target
         return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
 
-    # Catch ball if close!
+    # Catch ball if close and inside own box!
     positions = ball.project_ball_position(2, 0)
     position, direction, speed = ball.approximate_position_direction_speed(4)
-    if positions is not None and speed > 0.2:
+    if positions is not None and speed > 0.2 and state.is_inside_own_box():
         ball_pos_1_tick: Coordinate = positions[0]
-        # ball_pos_2_tick: Coordinate = positions[1]
         if ball_pos_1_tick.euclidean_distance_from(state.position.get_value()) < CATCHABLE_MARGIN:
             return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)
 
