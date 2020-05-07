@@ -303,8 +303,12 @@ def _choose_pass_target(state: PlayerState):
     team_members = state.world_view.get_teammates(state.team_name, max_data_age=5)
     if len(team_members) is 0:
         return None
+    target = list(sorted(team_members, key=lambda p: p.coord.pos_x, reverse=True))[0]
 
-    return list(sorted(team_members, key=lambda p: p.coord.pos_x, reverse=True))[0]
+    if state.num == 2:
+        return None
+
+    return target
 
 
 def team_has_corner_kick(state):

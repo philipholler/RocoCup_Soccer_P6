@@ -9,7 +9,7 @@ DEBUG_DICT = {
     "ORIENTATION": False,
     "MESSAGES": True,
     "STATUS": False,
-    "MODE": False
+    "MODE": True
 }
 
 
