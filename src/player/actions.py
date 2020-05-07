@@ -291,9 +291,9 @@ def rush_to_ball(state: PlayerState):
         return locate_ball(state)
     ball: Ball = state.world_view.ball.get_value()
 
-    locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
+    locations = ball.project_ball_position(3, state.now() - state.world_view.ball.last_updated_time)
     if locations is not None:
-        return go_to(state, locations[3], dash_power_limit=PLAYER_RUSH_POWER)
+        return go_to(state, locations[1], dash_power_limit=PLAYER_RUSH_POWER)
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
 
