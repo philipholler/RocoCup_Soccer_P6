@@ -324,7 +324,6 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
             projected_speed *= PLAYER_SPEED_DECAY
 
         turn_moment = round(_calculate_turn_moment(projected_speed, rotation), 2)
-
         debug_msg(str(state.now()) + "global angle: " + str(state.last_see_global_angle) + " off by: " + str(rotation), "POSITIONAL")
 
         if turn_moment < 0:
@@ -332,7 +331,7 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
         else:
             first_turn_moment = min(turn_moment, 180)
         command_builder.append_turn_action(state, first_turn_moment)
-        _append_neck_orientation(state, command_builder, _calculate_actual_turn_angle(state.body_state.speed, first_turn_moment))
+        _append_neck_orientation(state, command_builder, _calculate_actual_turn_angle(projected_speed, first_turn_moment))
         command_builder.next_tick()
 
         # Update projections
@@ -556,10 +555,8 @@ def append_look_at_ball_body_only(state: PlayerState, command_builder):
 
 
 def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_change=0):
-    if state.is_test_player():
-        debug_msg(str(state.now()) + " _look_at_ball_neck_only. Body_dir_change=" + str(body_dir_change), "ORIENTATION")
     # Look towards ball as far as possible
-    body_angle = state.body_angle.get_value() + body_dir_change
+    body_angle = (state.body_angle.get_value() + body_dir_change) % 360
     ball = state.world_view.ball.get_value()
     ball_projection = state.world_view.ball.get_value().project_ball_position(1, state.now() - state.world_view.ball.last_updated_time, 2)
     if ball_projection is None:
@@ -568,13 +565,13 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         ball_position = ball_projection[0]
 
     global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
-    angle_difference = smallest_angle_difference(body_angle + state.body_state.neck_angle, global_ball_angle)
+    angle_difference = smallest_angle_difference((body_angle + state.body_state.neck_angle) % 360, global_ball_angle)
 
     if abs(angle_difference) > 0.9:
-        target_neck_angle = smallest_angle_difference(global_ball_angle, body_angle)
+        target_neck_angle = smallest_angle_difference(from_angle=body_angle, to_angle=global_ball_angle)
         # Adjust to be within range of neck turn
         target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
-        new_total_angle = target_neck_angle + body_angle
+        new_total_angle = (body_angle + target_neck_angle) % 360
 
         # Calculate which fov to use based on what is required to see the ball
         preferred_fov = _determine_fov(state)
@@ -588,13 +585,21 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         fov = max(minimum_fov, preferred_fov)
         command_builder.append_fov_change(state, fov)
         debug_msg("global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
-        neck_turn_angle = smallest_angle_difference(target_neck_angle, state.body_state.neck_angle)
-        if 90 < state.body_state.neck_angle + neck_turn_angle or state.body_state.neck_angle + neck_turn_angle < -90:
+        neck_turn_angle = smallest_angle_difference(from_angle=state.body_state.neck_angle, to_angle=target_neck_angle)
+        if state.body_state.neck_angle + neck_turn_angle > 90 or state.body_state.neck_angle + neck_turn_angle < -90:
             # The smallest angle difference between 90 and -90 has two solutions: 180 and -180
             # If the wrong one is chosen, then switch sign
             neck_turn_angle *= -1
 
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
+        if state.is_test_player():
+            debug_msg(str(state.now()) + " _look_at_ball_neck_only. New body angle=" + str(body_angle)
+                      + " | Current neck angle : " + str(state.body_state.neck_angle)
+                      + " | target neck angle : " + str(target_neck_angle)
+                      + " | Global ball angle : " + str(global_ball_angle)
+                      + " | Ball position : " + str(ball_position)
+                      + " | Player position : " + str(state.position.get_value()),
+                      "ORIENTATION")
 
 
 def shoot_to(state: PlayerState, target: Coordinate, power=None):
