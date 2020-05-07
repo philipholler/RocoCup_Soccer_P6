@@ -2,7 +2,7 @@ import math
 import geometry
 from constants import PLAYER_JOG_POWER, PLAYER_RUSH_POWER, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
-    WARNING_PREFIX
+    WARNING_PREFIX, DRIBBLE_KICK_POWER, DRIBBLE_DASH_POWER
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 
 from player.player import PlayerState
@@ -128,7 +128,6 @@ def kick_if_collision(state: PlayerState, command: Command, speed=0.5, ball_dir:
     if ball is not None and (state.now() - state.ball_collision_time) > 5 and not state.action_history.has_just_intercept_kicked:
         collision_time = ball.project_ball_collision_time()
 
-        print(ball.project_ball_collision_time_2(state.position.get_value(), state.now(), 2))
         if state.is_test_player():
             debug_msg("{0} | Predicted collision time {1} | Distance history: {2} | Last collision time {3} "
                       .format(state.now(), collision_time, ball.dist_history, state.ball_collision_time)
@@ -606,11 +605,12 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         command_builder.append_neck_turn(state, neck_turn_angle, state.body_state.fov)
 
 
-def shoot_to(state: PlayerState, target: Coordinate):
+def shoot_to(state: PlayerState, target: Coordinate, power=None):
     command_builder = CommandBuilder()
     distance_to_target = target.euclidean_distance_from(state.position.get_value())
     direction = _calculate_relative_angle(state, target)
-    power = _calculate_kick_power(state, distance_to_target)
+    if power is None:
+        power = _calculate_kick_power(state, distance_to_target)
     command_builder.append_kick(state, power, direction)
     return command_builder.command_list
 
@@ -646,6 +646,16 @@ def positional_adjustment(state, adjustment: Coordinate):
 
     return command_builder.command_list
 
+def dribble(state: PlayerState, dir: int):
+    command_builder = CommandBuilder()
+    dribble_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=dir)
+    command_builder.append_kick(state, DRIBBLE_KICK_POWER, dribble_dir)
+    command_builder.next_tick()
+    command_builder.append_turn_action(state, _calculate_turn_moment(state.body_state.speed, dribble_dir))
+    command_builder.next_tick()
+    command_builder.append_dash_action(state, DRIBBLE_DASH_POWER, urgent=True)
+
+    return command_builder.command_list
 
 @require_angle_update
 def look_for_pass_target(state):

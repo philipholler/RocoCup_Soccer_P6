@@ -261,6 +261,7 @@ class ActionHistory:
         self.expected_body_angle = None
         self.expected_neck_angle = None
         self.projected_position = Coordinate(0, 0)
+        self.has_looked_for_targets = False
 
 
 class ViewFrequency:

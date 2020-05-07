@@ -1,10 +1,12 @@
+import math
 from random import choice
 
 import parsing
-from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN
+from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS
+from geometry import calculate_full_origin_angle_radians
 from player import actions
-from player.actions import Command
-from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE, CATCH_MODE
+from player.actions import Command, _calculate_relative_angle
+from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE, CATCH_MODE, DRIBBLING_MODE
 from player.world_objects import Coordinate, Ball
 from utils import clamp, debug_msg
 
@@ -83,11 +85,36 @@ class CompositeObjective:
         return self.objectives[self.completed_objectives]
 
 
-def _chase_objective(state):
-    if state.is_near_ball() or not state.is_nearest_ball(1):
-        state.mode = POSSESSION_MODE
+def _dribble_objective(state: PlayerState):
+    side = 1 if state.world_view.side == "l" else -1
+
+    if state.is_nearest_ball(1):
+        if not state.is_near_ball(KICKABLE_MARGIN):
+            return _rush_to_ball_objective(state)
+
+        pos: Coordinate = state.position.get_value()
+        if pos.euclidean_distance_from(Coordinate(52.5 * side, 0)) < 24:
+            return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, 0), 100), lambda: True, 1)
+
+        if not state.action_history.has_looked_for_targets:
+            debug_msg("looking for pass targets", "DRIBBLE")
+            state.action_history.has_looked_for_targets = True
+
+            return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
+
+        target = _choose_pass_target(state)
+        if target is not None:
+            return Objective(state, lambda: actions.pass_to_player(state, target), lambda: True, 1)
+
+        if state.is_near_ball() and state.action_history.has_looked_for_targets:
+            target_coord: Coordinate = Coordinate(52.5 * side, 0)
+            opposing_goal_dir = math.degrees(calculate_full_origin_angle_radians(target_coord, state.position.get_value()))
+            state.action_history.has_looked_for_targets = False
+            return Objective(state, lambda: actions.dribble(state, int(opposing_goal_dir)), lambda: False, 1)
+        return _rush_to_ball_objective(state)
+    else:
+        state.mode = DEFAULT_MODE
         return determine_objective(state)
-    return _rush_to_ball_objective(state)
 
 
 def _pass_objective(state):
@@ -111,18 +138,16 @@ def _get_goalie_y_value(state):
     goalie_coord: Coordinate = state.position.get_value()
     ball: Ball = state.world_view.ball.get_value()
 
-    # If ball above goal
-    if ball.coord.pos_y > 7.01:
-        return 7.01
-    elif -7.01 < ball.coord.pos_y and ball.coord.pos_y < 7.01:
-        return ball.coord.pos_y
-    else:
-        return -7.01
+    return clamp(ball.coord.pos_y * 0.8, -5, 5)
 
+
+def _lost_orientation(state):
+    return (not state.body_angle.is_value_known(state.action_history.last_see_update)) \
+           or (not state.position.is_value_known(state.action_history.last_see_update))
 
 def determine_objective_goalie(state: PlayerState):
     # Is grøntsag blind orient
-    if not state.body_angle.is_value_known() or not state.position.is_value_known():
+    if _lost_orientation(state):
         return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
 
     # Find ball
@@ -173,7 +198,7 @@ def determine_objective_goalie(state: PlayerState):
             return Objective(state, lambda: actions.rush_to(state, positions[1]), lambda: True, 1)
 
     # If ball within 2 meters, run to it
-    if state.is_near_ball(2):
+    if state.is_near_ball(7):
         return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
 
     # Stay close to y_pos of ball
@@ -198,11 +223,9 @@ def determine_objective(state: PlayerState):
     if state.num == 1:
         return determine_objective_goalie(state)
 
-    if state.num == 2 and state.team_name == "Team1":
-        return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
-
-    if state.team_name == "Team2"and state.is_near_ball(KICKABLE_MARGIN):
-        return Objective(state, lambda: actions.shoot_to(state, Coordinate(-55, 0)), lambda: True, 1)
+    # Is grøntsag blind orient
+    if _lost_orientation(state):
+        return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
 
     if state.is_test_player():
         debug_msg(str(state.now()) + " Mode : " + str(state.mode), "MODE")
@@ -210,8 +233,8 @@ def determine_objective(state: PlayerState):
     if state.mode is INTERCEPT_MODE:
         return _intercept_objective(state)
 
-    if state.mode is CHASE_MODE:
-        return _chase_objective(state)
+    if state.mode is DRIBBLING_MODE:
+        return _dribble_objective(state)
 
     if state.mode is POSSESSION_MODE:
         return _pass_objective(state)
@@ -221,15 +244,10 @@ def determine_objective(state: PlayerState):
     if _ball_unknown(state):
         return _locate_ball_objective(state)
 
-    # If in possession of the ball
-    if state.is_near_ball():
-        pass_target = _choose_pass_target(state)
-        if pass_target is not None:
-            return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
-
-        # No suitable pass target
-        state.mode = POSSESSION_MODE
-        return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
+    # If in possession of ball, dribble!
+    if state.is_near_ball() and state.is_nearest_ball(1):
+        state.mode = DRIBBLING_MODE
+        return _dribble_objective(state)
 
     # Try to perform an interception of the ball if possible
     intercept_point, tick = state.ball_interception()
@@ -290,7 +308,7 @@ def _intercept_objective(state):
 
     if not ball.is_moving_closer():
         if dist < 15:
-            state.mode = CHASE_MODE
+            state.mode = DRIBBLING_MODE
             return determine_objective(state)
 
     intercept_point, tick = state.ball_interception()
@@ -408,21 +426,19 @@ def _find_player(state, player_num):
 
 
 def _choose_pass_target(state: PlayerState):
-    """if state.coach_command.is_value_known(state.now() - 7 * 10):
-        coach_command = state.coach_command.get_value()
-        if "pass" in coach_command:
-            pass_pairs = parsing.parse_pass_command(coach_command)
-
-            for from_player, to_player in pass_pairs:
-                if state.num == from_player:
-                    return find_player(state, to_player)"""
-
+    side = 1 if state.world_view.side == "l" else -1
     team_members = state.world_view.get_teammates(state.team_name, max_data_age=5)
-    if len(team_members) is 0:
+    if side == 1:
+        good_targets = list(filter(lambda p: p.coord.pos_x * side > state.position.get_value().pos_x, team_members))
+    else:
+        good_targets = list(filter(lambda p: p.coord.pos_x * side < state.position.get_value().pos_x, team_members))
+    if len(good_targets) < 1:
+        # Todo filter out bad passes - Philip
         return None
-    target = list(sorted(team_members, key=lambda p: p.coord.pos_x, reverse=True))[0]
+    reverse = True if side == 1 else False
+    good_target = list(sorted(good_targets, key=lambda p: p.coord.pos_x, reverse=reverse))[0]
 
-    return target
+    return good_target
 
 
 def team_has_corner_kick(state):
