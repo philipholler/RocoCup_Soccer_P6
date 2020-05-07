@@ -126,7 +126,7 @@ class Ball:
         max_deviation = 60  # angle deviation
         max_speed_deviation = 1.2
         age = time_1 - time_2
-        max_age = 12
+        max_age = 20
 
         data_points_used = 2
         for i, pos_and_time in enumerate(islice(history, 2, len(history))):
