@@ -252,7 +252,10 @@ def _intercept_objective(state):
 
     intercept_point, tick = state.ball_interception()
     if intercept_point is not None and ball.distance > 1.0:
-        return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())
+        if intercept_point.euclidean_distance_from(state.position.get_value()) > KICKABLE_MARGIN:
+            return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())
+        else:
+            return Objective(state, lambda: actions.receive_ball(state), lambda: state.is_near_ball())
 
     if state.ball_incoming():
         return Objective(state, lambda: actions.receive_ball(state), lambda: state.is_near_ball())
@@ -374,7 +377,8 @@ def _choose_pass_target(state: PlayerState):
     team_members = state.world_view.get_teammates(state.team_name, max_data_age=5)
     if len(team_members) is 0:
         return None
-    return sorted(team_members, key=lambda p: p.coord.pos_x)[0]
+
+    return list(sorted(team_members, key=lambda p: p.coord.pos_x, reverse=True))[0]
 
 
 def team_has_corner_kick(state):

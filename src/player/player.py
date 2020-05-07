@@ -147,14 +147,14 @@ class PlayerState:
             ball: Ball = wv.ball.get_value()
             dist = ball.distance
 
-            required_points = 4 if dist <= 10 else round(4 + (dist - 9) / 2)
+            required_points = 4 if dist <= 10 else round(4 + (dist - 8) / 2)
 
             coord, direction, speed = ball.approximate_position_direction_speed(required_points)
             if direction is None or speed < 0.3:
                 return None, None
 
             tick_offset = self.now() - wv.ball.last_updated_time
-            project_positions = ball.project_ball_position(10, tick_offset)
+            project_positions = ball.project_ball_position(10, tick_offset, required_points)
             if project_positions is None:
                 return None, None
 
