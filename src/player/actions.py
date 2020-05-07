@@ -410,7 +410,6 @@ def locate_ball(state: PlayerState):
 
 
 # Used to reorient self in case of not knowing position or body angle
-@require_angle_update
 def blind_orient(state):
     if state.is_test_player():
         debug_msg(str(state.now()) + "blind_orient", "ORIENTATION")
