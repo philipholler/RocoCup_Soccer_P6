@@ -74,7 +74,7 @@ UPPER_FIELD_BOUND = Coordinate(60, 40)
 
 
 class Ball:
-    MAX_HISTORY_LEN = 8
+    MAX_HISTORY_LEN = 16
 
     def __init__(self, distance: float, direction: int, coord: Coordinate, time, pos_history: deque = None,
                  dist_history: deque = None) -> None:
@@ -167,9 +167,9 @@ class Ball:
         self.projection = self.position_history[0][0], direction, final_speed
         return self.position_history[0][0], direction, final_speed
 
-    def project_ball_position(self, ticks: int, offset: int):
+    def project_ball_position(self, ticks: int, offset: int, minimum_data_points=4):
         positions = []
-        coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points_used=4)
+        coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points)
 
         if direction is None:
             return None  # No prediction can be made
@@ -225,6 +225,10 @@ class Ball:
                 return None
 
         return start_time + ticks_until_collision
+
+    def project_ball_collision_time(self):
+
+        pass
 
     def __repr__(self) -> str:
         return "(distance= {0}, direction= {1}, coord= {2})".format(

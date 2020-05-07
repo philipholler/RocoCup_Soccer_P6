@@ -121,6 +121,9 @@ def kick_if_collision(state: PlayerState, command: Command, speed=0.5, ball_dir:
     if ball is not None and (state.now() - state.ball_collision_time) > 5 and not state.action_history.has_just_intercept_kicked:
         collision_time = ball.project_ball_collision_time()
 
+        #ball.project_ball_position()
+        #ball.project_ball_collision_time_2(state)
+
         if state.is_test_player():
             debug_msg("{0} | Predicted collision time {1} | Distance history: {2} | Last collision time {3} "
                       .format(state.now(), collision_time, ball.dist_history, state.ball_collision_time)
@@ -284,7 +287,7 @@ def rush_to_ball(state: PlayerState):
 
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
     if locations is not None:
-        return go_to(state, locations[2], dash_power_limit=PLAYER_RUSH_POWER)
+        return go_to(state, locations[3], dash_power_limit=PLAYER_RUSH_POWER)
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
 
@@ -338,7 +341,7 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
         projected_dist = target.euclidean_distance_from(projected_pos)
 
         if projected_dist < 1.5:
-            append_last_dash_actions(state, projected_speed, projected_dist, command_builder, True)
+            append_last_dash_actions(state, projected_speed, projected_dist, command_builder, False)
             return command_builder.command_list
 
         possible_speed = _calculate_actual_speed(projected_speed, dash_power_limit)
@@ -454,7 +457,7 @@ def _append_neck_orientation(state: PlayerState, command_builder, body_dir_chang
     if state.is_test_player():
         debug_msg(str(state.now()) + " _append_neck_orientation", "ORIENTATION")
     if state.action_history.last_orientation_action < (state.now() - _IDLE_ORIENTATION_INTERVAL) \
-            and state.world_view.ball.is_value_known(state.action_history.last_see_update) and False:
+            and state.world_view.ball.is_value_known(state.action_history.last_see_update):
         # Orient to least updated place within neck angle
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
         state.action_history.last_orientation_action = state.now()
@@ -575,7 +578,7 @@ def pass_to_player(state, player: ObservedPlayer):
 def positional_adjustment(state, adjustment: Coordinate):
     command_builder = CommandBuilder()
 
-    max_power = PLAYER_RUSH_POWER
+    max_power = PLAYER_JOG_POWER
     distance = Coordinate(0, 0).euclidean_distance_from(adjustment)
 
     target_body_angle = math.degrees(calculate_full_origin_angle_radians(adjustment, Coordinate(0, 0)))
