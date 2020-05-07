@@ -309,9 +309,6 @@ def _choose_pass_target(state: PlayerState):
         return None
     target = list(sorted(team_members, key=lambda p: p.coord.pos_x, reverse=True))[0]
 
-    if state.num == 2:
-        return None
-
     return target
 
 
