@@ -118,11 +118,13 @@ def kick_if_collision(state: PlayerState, command: Command, speed=0.5, ball_dir:
     now = state.now()
     ball = state.world_view.ball.get_value()
 
-    if ball is not None and not state.action_history.has_just_intercept_kicked:
+    if ball is not None and (state.now() - state.ball_collision_time) > 5 and not state.action_history.has_just_intercept_kicked:
         collision_time = ball.project_ball_collision_time()
 
         if state.is_test_player():
-            debug_msg("Predicted collision time {0} | Distance history: {1}".format(collision_time, ball.dist_history), "INTERCEPTION")
+            debug_msg("{0} | Predicted collision time {1} | Distance history: {2} | Last collision time {3} "
+                      .format(state.now(), collision_time, ball.dist_history, state.ball_collision_time)
+                      , "INTERCEPTION")
 
         if collision_time is not None and collision_time <= now + 1:
             message = _kick_stop_ball_msg(state, ball_dir=ball_dir, speed=speed)
@@ -231,15 +233,10 @@ def receive_ball(state: PlayerState):
     ball = state.world_view.ball.get_value()
 
     coord, direction, speed = ball.approximate_position_direction_speed(2)
-    collision_time = state.world_view.ball.get_value().project_ball_collision_time()
-    now = state.now()
+    command_builder.append_empty_actions(4, False)
 
-    for i in range(0, 3):
-        if collision_time is not None and collision_time == now + i + 1:
-            debug_msg(str(state.now()) + " Receive_ball kick at : " + str(i + now), "INTERCEPTION")
-            command_builder._append_action(_kick_stop_ball_msg(state, speed, direction))
-
-        command_builder.next_tick()
+    for com in command_builder.command_list:
+        com.add_function(lambda: kick_if_collision(state, com, speed=speed, ball_dir=direction))
 
     return command_builder.command_list
 
@@ -283,8 +280,14 @@ def rush_to_ball(state: PlayerState):
     if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
         debug_msg("ACTION: LOCATE BALL", "INTERCEPTION")
         return locate_ball(state)
+    ball: Ball = state.world_view.ball.get_value()
 
-    return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
+    locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
+    if locations is not None:
+        return go_to(state, locations[2], dash_power_limit=PLAYER_RUSH_POWER)
+    else:
+        return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
+
 
 
 def jog_to(state: PlayerState, target: Coordinate):

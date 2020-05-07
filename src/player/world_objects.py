@@ -160,8 +160,9 @@ class Ball:
         if data_points_used < minimum_data_points_used:
             return None, None, None
 
-        debug_msg("Prediction based on {0} of these data points: {1}".format(data_points_used, self.position_history)
-                  , "INTERCEPTION")
+        #debug_msg("Prediction based on {0} of these data points: {1}".format(data_points_used, self.position_history)
+        #          , "INTERCEPTION")
+
         direction = degrees(calculate_full_origin_angle_radians(first_coord, last_coord))
         self.projection = self.position_history[0][0], direction, final_speed
         return self.position_history[0][0], direction, final_speed
@@ -225,7 +226,7 @@ class Ball:
 
         dist_left = start_dist
         ticks_until_collision = 0
-        while dist_left > KICKABLE_MARGIN:
+        while dist_left > KICKABLE_MARGIN - 0.1:
             dist_left -= avg_speed
             avg_speed *= BALL_DECAY
             ticks_until_collision += 1
