@@ -242,8 +242,21 @@ class PlayerState:
 
         return False
 
+    def is_inside_own_box(self) -> bool:
+        pos: Coordinate = self.position.get_value()
 
+        result = True
+        if self.world_view.side == "l":
+            if pos.pos_x > -36 or (pos.pos_y < -20 or pos.pos_y > 20):
+                result = False
+        else:
+            if pos.pos_x < 36 or (pos.pos_y < -20 or pos.pos_y > 20):
+                result = False
 
+        if self.is_test_player():
+            debug_msg("is_inside_own_box={0}, Pos={1}".format(result, pos), "GOALIE")
+
+        return result
 
 
 class ActionHistory:

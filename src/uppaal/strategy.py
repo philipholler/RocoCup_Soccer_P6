@@ -25,7 +25,6 @@ def generate_strategy(wv: WorldViewCoach):
 
     return strategy_generator.generate_strategy(wv)
 
-
 class _StrategyGenerator:
 
     def __init__(self, strategy_name, model_modifier, strategy_parser) -> None:
@@ -50,6 +49,10 @@ class _StrategyGenerator:
         # Interpret strategy and produce coach /say output
         return self._strategy_parser(uppaal_strategy, model_data)
 
+def has_applicable_strat(wv: WorldViewCoach) -> bool:
+    if _find_applicable_strat(wv) is not None:
+        return True
+    return False
 
 def _find_applicable_strat_player(wv) -> _StrategyGenerator:
     # todo use player specific strategies once made available - Philip
