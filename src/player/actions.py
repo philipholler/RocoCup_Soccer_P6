@@ -572,7 +572,7 @@ def pass_to_player(state, player: ObservedPlayer):
 def positional_adjustment(state, adjustment: Coordinate):
     command_builder = CommandBuilder()
 
-    max_power = PLAYER_RUSH_POWER
+    max_power = PLAYER_JOG_POWER
     distance = Coordinate(0, 0).euclidean_distance_from(adjustment)
 
     target_body_angle = math.degrees(calculate_full_origin_angle_radians(adjustment, Coordinate(0, 0)))

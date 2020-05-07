@@ -100,10 +100,63 @@ def _pass_objective(state):
     return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
 
 
-def determine_objective(state: PlayerState):
-    if state.num == 1:
-        # Goalie
+def _get_goalie_y_value(state):
+    """
+    Used for finding the wanted y value, that the goalie should take according to the ball position
+    """
+    goalie_coord: Coordinate = state.position.get_value()
+    ball: Ball = state.world_view.ball.get_value()
+
+    # If ball above goal
+    if ball.coord.pos_y > 7.01:
+        return 7.01
+    elif -7.01 < ball.coord.pos_y and ball.coord.pos_y < 7.01:
+        return ball.coord.pos_y
+    else:
+        return -7.01
+
+
+def determine_objective_goalie(state: PlayerState):
+    # if ball unknown
+        # Locate
+    if _ball_unknown(state):
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+    # Project ball 10 ticks
+    # If ball intercepts goal line within 10 ticks, intercept ball
+    if not _ball_unknown(state):
+        ball: Ball = state.world_view.ball.get_value()
+        if ball.will_hit_goal_within(10):
+            # Try to perform an interception of the ball if possible
+            intercept_point, ticks = state.ball_interception()
+            if intercept_point is not None:
+                if state.is_test_player():
+                    state.mode = INTERCEPT_MODE
+                return _intercept_objective(state)
+
+
+    # Follow ball y value
+    if state.position.is_value_known() and state.world_view.ball.is_value_known():
+        goalie_coord: Coordinate = state.position.get_value()
+        delta = 0.5
+        optimal_y_value = _get_goalie_y_value(state)
+        if abs(optimal_y_value - goalie_coord.pos_y) > delta:
+            y_axis_adjustment = optimal_y_value - goalie_coord.pos_y
+            return Objective(state, lambda: actions.positional_adjustment(state, Coordinate(0, y_axis_adjustment)), lambda: True, 1)
+        else:
+            return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+
+    # If near ball
+        # Catch
+
+    # If ball in hands, kick to player
+        # Kick to player
+
+
+
+def determine_objective(state: PlayerState):
+    # Goalie
+    if state.num == 1:
+        return determine_objective_goalie(state)
 
     if state.is_test_player():
         debug_msg(str(state.now()) + " Mode : " + str(state.mode), "MODE")
