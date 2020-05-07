@@ -84,7 +84,7 @@ class CompositeObjective:
 
 
 def _chase_objective(state):
-    if state.is_near_ball():
+    if state.is_near_ball() or not state.is_nearest_ball(1):
         state.mode = POSSESSION_MODE
         return determine_objective(state)
     return _rush_to_ball_objective(state)
@@ -133,7 +133,7 @@ def determine_objective(state: PlayerState):
 
     # Try to perform an interception of the ball if possible
     intercept_point, ticks = state.ball_interception()
-    if intercept_point is not None:
+    if intercept_point is not None and state.world_view.ball.get_value().distance > 1.0:
         if state.is_test_player():
             debug_msg(str(state.now()) + " Intercepting!", "ACTIONS")
         state.mode = INTERCEPT_MODE
@@ -177,7 +177,7 @@ def _intercept_objective(state):
             return determine_objective(state)
 
     intercept_point, tick = state.ball_interception()
-    if intercept_point is not None:
+    if intercept_point is not None and ball.distance > 1.0:
         return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())
 
     if state.ball_incoming():

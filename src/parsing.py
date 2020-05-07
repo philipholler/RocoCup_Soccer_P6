@@ -853,7 +853,9 @@ def _parse_hear(text: str, ps: PlayerState):
 # [27] = collision,
 # [28] = charged, [29] = card
 
-def _parse_body_sense(text: str, ps: player):
+def _parse_body_sense(text: str, ps: PlayerState):
+    if "collision (ball" in text:
+        ps.ball_collision_time = ps.now()
     regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({0})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
