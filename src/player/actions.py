@@ -82,6 +82,9 @@ class CommandBuilder:
         self._append_action("(dash {0})".format(power), urgent)
         self.current_command().add_function(lambda: project_dash(state, power))
 
+    def append_catch_action(self, state, urgent=False):
+        self._append_action("(catch {0})".format(state.world_view.ball.get_value().direction), urgent)
+
     def append_function(self, f):
         self.current_command().add_function(f)
 
@@ -163,6 +166,8 @@ def register_neck_turn(state: PlayerState, angle):
     state.action_history.expected_neck_angle = (state.body_state.neck_angle + angle) % 360
     state.action_history.turn_in_progress = True
 
+def register_catch(state: PlayerState):
+    state.action_history.last_catch = state.world_view.sim_time
 
 def register_body_turn(state: PlayerState, body_turn_moment=0):
     turn_angle = _calculate_actual_turn_angle(state.body_state.speed, body_turn_moment)
@@ -404,6 +409,12 @@ def locate_ball(state: PlayerState):
     turn_history = state.action_history.turn_history
     angle = turn_history.least_updated_angle(FOV_WIDE)
     _append_look_direction(state, angle, FOV_WIDE, commandBuilder)
+
+    return commandBuilder.command_list
+
+def catch_ball(state: PlayerState):
+    commandBuilder = CommandBuilder()
+    commandBuilder.append_catch_action(state, urgent=True)
 
     return commandBuilder.command_list
 

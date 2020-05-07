@@ -91,7 +91,8 @@ class Thinker(threading.Thread):
                 self.player_state.position.get_value(), self.player_state.body_state.speed,
                 self.player_state.body_angle.get_value(), self.player_state.body_state.neck_angle,
                 self.player_state.action_history.turn_in_progress), "STATUS")
-
+        if self.player_state.is_test_player():
+            debug_msg("{0} Commands: {1}".format(self.player_state.world_view.sim_time, commands), "GOALIE")
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)

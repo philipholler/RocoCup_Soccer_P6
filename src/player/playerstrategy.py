@@ -1,10 +1,10 @@
 from random import choice
 
 import parsing
-from constants import KICKABLE_MARGIN
+from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN
 from player import actions
 from player.actions import Command
-from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE
+from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE, CATCH_MODE
 from player.world_objects import Coordinate, Ball
 from utils import clamp, debug_msg
 
@@ -111,7 +111,7 @@ def _get_goalie_y_value(state):
     if ball.coord.pos_y > 7.01:
         return 7.01
     elif -7.01 < ball.coord.pos_y and ball.coord.pos_y < 7.01:
-        return ball.coord.pos_y
+        return ball.coord.pos_y * 0
     else:
         return -7.01
 
@@ -121,16 +121,31 @@ def determine_objective_goalie(state: PlayerState):
         # Locate
     if _ball_unknown(state):
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+
+    # If ball is at our position in 1 tick, catch it!
+    ball: Ball = state.world_view.ball.get_value()
+    positions = ball.project_ball_position(1, 0)
+    position, direction, speed = ball.approximate_position_direction_speed(2)
+    if positions is not None and speed > 0.2:
+        ball_pos_1_tick: Coordinate = positions[0]
+        if ball_pos_1_tick.euclidean_distance_from(state.position.get_value()) < CATCHABLE_MARGIN:
+            return Objective(state, lambda: actions.catch_ball(state), lambda: True, 1)
+
     # Project ball 10 ticks
     # If ball intercepts goal line within 10 ticks, intercept ball
     if not _ball_unknown(state):
         ball: Ball = state.world_view.ball.get_value()
-        if ball.will_hit_goal_within(10):
+        ball.is_moving_closer()
+        if ball.will_hit_goal_within(ticks=20):
+            # If not repositioning needed. Ball is on its way
+            if state.ball_incoming():
+                state.mode = CATCH_MODE
+                return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
             # Try to perform an interception of the ball if possible
             intercept_point, ticks = state.ball_interception()
             if intercept_point is not None:
                 if state.is_test_player():
-                    state.mode = INTERCEPT_MODE
+                    debug_msg("Goalie intercepting!", "GOALIE")
                 return _intercept_objective(state)
 
 
@@ -157,6 +172,12 @@ def determine_objective(state: PlayerState):
     # Goalie
     if state.num == 1:
         return determine_objective_goalie(state)
+
+    if state.num == 2 and state.team_name == "Team1":
+        return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+
+    if state.team_name == "Team2"and state.is_near_ball(KICKABLE_MARGIN):
+        return Objective(state, lambda: actions.shoot_to(state, Coordinate(-55, 0)), lambda: True, 1)
 
     if state.is_test_player():
         debug_msg(str(state.now()) + " Mode : " + str(state.mode), "MODE")

@@ -15,6 +15,7 @@ DRIBBLING_MODE = "DRIBBLING"
 CHASE_MODE = "CHASE"
 POSSESSION_MODE = "POSSESSION"
 PASSED_MODE = "PASSED"
+CATCH_MODE = "CATCH"
 
 
 class PlayerState:
@@ -125,7 +126,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 2 and self.team_name == "Team1"
+        return self.num == 1 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -251,6 +252,7 @@ class ActionHistory:
         self.last_orientation_action = 0
         self.last_orientation_time = 0
         self.last_see_update = 0
+        self.last_catch = 0
         self.two_see_updates_ago = 0
         self.three_see_updates_ago = 0
         self.has_just_intercept_kicked = False
