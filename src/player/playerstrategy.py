@@ -111,60 +111,81 @@ def _get_goalie_y_value(state):
     if ball.coord.pos_y > 7.01:
         return 7.01
     elif -7.01 < ball.coord.pos_y and ball.coord.pos_y < 7.01:
-        return ball.coord.pos_y * 0
+        return ball.coord.pos_y
     else:
         return -7.01
 
 
 def determine_objective_goalie(state: PlayerState):
-    # if ball unknown
-        # Locate
-    if _ball_unknown(state):
-        return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+    # Is grøntsag blind orient
+    if not state.body_angle.is_value_known() or not state.position.is_value_known():
+        return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
 
-    # If ball is at our position in 1 tick, catch it!
+    # Find ball
+    if _ball_unknown(state):
+        return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
+
+    # If catch ball successful or goal_kick, pass to teammate
+    if state.world_view.game_state == "free_kick_{0}".format(state.world_view.side) or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side):
+        if state.is_near_ball(KICKABLE_MARGIN):
+            pass_target = _choose_pass_target(state)
+            if pass_target is not None:
+                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
+            # No suitable pass target
+            return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
+        else:
+            return Objective(state, lambda: actions.jog_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
+
     ball: Ball = state.world_view.ball.get_value()
-    positions = ball.project_ball_position(1, 0)
-    position, direction, speed = ball.approximate_position_direction_speed(2)
+
+    # If in possession of the ball
+    if state.is_near_ball(KICKABLE_MARGIN):
+        pass_target = _choose_pass_target(state)
+        if pass_target is not None:
+            return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
+
+        # No suitable pass target
+        return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
+
+    # Catch ball if close!
+    positions = ball.project_ball_position(2, 0)
+    position, direction, speed = ball.approximate_position_direction_speed(4)
     if positions is not None and speed > 0.2:
         ball_pos_1_tick: Coordinate = positions[0]
+        # ball_pos_2_tick: Coordinate = positions[1]
         if ball_pos_1_tick.euclidean_distance_from(state.position.get_value()) < CATCHABLE_MARGIN:
-            return Objective(state, lambda: actions.catch_ball(state), lambda: True, 1)
-
-    # Project ball 10 ticks
-    # If ball intercepts goal line within 10 ticks, intercept ball
-    if not _ball_unknown(state):
-        ball: Ball = state.world_view.ball.get_value()
-        ball.is_moving_closer()
-        if ball.will_hit_goal_within(ticks=20):
-            # If not repositioning needed. Ball is on its way
-            if state.ball_incoming():
-                state.mode = CATCH_MODE
-                return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
-            # Try to perform an interception of the ball if possible
-            intercept_point, ticks = state.ball_interception()
-            if intercept_point is not None:
-                if state.is_test_player():
-                    debug_msg("Goalie intercepting!", "GOALIE")
-                return _intercept_objective(state)
+            return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)
 
 
-    # Follow ball y value
+    # Try to perform an interception of the ball if possible
+    intercept_point, ticks = state.ball_interception()
+    if intercept_point is not None and state.world_view.ball.get_value().distance > 0.5:
+        return _intercept_objective_goalie(state)
+
+    # If ball will hit goal soon, rush to position
+    if ball.will_hit_goal_within(5):
+        positions = ball.project_ball_position(2, 0)
+        if positions is not None:
+            return Objective(state, lambda: actions.rush_to(state, positions[1]), lambda: True, 1)
+
+    # If ball within 2 meters, run to it
+    if state.is_near_ball(2):
+        return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
+
+    # Stay close to y_pos of ball
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
         goalie_coord: Coordinate = state.position.get_value()
-        delta = 0.5
+        delta = 1.5
         optimal_y_value = _get_goalie_y_value(state)
-        if abs(optimal_y_value - goalie_coord.pos_y) > delta:
-            y_axis_adjustment = optimal_y_value - goalie_coord.pos_y
-            return Objective(state, lambda: actions.positional_adjustment(state, Coordinate(0, y_axis_adjustment)), lambda: True, 1)
+        if abs(optimal_y_value - goalie_coord.pos_y) > delta or abs(goalie_coord.pos_x) - 50 > delta:
+            if state.world_view.side == "l":
+                return Objective(state, lambda: actions.jog_to(state, Coordinate(-50, optimal_y_value)), lambda: True, 1)
+            else:
+                return Objective(state, lambda: actions.jog_to(state, Coordinate(50, optimal_y_value)), lambda: True, 1)
         else:
-            return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+            return Objective(state, lambda: actions.face_ball(state), lambda: True, 1)
 
-    # If near ball
-        # Catch
 
-    # If ball in hands, kick to player
-        # Kick to player
 
 
 
@@ -240,6 +261,24 @@ def _locate_ball_objective(state: PlayerState):
     return Objective(state, lambda: actions.locate_ball(state),
                      lambda: state.world_view.ball.is_value_known(state.action_history.last_see_update), 1)
 
+
+def _intercept_objective_goalie(state):
+    ball: Ball = state.world_view.ball.get_value()
+    dist = ball.distance
+
+    if not ball.is_moving_closer():
+        if dist < 15:
+            return _rush_to_ball_objective(state)
+
+    intercept_point, tick = state.ball_interception()
+    if intercept_point is not None and ball.distance > 0.5:
+        if intercept_point.euclidean_distance_from(state.position.get_value()) > KICKABLE_MARGIN:
+            return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())
+        else:
+            return Objective(state, lambda: actions.receive_ball(state), lambda: state.is_near_ball())
+
+    else:
+        return determine_objective_goalie(state)
 
 def _intercept_objective(state):
     ball: Ball = state.world_view.ball.get_value()

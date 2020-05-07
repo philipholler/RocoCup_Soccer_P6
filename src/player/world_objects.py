@@ -195,6 +195,16 @@ class Ball:
                 return True
         return False
 
+    def get_goal_hit_coordinate(self, ticks):
+        ball_positions = self.project_ball_position(ticks, 0)
+        if ball_positions is None:
+            return None
+        for position in ball_positions:
+            pos, dire, speed = self.approximate_position_direction_speed(3)
+            if position.pos_x - speed <= -52.5 and -7.01 <= position.pos_y <= 7.01:
+                return position
+        return None
+
     def project_ball_collision_time(self):
         start_time = self.dist_history[0][1]
         start_dist = self.dist_history[0][0]

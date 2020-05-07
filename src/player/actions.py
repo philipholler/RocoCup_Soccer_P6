@@ -58,10 +58,14 @@ class CommandBuilder:
             cmd.urgent = True
 
     def append_turn_action(self, state: PlayerState, turn_moment, urgent=False):
+        if abs(turn_moment) < 0.2:
+            return
         self._append_action("(turn {0})".format(turn_moment), urgent)
         self.append_function(lambda: register_body_turn(state, turn_moment))
 
     def append_neck_turn(self, state, angle_to_turn, fov):
+        if abs(angle_to_turn) < 0.2:
+            return
         self._append_action("(turn_neck {0})".format(angle_to_turn))
         self.append_function(lambda: renew_angle(state, angle_to_turn, fov))
         self.append_function(lambda: register_neck_turn(state, angle_to_turn))
@@ -82,8 +86,8 @@ class CommandBuilder:
         self._append_action("(dash {0})".format(power), urgent)
         self.current_command().add_function(lambda: project_dash(state, power))
 
-    def append_catch_action(self, state, urgent=False):
-        self._append_action("(catch {0})".format(state.world_view.ball.get_value().direction), urgent)
+    def append_catch_action(self, state, ball_pos_1_tick: Coordinate, urgent=False):
+        self._append_action("(catch {0})".format(int(_calculate_relative_angle(state, ball_pos_1_tick))), urgent)
 
     def append_function(self, f):
         self.current_command().add_function(f)
@@ -415,15 +419,28 @@ def locate_ball(state: PlayerState):
 
     return commandBuilder.command_list
 
-def catch_ball(state: PlayerState):
+def catch_ball(state: PlayerState, ball_pos_1_tick: Coordinate):
     commandBuilder = CommandBuilder()
-    commandBuilder.append_catch_action(state, urgent=True)
+    if state.world_view.sim_time - state.action_history.last_catch < 5:
+        debug_msg("Can't catch due to penalty: ", "GOALIE")
+        return commandBuilder.command_list
+    commandBuilder.append_catch_action(state, ball_pos_1_tick, urgent=True)
+    commandBuilder.current_command().add_function(lambda: register_catch_action(state))
 
     return commandBuilder.command_list
 
+def register_catch_action(state: PlayerState):
+    state.action_history.last_catch = state.world_view.sim_time
+
+def face_ball(state: PlayerState):
+    command_builder = CommandBuilder()
+    rel_angle = _calculate_relative_angle(state, state.world_view.ball.get_value().coord)
+
+    command_builder.append_turn_action(state, _calculate_turn_moment(state.body_state.speed, rel_angle))
+    append_look_at_ball_neck_only(state, command_builder, int(rel_angle))
+    return command_builder.command_list
 
 # Used to reorient self in case of not knowing position or body angle
-@require_angle_update
 def blind_orient(state):
     if state.is_test_player():
         debug_msg(str(state.now()) + "blind_orient", "ORIENTATION")
@@ -494,6 +511,23 @@ def idle_orientation(state: PlayerState):
     #    com.add_function(lambda: kick_if_collision(state, com))
     return command_builder.command_list
 
+@require_angle_update
+def idle_orientation_body_only(state: PlayerState):
+    command_builder = CommandBuilder()
+    if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
+        return blind_orient(state)
+
+    # Perform an orientation with boundaries of neck movement
+    if state.action_history.last_orientation_action < state.now() - _IDLE_ORIENTATION_INTERVAL and False: # todo testing
+        _append_orient(state, False, command_builder)
+        state.action_history.last_orientation_action = state.now()
+    else:
+        append_look_at_ball_body_only(state, command_builder)
+
+    #for com in command_builder.command_list:
+    #    com.add_function(lambda: kick_if_collision(state, com))
+    return command_builder.command_list
+
 
 def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, body_dir_change=0, fov=None):
     if state.is_test_player():
@@ -529,6 +563,13 @@ def append_look_at_ball(state: PlayerState, command_builder):
         fov = _determine_fov(state)
         command_builder.append_fov_change(state, fov)
         _append_look_direction(state, ball_angle, fov, command_builder)
+
+def append_look_at_ball_body_only(state: PlayerState, command_builder):
+    ball_position = state.world_view.ball.get_value().coord
+    ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
+    angle_difference = abs((state.body_angle.get_value()) - ball_angle)
+    if angle_difference > 0.1:
+        _append_orient(state, False, command_builder, angle_difference)
 
 
 def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_change=0):
