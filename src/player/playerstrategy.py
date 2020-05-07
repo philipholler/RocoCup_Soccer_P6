@@ -134,6 +134,8 @@ def determine_objective(state: PlayerState):
     # Try to perform an interception of the ball if possible
     intercept_point, ticks = state.ball_interception()
     if intercept_point is not None:
+        if state.is_test_player():
+            debug_msg(str(state.now()) + " Intercepting!", "ACTIONS")
         state.mode = INTERCEPT_MODE
         debug_msg(str(state.now()) + "Player " + str(state.num) + " intercepting on " + str(intercept_point)
                                      + " at time " + str(state.now() + ticks), "INTERCEPTION")
@@ -141,12 +143,17 @@ def determine_objective(state: PlayerState):
 
     # Retrieve the ball if you are one of the two closest players to the ball
     if state.is_nearest_ball(1):
+        if state.is_test_player():
+            debug_msg(str(state.now()) + " Rush to ball!", "ACTIONS")
         return _rush_to_ball_objective(state)
 
     # Finally, if ball is not heading directly towards player, reposition while looking at the ball
     if not state.ball_incoming():
+        if state.is_test_player():
+            debug_msg(str(state.now()) + " Position optimally!", "ACTIONS")
         return _position_optimally_objective(state)
 
+    debug_msg(str(state.now()) + " Idle orientation!", "ACTIONS")
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
 

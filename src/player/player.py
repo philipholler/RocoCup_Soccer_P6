@@ -140,8 +140,19 @@ class PlayerState:
 
     def ball_interception(self):
         wv = self.world_view
+
         if wv.ball.is_value_known(self.now() - 4):
-            project_positions = wv.ball.get_value().project_ball_position(10, self.now() - wv.ball.last_updated_time)
+            ball: Ball = wv.ball.get_value()
+            dist = ball.distance
+
+            required_points = 4 if dist <= 10 else round(4 + (dist - 9) / 2)
+
+            coord, direction, speed = ball.approximate_position_direction_speed(required_points)
+            if direction is None or speed < 0.3:
+                return None, None
+
+            tick_offset = self.now() - wv.ball.last_updated_time
+            project_positions = ball.project_ball_position(10, tick_offset)
             if project_positions is None:
                 return None, None
 

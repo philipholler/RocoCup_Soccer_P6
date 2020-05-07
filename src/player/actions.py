@@ -297,15 +297,18 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
     projected_dir = state.body_angle.get_value()
     projected_speed = state.body_state.speed
     dist = target.euclidean_distance_from(state.position.get_value())
+    projected_pos = state.position.get_value()
 
     if not state.body_facing(target, _allowed_angle_delta(dist)) and not state.action_history.turn_in_progress:
-        if projected_speed >= 0.1:  # Stop moving if necessary
+        rotation = _calculate_relative_angle(state, target)
+
+        # Stop moving if necessary to turn completely towards target
+        if _calculate_turn_moment(projected_speed, rotation) >= 180:
             dash_power, projected_speed = _calculate_dash_power(state.body_state.speed, 0)
             command_builder.append_dash_action(state, dash_power)
             command_builder.next_tick()
             projected_speed *= PLAYER_SPEED_DECAY
 
-        rotation = _calculate_relative_angle(state, target)
         turn_moment = round(_calculate_turn_moment(projected_speed, rotation), 2)
 
         debug_msg(str(state.now()) + "global angle: " + str(state.last_see_global_angle) + " off by: " + str(rotation), "POSITIONAL")
@@ -320,11 +323,13 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
 
         # Update projections
         projected_dir += _calculate_actual_turn_angle(state.body_state.speed, first_turn_moment)
+        projected_pos = project_position(projected_pos, projected_speed, projected_dir)
         projected_speed *= PLAYER_SPEED_DECAY
+
     elif not state.action_history.turn_in_progress:
         _append_neck_orientation(state, command_builder, 0)
 
-    projected_pos = state.position.get_value()
+
     # Add dash commands for remaining amount of ticks
     for i in range(command_builder.ticks, _MAX_TICKS_PER_SEE_UPDATE):
         projected_dist = target.euclidean_distance_from(projected_pos)
@@ -339,7 +344,7 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
         command_builder.append_dash_action(state, power)
         command_builder.next_tick()
 
-        projected_pos = project_position(projected_pos, projected_speed, -projected_dir)
+        projected_pos = project_position(projected_pos, projected_speed, projected_dir)
 
         # Predict new dist to target and speed
         projected_dist -= projected_speed
@@ -349,7 +354,7 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
 
 
 def project_position(current_pos, current_speed, current_dir):
-    return current_pos + geometry.get_xy_vector(direction=current_dir, length=current_speed)
+    return current_pos + geometry.get_xy_vector(direction=-current_dir, length=current_speed)
 
 
 def distance_in_three_ticks(speed):
