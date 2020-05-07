@@ -9,7 +9,7 @@ from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
 from utils import clamp, debug_msg
 
-_IDLE_ORIENTATION_INTERVAL = 8
+_IDLE_ORIENTATION_INTERVAL = 4
 _POSSESSION_ORIENTATION_INTERVAL = 2
 
 SET_FOV_NORMAL = "(change_view normal high)"
@@ -183,6 +183,7 @@ def register_body_turn(state: PlayerState, body_turn_moment=0):
 def project_dash(state: PlayerState, dash_power):
     actual_speed = _calculate_actual_speed(state.body_state.speed, dash_power)
     state.body_state.speed = actual_speed * PLAYER_SPEED_DECAY
+    state.action_history.expected_speed = actual_speed * PLAYER_SPEED_DECAY
     """exp_angle = state.action_history.expected_angle
 
     if exp_angle is not None:
@@ -260,7 +261,7 @@ def _append_rushed_position_adjustment(state: PlayerState, delta_x, delta_y, com
     projected_speed = state.body_state.speed
 
     if abs(turn_angle) > _allowed_angle_delta(distance):  # Need to turn body first
-        if projected_speed >= 0.1:  # Stop moving if necessary
+        if _calculate_turn_moment(projected_speed, turn_angle) >= 180:  # Stop moving if necessary
             dash_power, projected_speed = _calculate_dash_power(state.body_state.speed, 0)
             command_builder.append_dash_action(state, dash_power)
             command_builder.next_tick()
@@ -286,14 +287,15 @@ def rush_to(state: PlayerState, target: Coordinate):
 
 
 def rush_to_ball(state: PlayerState):
+    debug_msg(str(state.now()) + "RUSH TO BALL", "ACTIONS")
     if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
         debug_msg("ACTION: LOCATE BALL", "INTERCEPTION")
         return locate_ball(state)
-    ball: Ball = state.world_view.ball.get_value()
 
+    ball: Ball = state.world_view.ball.get_value()
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
     if locations is not None:
-        return go_to(state, locations[3], dash_power_limit=PLAYER_RUSH_POWER)
+        return go_to(state, locations[4], dash_power_limit=PLAYER_RUSH_POWER)
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
 
@@ -481,14 +483,15 @@ def idle_neck_orientation(state):
 def _append_neck_orientation(state: PlayerState, command_builder, body_dir_change=0):
     if state.is_test_player():
         debug_msg(str(state.now()) + " _append_neck_orientation", "ORIENTATION")
-    if state.action_history.last_orientation_action < (state.now() - _IDLE_ORIENTATION_INTERVAL) \
+    if state.action_history.ball_focus_actions > _IDLE_ORIENTATION_INTERVAL \
             and state.world_view.ball.is_value_known(state.action_history.last_see_update):
         # Orient to least updated place within neck angle
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
-        state.action_history.last_orientation_action = state.now()
+        state.action_history.ball_focus_actions = 0
     else:
         # Look towards ball as far as possible
         append_look_at_ball_neck_only(state, command_builder, body_dir_change)
+        state.action_history.ball_focus_actions += 1
 
 
 @require_angle_update
@@ -498,31 +501,13 @@ def idle_orientation(state: PlayerState):
         return blind_orient(state)
 
     # Perform an orientation with boundaries of neck movement
-    if state.action_history.last_orientation_action < state.now() - _IDLE_ORIENTATION_INTERVAL and False: # todo testing
+    if state.action_history.ball_focus_actions > _IDLE_ORIENTATION_INTERVAL:
         _append_orient(state, False, command_builder)
-        state.action_history.last_orientation_action = state.now()
+        state.action_history.ball_focus_actions = 0
     else:
         append_look_at_ball(state, command_builder)
+        state.action_history.ball_focus_actions += 1
 
-    #for com in command_builder.command_list:
-    #    com.add_function(lambda: kick_if_collision(state, com))
-    return command_builder.command_list
-
-@require_angle_update
-def idle_orientation_body_only(state: PlayerState):
-    command_builder = CommandBuilder()
-    if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago):
-        return blind_orient(state)
-
-    # Perform an orientation with boundaries of neck movement
-    if state.action_history.last_orientation_action < state.now() - _IDLE_ORIENTATION_INTERVAL and False: # todo testing
-        _append_orient(state, False, command_builder)
-        state.action_history.last_orientation_action = state.now()
-    else:
-        append_look_at_ball_body_only(state, command_builder)
-
-    #for com in command_builder.command_list:
-    #    com.add_function(lambda: kick_if_collision(state, com))
     return command_builder.command_list
 
 
@@ -549,7 +534,7 @@ def _append_orient(state, neck_movement_only, command_builder: CommandBuilder, b
 
     angle = turn_history.least_updated_angle(fov_size, lower_bound, upper_bound)
     _append_look_direction(state, angle, fov_size, command_builder)
-    state.action_history.last_orientation_action = 0
+    state.action_history.ball_focus_actions = 0
 
 
 def append_look_at_ball(state: PlayerState, command_builder):
@@ -560,6 +545,7 @@ def append_look_at_ball(state: PlayerState, command_builder):
         fov = _determine_fov(state)
         command_builder.append_fov_change(state, fov)
         _append_look_direction(state, ball_angle, fov, command_builder)
+
 
 def append_look_at_ball_body_only(state: PlayerState, command_builder):
     ball_position = state.world_view.ball.get_value().coord
@@ -574,7 +560,13 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         debug_msg(str(state.now()) + " _look_at_ball_neck_only. Body_dir_change=" + str(body_dir_change), "ORIENTATION")
     # Look towards ball as far as possible
     body_angle = state.body_angle.get_value() + body_dir_change
-    ball_position: Coordinate = state.world_view.ball.get_value().coord
+    ball = state.world_view.ball.get_value()
+    ball_projection = state.world_view.ball.get_value().project_ball_position(1, state.now() - state.world_view.ball.last_updated_time, 2)
+    if ball_projection is None:
+        ball_position = ball.coord
+    else:
+        ball_position = ball_projection[0]
+
     global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
     angle_difference = smallest_angle_difference(body_angle + state.body_state.neck_angle, global_ball_angle)
 
@@ -657,12 +649,13 @@ def dribble(state: PlayerState, dir: int):
 
     return command_builder.command_list
 
+
 @require_angle_update
 def look_for_pass_target(state):
     command_builder = CommandBuilder()
     # Perform an orientation with boundaries of neck movement
     _append_orient(state, neck_movement_only=False, command_builder=command_builder, fov=FOV_NORMAL)
-    state.action_history.last_orientation_action = state.now()
+    state.action_history.ball_focus_actions = 0
     return command_builder.command_list
 
 

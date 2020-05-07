@@ -160,8 +160,8 @@ class Ball:
         if data_points_used < minimum_data_points_used:
             return None, None, None
 
-        #debug_msg("Prediction based on {0} of these data points: {1}".format(data_points_used, self.position_history)
-        #          , "INTERCEPTION")
+        debug_msg("Prediction based on {0} of these data points: {1}".format(data_points_used, self.position_history)
+                  , "INTERCEPTION")
 
         direction = degrees(calculate_full_origin_angle_radians(first_coord, last_coord))
         self.projection = self.position_history[0][0], direction, final_speed

@@ -1,7 +1,6 @@
 import math
 from random import choice
 
-import parsing
 from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS
 from geometry import calculate_full_origin_angle_radians
 from player import actions
@@ -12,28 +11,30 @@ from utils import clamp, debug_msg
 
 
 class Objective:
-    def __init__(self, state: PlayerState, command_generator, completion_criteria, maximum_duration=1) -> None:
+    def __init__(self, state: PlayerState, command_generator, completion_criteria=lambda: True, maximum_duration=1) -> None:
         self.command_generator = command_generator
         self.completion_criteria = completion_criteria
         self.deadline = state.now() + maximum_duration
         self.commands_executed = 0
         self.planned_commands: [Command] = []
         self.last_command_update_time = -1
+        self.has_processed_see_update = False
 
     def should_recalculate(self, state: PlayerState):
         # Don't recalculate if there are any un-executed urgent commands
-        if self.has_urgent_commands() or self.last_command_update_time >= state.action_history.last_see_update:
+        if self.has_urgent_commands() or self.has_processed_see_update:
             return False
 
         deadline_reached = self.deadline <= state.now()
         return deadline_reached or self.completion_criteria()
 
     def get_next_commands(self, state: PlayerState):
-        if (not self.has_urgent_commands()) and self.last_command_update_time < state.action_history.last_see_update:
+        if (not self.has_urgent_commands()) and not self.has_processed_see_update:
             # Update planned commands after receiving a 'see' update
             self.planned_commands = self.command_generator()
             self.last_command_update_time = state.action_history.last_see_update
             self.commands_executed = 0
+            self.has_processed_see_update = True
 
         if self.commands_executed >= len(self.planned_commands):
             return []  # All planned commands have been executed, so don't do anything until next planning
@@ -51,70 +52,35 @@ class Objective:
         return False
 
 
-class CompositeObjective:
-    def __init__(self, *args: [Objective]):
-        self.objectives = []
-        for o in args:
-            self.objectives.append(o)
-        self.completed_objectives = 0
-
-    def should_recalculate(self, state: PlayerState):
-        # Don't recalculate if there are any un-executed urgent commands
-        if self.completed_objectives >= len(self.objectives):
-            return True
-        if self.completed_objectives == len(self.objectives) - 1:
-            return self.objectives[self.completed_objectives].should_recalculate(state)
-        return False
-
-    def get_next_commands(self, state: PlayerState):
-        if self._current_objective().should_recalculate(state):
-            self.completed_objectives += 1
-
-        if self.completed_objectives >= len(self.objectives):
-            return []
-
-        return self._current_objective().get_next_commands(state)
-
-    def has_urgent_commands(self):
-        for objective in self.objectives:
-            if objective.has_urgent_commands():
-                return True
-        return False
-
-    def _current_objective(self) -> Objective:
-        return self.objectives[self.completed_objectives]
-
-
 def _dribble_objective(state: PlayerState):
     side = 1 if state.world_view.side == "l" else -1
-
-    if state.is_nearest_ball(1):
-        if not state.is_near_ball(KICKABLE_MARGIN):
-            return _rush_to_ball_objective(state)
-
-        pos: Coordinate = state.position.get_value()
-        if pos.euclidean_distance_from(Coordinate(52.5 * side, 0)) < 24:
-            return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, 0), 100), lambda: True, 1)
-
-        if not state.action_history.has_looked_for_targets:
-            debug_msg("looking for pass targets", "DRIBBLE")
-            state.action_history.has_looked_for_targets = True
-
-            return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
-
-        target = _choose_pass_target(state)
-        if target is not None:
-            return Objective(state, lambda: actions.pass_to_player(state, target), lambda: True, 1)
-
-        if state.is_near_ball() and state.action_history.has_looked_for_targets:
-            target_coord: Coordinate = Coordinate(52.5 * side, 0)
-            opposing_goal_dir = math.degrees(calculate_full_origin_angle_radians(target_coord, state.position.get_value()))
-            state.action_history.has_looked_for_targets = False
-            return Objective(state, lambda: actions.dribble(state, int(opposing_goal_dir)), lambda: False, 1)
-        return _rush_to_ball_objective(state)
-    else:
+    if not state.is_nearest_ball(1):
         state.mode = DEFAULT_MODE
         return determine_objective(state)
+
+    if not state.is_near_ball(KICKABLE_MARGIN):
+        return _rush_to_ball_objective(state)
+
+    pos: Coordinate = state.position.get_value()
+    if pos.euclidean_distance_from(Coordinate(52.5 * side, 0)) < 24:
+        return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, 0), 100), lambda: True, 1)
+
+    if not state.action_history.has_looked_for_targets:
+        debug_msg(str(state.now()) + "looking for pass targets", "DRIBBLE")
+        state.action_history.has_looked_for_targets = True
+
+        return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
+
+    target = _choose_pass_target(state)
+    if target is not None:
+        return Objective(state, lambda: actions.pass_to_player(state, target), lambda: True, 1)
+
+    if state.is_near_ball() and state.action_history.has_looked_for_targets:
+        target_coord: Coordinate = Coordinate(52.5 * side, 0)
+        opposing_goal_dir = math.degrees(calculate_full_origin_angle_radians(target_coord, state.position.get_value()))
+        state.action_history.has_looked_for_targets = False
+        return Objective(state, lambda: actions.dribble(state, int(opposing_goal_dir)), lambda: False, 1)
+    return _rush_to_ball_objective(state)
 
 
 def _pass_objective(state):
@@ -145,6 +111,7 @@ def _lost_orientation(state):
     return (not state.body_angle.is_value_known(state.action_history.last_see_update)) \
            or (not state.position.is_value_known(state.action_history.last_see_update))
 
+
 def determine_objective_goalie(state: PlayerState):
     # Is grøntsag blind orient
     if _lost_orientation(state):
@@ -169,6 +136,8 @@ def determine_objective_goalie(state: PlayerState):
 
     # If in possession of the ball
     if state.is_near_ball(KICKABLE_MARGIN):
+        return Objective(state, lambda: actions.shoot_to(state, Coordinate(0, 0), power=70), lambda: False, 50)
+
         pass_target = _choose_pass_target(state)
         if pass_target is not None:
             return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
@@ -215,10 +184,11 @@ def determine_objective_goalie(state: PlayerState):
             return Objective(state, lambda: actions.face_ball(state), lambda: True, 1)
 
 
-
-
-
 def determine_objective(state: PlayerState):
+
+    if state.world_view.game_state == 'before_kick_off':
+        return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+
     # Goalie
     if state.num == 1:
         return determine_objective_goalie(state)
