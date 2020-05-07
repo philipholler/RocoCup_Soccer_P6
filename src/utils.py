@@ -3,14 +3,13 @@ DEBUG_DICT = {
     "POSITIONAL": False,
     "ALL": False,
     "SCENARIOS": False,
-    "INTERCEPTION": False,
+    "INTERCEPTION": True,
     "KICK": False,
-    "ACTIONS": False,
+    "ACTIONS": True,
     "ORIENTATION": False,
     "MESSAGES": True,
     "STATUS": False,
-    "MODE": False,
-    "GOALIE": True
+    "MODE": True
 }
 
 

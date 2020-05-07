@@ -91,6 +91,10 @@ def _chase_objective(state):
 
 
 def _pass_objective(state):
+    if not state.is_near_ball():
+        state.mode = DEFAULT_MODE
+        return determine_objective(state)
+
     pass_target = _choose_pass_target(state)
     if pass_target is not None:
         state.mode = DEFAULT_MODE
@@ -218,23 +222,23 @@ def determine_objective(state: PlayerState):
         return _locate_ball_objective(state)
 
     # If in possession of the ball
-    if state.is_near_ball(KICKABLE_MARGIN):
+    if state.is_near_ball():
         pass_target = _choose_pass_target(state)
         if pass_target is not None:
             return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
 
         # No suitable pass target
+        state.mode = POSSESSION_MODE
         return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
 
     # Try to perform an interception of the ball if possible
-    intercept_point, ticks = state.ball_interception()
+    intercept_point, tick = state.ball_interception()
     if intercept_point is not None and state.world_view.ball.get_value().distance > 1.0:
-        if state.is_test_player():
-            debug_msg(str(state.now()) + " Intercepting!", "ACTIONS")
         state.mode = INTERCEPT_MODE
-        debug_msg(str(state.now()) + "Player " + str(state.num) + " intercepting on " + str(intercept_point)
-                                     + " at time " + str(state.now() + ticks), "INTERCEPTION")
-        return _intercept_objective(state)
+        if intercept_point.euclidean_distance_from(state.position.get_value()) > KICKABLE_MARGIN:
+            return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())
+        else:
+            return Objective(state, lambda: actions.receive_ball(state), lambda: state.is_near_ball())
 
     # Retrieve the ball if you are one of the two closest players to the ball
     if state.is_nearest_ball(1):
@@ -416,8 +420,9 @@ def _choose_pass_target(state: PlayerState):
     team_members = state.world_view.get_teammates(state.team_name, max_data_age=5)
     if len(team_members) is 0:
         return None
+    target = list(sorted(team_members, key=lambda p: p.coord.pos_x, reverse=True))[0]
 
-    return list(sorted(team_members, key=lambda p: p.coord.pos_x, reverse=True))[0]
+    return target
 
 
 def team_has_corner_kick(state):

@@ -126,7 +126,7 @@ class Ball:
         max_deviation = 60  # angle deviation
         max_speed_deviation = 1.2
         age = time_1 - time_2
-        max_age = 12
+        max_age = 20
 
         data_points_used = 2
         for i, pos_and_time in enumerate(islice(history, 2, len(history))):
@@ -245,9 +245,14 @@ class Ball:
 
         return start_time + ticks_until_collision
 
-    def project_ball_collision_time(self):
-
-        pass
+    def project_ball_collision_time_2(self, player_coord, time, minimum_data_points):
+        offset = time - self.position_history[0][1]
+        positions: [Coordinate] = self.project_ball_position(5, offset, minimum_data_points)
+        if positions is not None:
+            for i, pos in enumerate(positions):
+                if pos.euclidean_distance_from(player_coord) < KICKABLE_MARGIN - 0.1:
+                    return time + i
+        return None
 
     def __repr__(self) -> str:
         return "(distance= {0}, direction= {1}, coord= {2})".format(

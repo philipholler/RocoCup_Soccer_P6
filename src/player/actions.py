@@ -128,9 +128,7 @@ def kick_if_collision(state: PlayerState, command: Command, speed=0.5, ball_dir:
     if ball is not None and (state.now() - state.ball_collision_time) > 5 and not state.action_history.has_just_intercept_kicked:
         collision_time = ball.project_ball_collision_time()
 
-        #ball.project_ball_position()
-        #ball.project_ball_collision_time_2(state)
-
+        print(ball.project_ball_collision_time_2(state.position.get_value(), state.now(), 2))
         if state.is_test_player():
             debug_msg("{0} | Predicted collision time {1} | Distance history: {2} | Last collision time {3} "
                       .format(state.now(), collision_time, ball.dist_history, state.ball_collision_time)
@@ -151,7 +149,7 @@ def _kick_stop_ball_msg(state, speed, ball_dir):
     else:
         relative_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=kick_dir)
 
-    power = round(10 * speed)
+    power = round(10 + 6 * speed)
     message = "(kick {0} {1})".format(str(power), str(relative_dir))
     if state.is_test_player():
         debug_msg(str(state.now()) + " | STOP BALL KICK. Relative Dir {0} | Power {1}".format(relative_dir, power)
@@ -233,7 +231,7 @@ def intercept(state: PlayerState, intercept_point: Coordinate):
 
     coord, direction, speed = state.world_view.ball.get_value().approximate_position_direction_speed(4)
     for com in command_builder.command_list:
-        com.add_function(lambda: kick_if_collision(state, com, speed=speed, ball_dir=direction))
+        com.add_function(lambda c=com: kick_if_collision(state, com, speed=speed, ball_dir=direction))
 
     return command_builder.command_list
 
@@ -248,7 +246,7 @@ def receive_ball(state: PlayerState):
     command_builder.append_empty_actions(4, False)
 
     for com in command_builder.command_list:
-        com.add_function(lambda: kick_if_collision(state, com, speed=speed, ball_dir=direction))
+        com.add_function(lambda c=com: kick_if_collision(state, c, speed=speed, ball_dir=direction))
 
     return command_builder.command_list
 
@@ -694,7 +692,7 @@ def _calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()
     dir_diff = abs(ball.direction)
     dist_ball = ball.distance
-    target_delivery_velocity = 0.5  # The velocity of the ball after traveling the given distance
+    target_delivery_velocity = 0.8  # The velocity of the ball after traveling the given distance
 
     time_to_travel_distance = 50*math.log((3*distance+50*target_delivery_velocity)/(50*target_delivery_velocity))/3
     start_velocity = target_delivery_velocity / math.exp(-0.06 * time_to_travel_distance)
