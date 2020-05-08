@@ -108,8 +108,8 @@ def _get_goalie_y_value(state):
 
 
 def _lost_orientation(state):
-    return (not state.body_angle.is_value_known(state.action_history.last_see_update)) \
-           or (not state.position.is_value_known(state.action_history.last_see_update))
+    return (not state.body_angle.is_value_known(state.action_history.two_see_updates_ago)) \
+           or (not state.position.is_value_known(state.action_history.two_see_updates_ago))
 
 
 def determine_objective_goalie(state: PlayerState):
@@ -182,7 +182,7 @@ def determine_objective_goalie(state: PlayerState):
 
 
 def determine_objective(state: PlayerState):
-    if state.world_view.game_state == 'before_kick_off':
+    if state.world_view.game_state == 'before_kick_off' or True:
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
     # Goalie

@@ -371,7 +371,8 @@ def create_flags(flag_strings, state: PlayerState):
 
 
 def _approx_body_angle(flags: [Flag], state):
-    if not state.position.is_value_known():
+    if state.position.last_updated_time < state.now():
+        use_expected_angles(state)
         return
 
     estimated_angles = []
@@ -435,6 +436,22 @@ def _approx_body_angle(flags: [Flag], state):
         # state.body_angle.set_value(mean_angle, state.position.last_updated_time)
     else:
         debug_msg("No angle could be found", "POSITIONAL")
+        use_expected_angles(state)
+        return
+
+
+def use_expected_angles(state):
+    if state.action_history.expected_body_angle is not None:
+        debug_msg("Using expected body angle instead", "POSITIONAL")
+        state.body_angle.set_value(state.action_history.expected_body_angle, state.now())
+        state.action_history.expected_body_angle = None
+        state.action_history.turn_in_progress = False
+
+    if state.action_history.expected_neck_angle is not None:
+        debug_msg("Using expected neck angle instead", "POSITIONAL")
+        state.body_angle.set_value(state.action_history.expected_neck_angle, state.now())
+        state.action_history.expected_neck_angle = None
+        state.action_history.turn_in_progress = False
 
 
 # ((flag g r b) 99.5 -5)

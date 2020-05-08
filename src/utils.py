@@ -1,9 +1,9 @@
 
 DEBUG_DICT = {
-    "POSITIONAL": False,
+    "POSITIONAL": True,
     "ALL": False,
     "SCENARIOS": False,
-    "INTERCEPTION": True,
+    "INTERCEPTION": False,
     "KICK": False,
     "ACTIONS": False,
     "ORIENTATION": False,
@@ -11,7 +11,7 @@ DEBUG_DICT = {
     "STATUS": True,
     "MODE": False,
     "GOALIE": False,
-    "DRIBBLE": True,
+    "DRIBBLE": False,
     "BALL": True
 }
 

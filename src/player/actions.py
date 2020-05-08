@@ -9,7 +9,7 @@ from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
 from utils import clamp, debug_msg
 
-_IDLE_ORIENTATION_INTERVAL = 4
+_IDLE_ORIENTATION_INTERVAL = 1
 _POSSESSION_ORIENTATION_INTERVAL = 2
 
 SET_FOV_NORMAL = "(change_view normal high)"
@@ -298,6 +298,20 @@ def rush_to_ball(state: PlayerState):
         return go_to(state, locations[4], dash_power_limit=PLAYER_RUSH_POWER)
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
+
+
+def rush_collide_ball(state: PlayerState):
+    pass
+    """ball: Ball = state.world_view.ball.get_value()
+
+    angle_dif = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=state.body_angle)
+    if state.body_angle.get_value
+
+    locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
+    if locations is not None:
+        return go_to(state, locations[4], dash_power_limit=PLAYER_RUSH_POWER)
+    else:
+        return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)"""
 
 
 def jog_to(state: PlayerState, target: Coordinate):

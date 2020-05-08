@@ -116,7 +116,7 @@ class Ball:
         first_coord = c1
         last_coord = c2
 
-        if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.1:
+        if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.1 or c1.euclidean_distance_from(c2) > 4.2:
             return c1, 0, 0
 
         final_speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * BALL_DECAY
@@ -141,7 +141,7 @@ class Ball:
             age += time_1 - time_2
 
             dist = c1.euclidean_distance_from(c2)
-            if time_1 == time_2 or dist <= 0.05 or (dist < 0.3 and previous_dist < 0.3):
+            if time_1 == time_2 or dist <= 0.05 or (dist < 0.3 and previous_dist < 0.3) or dist > 4.2:
                 break
             previous_dist = dist
 
