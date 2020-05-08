@@ -28,7 +28,6 @@ class Thinker(threading.Thread):
         self.player_conn: client_connection.Connection = None
         # Non processed inputs from server
         self.input_queue = queue.Queue()
-        self.current_objective: Objective = None
         self.is_positioned = False
 
     def start(self) -> None:
@@ -38,6 +37,7 @@ class Thinker(threading.Thread):
         else:
             init_string = "(init " + self.player_state.team_name + " (version 16))"
         self.player_conn.action_queue.put(init_string)
+        self.player_conn.action_queue.put("(synch_see)")
         init_msg: str = self.input_queue.get()
         parsing.parse_message_update_state(init_msg, self.player_state)
         self.position_player()
@@ -55,7 +55,7 @@ class Thinker(threading.Thread):
 
     def think(self):
         can_send = False
-        self.current_objective = determine_objective(self.player_state)
+        self.player_state.current_objective = determine_objective(self.player_state)
         time_since_action = 0
         last_time = time.time()
         while not self._stop_event.is_set():
@@ -80,10 +80,10 @@ class Thinker(threading.Thread):
 
     # Called every 100ms
     def perform_action(self):
-        if self.current_objective.should_recalculate(self.player_state):
-            self.current_objective = determine_objective(self.player_state)
+        if self.player_state.current_objective.should_recalculate(self.player_state):
+            self.player_state.current_objective = determine_objective(self.player_state)
 
-        commands = self.current_objective.get_next_commands(self.player_state)
+        commands = self.player_state.current_objective.get_next_commands(self.player_state)
         if self.player_state.is_test_player() and self.player_state.world_view.ball.get_value() is not None:
             debug_msg(str(self.player_state.now()) + str(commands), "ACTIONS")
             debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "

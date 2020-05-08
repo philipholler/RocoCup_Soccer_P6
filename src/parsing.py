@@ -853,9 +853,9 @@ def _parse_hear(text: str, ps: PlayerState):
 # [27] = collision,
 # [28] = charged, [29] = card
 
-def _parse_body_sense(text: str, ps: PlayerState):
+def _parse_body_sense(text: str, state: PlayerState):
     if "collision (ball" in text:
-        ps.ball_collision_time = ps.now()
+        state.ball_collision_time = state.now()
     regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({0})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
@@ -877,22 +877,31 @@ def _parse_body_sense(text: str, ps: PlayerState):
     '''
 
     # ps.body_state.time = int(matched.group(1))
-    ps.body_state.view_mode = matched.group(2)
-    ps.body_state.stamina = float(matched.group(3))
-    ps.body_state.effort = float(matched.group(4))
-    ps.body_state.capacity = float(matched.group(5))
-    ps.body_state.speed = float(matched.group(6))
-    ps.body_state.direction_of_speed = int(matched.group(7))
-    ps.body_state.neck_angle = int(matched.group(8))
-    ps.body_state.arm_movable_cycles = int(matched.group(17))
-    ps.body_state.arm_expire_cycles = int(matched.group(18))
-    ps.body_state.distance = float(matched.group(19))
-    ps.body_state.direction = int(matched.group(20))
-    ps.body_state.target = matched.group(22)
-    ps.body_state.tackle_expire_cycles = int(matched.group(25))
-    ps.body_state.collision = matched.group(27)
-    ps.body_state.charged = int(matched.group(28))
-    ps.body_state.card = matched.group(29)
+    state.body_state.view_mode = matched.group(2)
+    state.body_state.stamina = float(matched.group(3))
+    state.body_state.effort = float(matched.group(4))
+    state.body_state.capacity = float(matched.group(5))
+
+    expected_speed = state.action_history.expected_speed
+    if expected_speed is not None:
+        state.body_state.speed = expected_speed
+        state.action_history.expected_speed = None
+    else:
+        state.body_state.speed = float(matched.group(6))
+
+
+
+    state.body_state.direction_of_speed = int(matched.group(7))
+    state.body_state.neck_angle = int(matched.group(8))
+    state.body_state.arm_movable_cycles = int(matched.group(17))
+    state.body_state.arm_expire_cycles = int(matched.group(18))
+    state.body_state.distance = float(matched.group(19))
+    state.body_state.direction = int(matched.group(20))
+    state.body_state.target = matched.group(22)
+    state.body_state.tackle_expire_cycles = int(matched.group(25))
+    state.body_state.collision = matched.group(27)
+    state.body_state.charged = int(matched.group(28))
+    state.body_state.card = matched.group(29)
 
     return matched
 

@@ -38,6 +38,7 @@ class PlayerState:
         self.starting_position: Coordinate = None
         self.playing_position: Coordinate = None
         self.last_see_global_angle = 0
+        self.current_objective = None
         super().__init__()
 
     def __str__(self) -> str:
@@ -126,7 +127,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 1 and self.team_name == "Team1"
+        return self.num == 2 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -215,12 +216,16 @@ class PlayerState:
         self.action_history.two_see_updates_ago = self.action_history.last_see_update
         self.action_history.last_see_update = self.now()
 
+        if self.current_objective is not None:
+            self.current_objective.has_processed_see_update = False
+
         if self.world_view.ball.last_updated_time == self.action_history.last_see_update:
             # We've seen the ball this tick, so it is not missing
             self._ball_seen_since_missing = True
         elif self.is_ball_missing():
             # We're looking in the direction of the ball and not seeing it, so it must be missing
             self._ball_seen_since_missing = False
+
 
     def update_ball(self, new_ball, time):
         self.world_view.ball.set_value(new_ball, time)
@@ -242,15 +247,27 @@ class PlayerState:
 
         return False
 
+    def is_inside_own_box(self) -> bool:
+        pos: Coordinate = self.position.get_value()
 
+        result = True
+        if self.world_view.side == "l":
+            if pos.pos_x > -36 or (pos.pos_y < -20 or pos.pos_y > 20):
+                result = False
+        else:
+            if pos.pos_x < 36 or (pos.pos_y < -20 or pos.pos_y > 20):
+                result = False
 
+        if self.is_test_player():
+            debug_msg("is_inside_own_box={0}, Pos={1}".format(result, pos), "GOALIE")
+
+        return result
 
 
 class ActionHistory:
     def __init__(self) -> None:
         self.turn_history = ViewFrequency()
-        self.last_orientation_action = 0
-        self.last_orientation_time = 0
+        self.ball_focus_actions = 0
         self.last_see_update = 0
         self.last_catch = 0
         self.two_see_updates_ago = 0
@@ -260,6 +277,7 @@ class ActionHistory:
         self.missed_turn_last_see = False
         self.expected_body_angle = None
         self.expected_neck_angle = None
+        self.expected_speed = None
         self.projected_position = Coordinate(0, 0)
         self.has_looked_for_targets = False
 
@@ -342,7 +360,7 @@ class WorldView:
         self.goals = []
         self.lines = []
         self.side = ""
-        self.game_state = ""
+        self.game_state = "before_kick_off"
 
     def __repr__(self) -> str:
         return super().__repr__()
