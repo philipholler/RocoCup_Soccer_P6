@@ -1,5 +1,7 @@
 import math
 import re
+import shapely
+from shapely.geometry import Polygon, Point
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
 from constants import WARNING_PREFIX
@@ -12,7 +14,7 @@ from player.player import PlayerState
 from player.world_objects import Coordinate, Ball
 from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
-from utils import debug_msg
+from utils import debug_msg, get_quantize_range
 
 _REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 _SIGNED_INT_REGEX = "[-0-9]+"
@@ -965,7 +967,7 @@ def _extract_flag_coordinates(flag_ids):
     coords = []
     for flag_id in flag_ids:
         coord_pair = _FLAG_COORDS.get(flag_id)
-        coords.append(Coordinate(coord_pair[0], coord_pair[1]))
+        coords.append(Coordinate(coord_pair[0], -coord_pair[1]))
     return coords
 
 
@@ -1196,17 +1198,63 @@ def _approx_position_lines(state: PlayerState, flags: [Flag]):
         length = float(len(coords))
         return Coordinate(sum_coord.pos_x / length, sum_coord.pos_y / length)
 
+    solution_shapes: [Polygon] = []
     positions = []
-    for flag in flags:
-        flag_angle = state.face_dir + flag.body_relative_direction
 
-        rel_pos_x = flag.relative_distance * math.cos((flag_angle) * math.pi / 180)
-        rel_pos_y = flag.relative_distance * math.sin((flag_angle) * math.pi / 180)
+    for flag in flags:
+        solution_shapes.append(create_solution_shape(state, flag))
+        flag_angle = state.face_dir + flag.body_relative_direction
+        rel_pos_x = flag.relative_distance * math.cos(flag_angle * math.pi / 180)
+        rel_pos_y = flag.relative_distance * math.sin(flag_angle * math.pi / 180)
         relative_pos = Coordinate(rel_pos_x, rel_pos_y)
-        coord = flag.coordinate
-        coord.pos_y = -coord.pos_y
-        approx_play_pos = coord - relative_pos
+        approx_play_pos = flag.coordinate - relative_pos
         positions.append(approx_play_pos)
 
+    #if state.is_test_player():
+    #    print(Coordinate(-36, 20).euclidean_distance_from(avg_coord(positions)))
+
+    final_solution_area = solution_shapes[0]
+    for i, shape in enumerate(solution_shapes[1:]):
+        new_intersection = final_solution_area.intersection(shape)
+        if new_intersection.area == 0:
+            break
+        final_solution_area = new_intersection
+
     if state.is_test_player():
-        print(positions)
+        print("SOLUTION: " + str(final_solution_area.centroid))
+
+
+# Shape representing the space of possible solutions
+def create_solution_shape(state: PlayerState, flag: Flag):
+    flag_angle = state.face_dir + flag.body_relative_direction
+    max_angle = (flag_angle + 1) % 360  # Rounding error
+    min_angle = (flag_angle - 1) % 360  # Rounding error
+    min_dist, max_dist = get_quantize_range(flag.relative_distance)
+    min_dist *= 0.99
+    max_dist *= 1.01
+
+    # Closest curve of the cone
+    p1 = solve_point_as_list(min_angle, min_dist, flag.coordinate)
+    p2 = solve_point_as_list(flag_angle, min_dist, flag.coordinate)
+    p3 = solve_point_as_list(max_angle, min_dist, flag.coordinate)
+
+    # Furthest curve of the cone
+    p4 = solve_point_as_list(max_angle, max_dist, flag.coordinate)
+    p5 = solve_point_as_list(flag_angle, max_dist, flag.coordinate)
+    p6 = solve_point_as_list(min_angle, max_dist, flag.coordinate)
+
+    polygon = Polygon([p1, p2, p3, p4, p5, p6])
+
+    if state.is_test_player() and not polygon.intersects(Point(-36, 20)):
+        print("Missing intersection with point. ", flag, str(polygon))
+
+    return polygon
+
+
+def solve_point_as_list(angle, distance, offset):
+    rel_pos_x = distance * math.cos(angle * math.pi / 180)
+    rel_pos_y = distance * math.sin(angle * math.pi / 180)
+    relative_coord = Coordinate(rel_pos_x, rel_pos_y)
+    point_pos = offset - relative_coord
+
+    return [point_pos.pos_x, point_pos.pos_y]

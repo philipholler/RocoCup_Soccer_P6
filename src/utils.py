@@ -3,18 +3,18 @@ from math import log, exp, ceil
 from constants import QUANTIZE_STEP_OBJECTS
 
 DEBUG_DICT = {
-    "POSITIONAL": True,
+    "POSITIONAL": False,
     "ALL": False,
     "SCENARIOS": False,
     "INTERCEPTION": False,
     "KICK": False,
-    "ACTIONS": True,
-    "ORIENTATION": True,
+    "ACTIONS": False,
+    "ORIENTATION": False,
     "MESSAGES": False,
-    "STATUS": True,
+    "STATUS": False,
     "MODE": False,
     "GOALIE": False,
-    "BALL": True,
+    "BALL": False,
     "PASS_TARGET": False,
     "DRIBBLE": False,
     "HAS_BALL": False
@@ -45,8 +45,9 @@ def _create_quantize_table(max_dist):
     limits = [0.0]
     dist = 0.0
     last_limit = 0.0
+    step_size = 0.001
     while dist < max_dist:
-        dist += 0.02
+        dist += step_size
         new_limit = _quantize_objects(dist)
         if new_limit > last_limit:
             last_limit = new_limit
