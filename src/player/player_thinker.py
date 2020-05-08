@@ -37,9 +37,9 @@ class Thinker(threading.Thread):
         else:
             init_string = "(init " + self.player_state.team_name + " (version 16))"
         self.player_conn.action_queue.put(init_string)
-        self.player_conn.action_queue.put("(synch_see)")
         init_msg: str = self.input_queue.get()
         parsing.parse_message_update_state(init_msg, self.player_state)
+        self.player_conn.action_queue.put("(synch_see)")
         self.position_player()
 
     def run(self) -> None:

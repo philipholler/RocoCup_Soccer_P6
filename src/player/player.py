@@ -365,13 +365,59 @@ class WorldView:
     def __repr__(self) -> str:
         return super().__repr__()
 
+    def is_marked(self, team, max_data_age, min_distance=3):
+        opponents: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)
+        for opponent in opponents:
+            if opponent.distance < min_distance:
+                return True
+
+        return False
+
     def ticks_ago(self, ticks):
         return self.sim_time - ticks
+
+    def get_free_forward_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free, min_dist_from_me=3):
+        free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
+        if side == "l":
+            free_forward_team_mates = list(filter(lambda p: p.coord.pos_x > my_coord.pos_x and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me, free_team_mates))
+        else:
+            free_forward_team_mates = list(filter(lambda p: p.coord.pos_x < my_coord.pos_x and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me, free_team_mates))
+
+        return free_forward_team_mates
+
+    def get_free_behind_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free, min_dist_from_me=3):
+        free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
+        if side == "l":
+            free_behind_team_mates = list(filter(lambda p: p.coord.pos_x < my_coord.pos_x and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me, free_team_mates))
+        else:
+            free_behind_team_mates = list(filter(lambda p: p.coord.pos_x > my_coord.pos_x and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me, free_team_mates))
+
+        return free_behind_team_mates
 
     def get_teammates(self, team, max_data_age):
         precarious_filtered = filter(lambda x: (x.is_value_known(self.sim_time - max_data_age)
                                                 and x.get_value().team == team), self.other_players)
         return list(map(lambda x: x.get_value(), precarious_filtered))
+
+    def get_opponents(self, team, max_data_age):
+        precarious_filtered = filter(lambda x: (x.is_value_known(self.sim_time - max_data_age)
+                                                and x.get_value().team != team), self.other_players)
+        return list(map(lambda x: x.get_value(), precarious_filtered))
+
+    def get_free_team_mates(self, team, max_data_age, min_distance=1) -> [ObservedPlayer]:
+        team_mates: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)
+        opponents: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)
+
+        free_team_mates = []
+
+        for team_mate in team_mates:
+            for opponent in opponents:
+                tm: ObservedPlayer = team_mate
+                op: ObservedPlayer = opponent
+                if tm.coord.euclidean_distance_from(op.coord) > min_distance and tm not in free_team_mates:
+                    free_team_mates.append(tm)
+
+        return free_team_mates
 
     def update_player_view(self, observed_player: ObservedPlayer):
         for i, data_point in enumerate(self.other_players):

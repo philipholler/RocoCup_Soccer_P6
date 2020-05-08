@@ -395,19 +395,42 @@ def _find_player(state, player_num):
 
 
 def _choose_pass_target(state: PlayerState):
-    side = 1 if state.world_view.side == "l" else -1
-    team_members = state.world_view.get_teammates(state.team_name, max_data_age=5)
-    if side == 1:
-        good_targets = list(filter(lambda p: p.coord.pos_x * side > state.position.get_value().pos_x, team_members))
-    else:
-        good_targets = list(filter(lambda p: p.coord.pos_x * side < state.position.get_value().pos_x, team_members))
-    if len(good_targets) < 1:
-        # Todo filter out bad passes - Philip
-        return None
-    reverse = True if side == 1 else False
-    good_target = list(sorted(good_targets, key=lambda p: p.coord.pos_x, reverse=reverse))[0]
+    """
+    If free targets forward -> Pass forward
+    If no free targets forward, but i am not marked -> dribble forward
+    If no free targets forward, but free targets behind, and i am marked -> Pass back
+    If no free targets and i am marked -> Try to dribble anyway
+    :return: Parse target or None, if dribble
+    """
+    side = state.world_view.side
+    am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 
-    return good_target
+    # If free targets forward -> Pass forward
+    forward_team_mates = state.world_view.get_free_forward_team_mates(state.team_name, side, state.position.get_value(), max_data_age=3, min_distance_free=3, min_dist_from_me=3)
+    if len(forward_team_mates) > 0:
+        # If free team mates sort by closest to opposing teams goal
+        opposing_team_goal: Coordinate = Coordinate(52.5, 0) if side == "l" else Coordinate(-52.5, 0)
+        debug_msg("forward_team_mates: " + str(forward_team_mates), "PASS_TARGET")
+        good_target = list(sorted(forward_team_mates, key=lambda p: p.coord.euclidean_distance_from(opposing_team_goal), reverse=False))[0]
+        return good_target
+
+    # If no free targets forward, but i am not marked -> dribble forward
+    if len(forward_team_mates) < 1 and not am_i_marked:
+        debug_msg("No free targets forward -> Dribble!", "PASS_TARGET")
+        return None
+
+    # If no free targets forward, but free targets behind, and i am marked -> Pass back
+    behind_team_mates = state.world_view.get_free_behind_team_mates(state.team_name, side, state.position.get_value(), max_data_age=3, min_distance_free=3, min_dist_from_me=3)
+    if len(behind_team_mates) > 0:
+        # Get the player furthest forward and free
+        opposing_team_goal: Coordinate = Coordinate(52.5, 0) if side == "l" else Coordinate(-52.5, 0)
+        debug_msg("Behind_team_mates: " + str(behind_team_mates), "PASS_TARGET")
+        good_target = list(sorted(behind_team_mates, key=lambda p: p.coord.euclidean_distance_from(opposing_team_goal), reverse=False))[0]
+        return good_target
+
+    # If no free targets and i am marked -> Try to dribble anyway
+    debug_msg("No free targets forward and i am marked -> Dribble anyway!", "PASS_TARGET")
+    return None
 
 
 def team_has_corner_kick(state):
