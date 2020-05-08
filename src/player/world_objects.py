@@ -123,35 +123,42 @@ class Ball:
         final_direction = degrees(calculate_full_origin_angle_radians(c1, c2))
         angles = [final_direction]  # Used for calculating 'average' angle
 
-        max_deviation = 60  # angle deviation
-        max_speed_deviation = 1.2
+        max_deviation = 50  # angle deviation
+        max_speed_deviation = 0.8
         age = time_1 - time_2
         max_age = 20
 
+        def allowed_angle_deviation(index):
+            return 90 if index == 0 else max_deviation
+
+        previous_dist = final_speed
         data_points_used = 2
         for i, pos_and_time in enumerate(islice(history, 2, len(history))):
             c1 = c2
             c2 = pos_and_time[0]
             time_1 = time_2
             time_2 = pos_and_time[1]
-
-            if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.05:
-                break
-
             age += time_1 - time_2
-            speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * pow(BALL_DECAY, age)
-            direction = degrees(calculate_full_origin_angle_radians(c1, c2))
 
-            direction_similar = is_angle_in_range(direction, (final_direction - max_deviation) % 360,
-                                                  (final_direction + max_deviation) % 360)
+            dist = c1.euclidean_distance_from(c2)
+            if time_1 == time_2 or dist <= 0.05 or (dist < 0.3 and previous_dist < 0.3):
+                break
+            previous_dist = dist
+
+            # calculate angle from point observed 2 ticks prior
+            direction = degrees(calculate_full_origin_angle_radians(history[i][0], c2))
+            direction_similar = is_angle_in_range(direction, (final_direction - allowed_angle_deviation(i)) % 360,
+                                                  (final_direction + allowed_angle_deviation(i)) % 360)
+
+            speed = (dist / (time_1 - time_2)) * pow(BALL_DECAY, age)
             speed_similar = (final_speed - max_speed_deviation) <= speed <= (final_speed + max_speed_deviation)
 
             if direction_similar and speed_similar and age < max_age:
                 data_points_used += 1
                 last_coord = c2
-                angles.append(direction)
+                angles.append(degrees(calculate_full_origin_angle_radians(first_coord, c2)))
                 final_speed = (final_speed * age + speed) / (age + 1)  # calculate average with new value
-                final_direction = find_mean_angle(angles, max_deviation)
+                final_direction = find_mean_angle(angles, 179)
             else:
                 debug_msg("Previous points did not match. Speed : " + str(speed) + "vs." + str(final_speed) + "| Direction :" + str(direction) +
                           "vs." + str(final_direction) + "| age: " + str(age) + str(c1) + str(c2), "POSITIONAL")

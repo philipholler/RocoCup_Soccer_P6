@@ -8,11 +8,12 @@ DEBUG_DICT = {
     "ACTIONS": False,
     "ORIENTATION": False,
     "MESSAGES": False,
-    "STATUS": False,
+    "STATUS": True,
     "MODE": False,
     "GOALIE": False,
-    "DRIBBLE": False,
-    "PASS_TARGET": False
+    "PASS_TARGET": False,
+    "DRIBBLE": True,
+    "BALL": True
 }
 
 

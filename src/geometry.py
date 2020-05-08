@@ -126,35 +126,28 @@ def find_mean_angle(angles, acceptable_variance=3.0):
 
     # We expect more than half of the angles to be close together (eliminate outliers)
     expected_close_angles = int(len(angles) / 2 + 1)
-    cluster_size_best_solution = 0
-    best_cluster = []
+    best_angle_so_far = 0
+    best_cluster_size = 0
 
     for i, first_angle in enumerate(angles):
-        cluster = [first_angle]
+        differences = [0]
         for other_angle in angles[i + 1:]:
-            # Handle wrap-around 360 degrees
-            if first_angle < 0 + acceptable_variance:
-                if other_angle > 360 - acceptable_variance:
-                    other_angle = -(360 - other_angle)
-            # Handle other case of wrap-around 360 degrees
-            elif first_angle > 360 - acceptable_variance:
-                if other_angle < acceptable_variance:
-                    other_angle = 360 + other_angle
+            difference = smallest_angle_difference(from_angle=first_angle, to_angle=other_angle)
+            if abs(difference) <= acceptable_variance:
+                differences.append(difference)
 
-            if abs(first_angle - other_angle) <= acceptable_variance:
-                cluster.append(other_angle)
+        if len(differences) >= expected_close_angles:
+            return (first_angle + average(differences)) % 360
 
-        if len(cluster) >= expected_close_angles:
-            return average(cluster) % 360
-
-        if len(cluster) > cluster_size_best_solution:
-            cluster_size_best_solution = len(cluster)
-            best_cluster = cluster
+        if len(differences) > best_cluster_size:
+            best_angle_so_far = (first_angle + average(differences)) % 360
+            best_cluster_size = len(differences)
 
     # No angles were close enough to provide a non-ambiguous solution
-    if len(best_cluster) <= 1:
+    if best_cluster_size <= 1:
         return None
-    return average(best_cluster) % 360
+
+    return best_angle_so_far
 
 
 # Note that the mean value of angles is not well defined (fx. what is the mean angle of (0, 90, 180, 270)?)
