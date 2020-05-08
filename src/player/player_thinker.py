@@ -54,7 +54,6 @@ class Thinker(threading.Thread):
         self._stop_event.set()
 
     def think(self):
-        can_send = False
         self.player_state.current_objective = determine_objective(self.player_state)
         time_since_action = 0
         last_time = time.time()
@@ -70,7 +69,8 @@ class Thinker(threading.Thread):
                 # Move player back to starting positions after goal
                 if ("goal" in self.player_state.world_view.game_state and "kick" not in self.player_state.world_view.game_state)\
                         or (self.player_state.world_view.game_state == "before_kick_off" and self.is_positioned):
-                    self.move_back_to_start_pos()
+                    pass
+                    # self.move_back_to_start_pos() todo Reimplement with flag
 
 
             current_time = time.time()
@@ -90,15 +90,17 @@ class Thinker(threading.Thread):
             self.player_state.current_objective = determine_objective(self.player_state)
 
         commands = self.player_state.current_objective.get_next_commands(self.player_state)
-        if self.player_state.is_test_player() and self.player_state.world_view.ball.get_value() is not None:
-            debug_msg(str(self.player_state.now()) + str(commands), "ACTIONS")
+        if self.player_state.is_test_player():
+            debug_msg(str(self.player_state.now()) + " Sending commands : " + str(commands), "ACTIONS")
             debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "
                                                      "TurnInProgress : {4}".format(
                 self.player_state.position.get_value(), self.player_state.body_state.speed,
                 self.player_state.body_angle.get_value(), self.player_state.body_state.neck_angle,
                 self.player_state.action_history.turn_in_progress), "STATUS")
+
         if self.player_state.is_test_player():
             debug_msg("{0} Commands: {1}".format(self.player_state.world_view.sim_time, commands), "MESSAGES")
+
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)

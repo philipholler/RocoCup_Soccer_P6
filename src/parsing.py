@@ -2,6 +2,7 @@ import math
 import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from constants import WARNING_PREFIX
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
     calculate_full_origin_angle_radians, smallest_angle_difference, find_mean_angle
 from player import player, world_objects
@@ -282,15 +283,22 @@ def _parse_see(msg, ps: player.PlayerState):
 
     flags = create_flags(flag_strings, ps)
 
+    _parse_lines(lines, ps)
+    _approx_angle_lines(ps)
+    _approx_position_lines(ps, flags)
+
     _approx_position(flags, ps)
     _approx_body_angle(flags, ps)
     _parse_players(players, ps)
     _parse_goals(goals, ps)
     _parse_ball(ball, ps)
-    _parse_lines(lines, ps)
+
+
+
 
 
 def _parse_lines(lines, ps):
+    ps.world_view.lines.clear()
     for line in lines:
         if str(line).startswith("((L"):
             continue
@@ -372,7 +380,7 @@ def create_flags(flag_strings, state: PlayerState):
 
 
 def _approx_body_angle(flags: [Flag], state):
-    if state.position.last_updated_time < state.now():
+    if state.position.last_updated_time < state.now() or not state.position.is_value_known():
         use_expected_angles(state)
         return
 
@@ -427,8 +435,9 @@ def _approx_body_angle(flags: [Flag], state):
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
-                debug_msg(str(state.now()) + "Turn missed in see update! (expected,actual) body : " + str(expected_body_delta) +
-                          str(actual_body_delta) + " neck: " + str(expected_neck_delta) + str(actual_neck_delta), "POSITIONAL")
+                debug_msg(str(state.now()) + "Turn missed in see update! (expected,actual) body : "
+                          + str(expected_body_delta) + ", " + str(actual_body_delta) + " neck: "
+                          + str(expected_neck_delta) + ", " + str(actual_neck_delta), "POSITIONAL")
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
@@ -474,7 +483,7 @@ def _extract_flag_directions(flag_strings, neck_angle):
         # ['13.5', '-31', '2', '-5']
 
         direction = float(split_by_whitespaces[1])
-        direction += neck_angle  # Account for neck angle
+        #direction += neck_angle  # Account for neck angle
         direction %= 360
         flag_directions.append(direction)
     return flag_directions
@@ -1150,3 +1159,54 @@ def _approx_position(flags: [Flag], state: PlayerState):
         else:
             pass
             # print("impossible position solution or no solution at all" + str(solution))
+
+
+def _approx_angle_lines(state: PlayerState):
+    lines = sorted(state.world_view.lines, key=lambda x: x.distance)
+    if len(lines) == 0:
+        debug_msg(str(state.now()) + "Could not get angle. Outside field facing out", "POSITIONAL")
+        return
+    line = lines[0]
+
+    face_dir = float(line.relative_angle)
+    if face_dir > 0:
+        face_dir -= 90
+    elif face_dir < 0:
+        face_dir += 90
+    else:
+        print(WARNING_PREFIX + " PARRALLEL TO LINE. SHOULD NOT HAPPEN")
+
+    if line.line_side is 'l':
+        face_dir = 180 - face_dir
+    elif line.line_side is 'r':
+        face_dir = 0 - face_dir
+    elif line.line_side is 't':
+        face_dir = -90 - face_dir
+    else:
+        face_dir = 90 - face_dir
+
+    state.face_dir = face_dir % 360
+
+
+def _approx_position_lines(state: PlayerState, flags: [Flag]):
+    def avg_coord(coords: [Coordinate]):
+        sum_coord = Coordinate(0, 0)
+        for c in coords:
+            sum_coord = sum_coord + c
+        length = float(len(coords))
+        return Coordinate(sum_coord.pos_x / length, sum_coord.pos_y / length)
+
+    positions = []
+    for flag in flags:
+        flag_angle = state.face_dir + flag.body_relative_direction
+
+        rel_pos_x = flag.relative_distance * math.cos((flag_angle) * math.pi / 180)
+        rel_pos_y = flag.relative_distance * math.sin((flag_angle) * math.pi / 180)
+        relative_pos = Coordinate(rel_pos_x, rel_pos_y)
+        coord = flag.coordinate
+        coord.pos_y = -coord.pos_y
+        approx_play_pos = coord - relative_pos
+        positions.append(approx_play_pos)
+
+    if state.is_test_player():
+        print(positions)

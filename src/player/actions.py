@@ -9,7 +9,7 @@ from player.player import PlayerState
 from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
 from utils import clamp, debug_msg
 
-_IDLE_ORIENTATION_INTERVAL = 1
+_IDLE_ORIENTATION_INTERVAL = 4
 _POSSESSION_ORIENTATION_INTERVAL = 2
 
 SET_FOV_NORMAL = "(change_view normal high)"
@@ -170,8 +170,10 @@ def register_neck_turn(state: PlayerState, angle):
     state.action_history.expected_neck_angle = (state.body_state.neck_angle + angle) % 360
     state.action_history.turn_in_progress = True
 
+
 def register_catch(state: PlayerState):
     state.action_history.last_catch = state.world_view.sim_time
+
 
 def register_body_turn(state: PlayerState, body_turn_moment=0):
     turn_angle = _calculate_actual_turn_angle(state.body_state.speed, body_turn_moment)
