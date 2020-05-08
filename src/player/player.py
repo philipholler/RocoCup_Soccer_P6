@@ -127,7 +127,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 2 and self.team_name == "Team1"
+        return self.num == 5 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -376,6 +376,35 @@ class WorldView:
     def ticks_ago(self, ticks):
         return self.sim_time - ticks
 
+    def team_has_ball(self, team, max_data_age, min_possession_distance=3):
+        if not self.ball.is_value_known():
+            debug_msg("{0} has ball".format("Team2"), "HAS_BALL")
+            return False
+
+        all_players: [ObservedPlayer] = self.get_all_known_players(team, max_data_age)
+
+        # Sort players by distance to ball
+        sorted_list: [ObservedPlayer] = list(sorted(all_players, key=lambda p: p.coord.euclidean_distance_from(self.ball.get_value().coord), reverse=False))
+
+        if len(sorted_list) < 1:
+            return False
+
+        # If closest player to ball team is known and is our team, return True
+        closest_player: ObservedPlayer = sorted_list[0]
+        if closest_player.team is not None and closest_player.team == team and closest_player.coord.euclidean_distance_from(self.ball.get_value().coord) < min_possession_distance:
+            debug_msg("{0} has ball | player: {1}".format(team, closest_player), "HAS_BALL")
+            return True
+
+        debug_msg("{0} has ball".format("Team2"), "HAS_BALL")
+        return False
+
+
+    def get_all_known_players(self, team, max_data_age):
+        all_players: [ObservedPlayer] = []
+        all_players.extend(self.get_teammates(team, max_data_age))
+        all_players.extend(self.get_opponents(team, max_data_age))
+        return all_players
+
     def get_free_forward_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free, min_dist_from_me=3):
         free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
         if side == "l":
@@ -388,7 +417,9 @@ class WorldView:
     def get_free_behind_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free, min_dist_from_me=3):
         free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
         if side == "l":
-            free_behind_team_mates = list(filter(lambda p: p.coord.pos_x < my_coord.pos_x and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me, free_team_mates))
+            free_behind_team_mates = list(filter(lambda p: p.coord.pos_x < my_coord.pos_x
+                                                           and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me
+                                                           and p.num != 1, free_team_mates))
         else:
             free_behind_team_mates = list(filter(lambda p: p.coord.pos_x > my_coord.pos_x and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me, free_team_mates))
 
