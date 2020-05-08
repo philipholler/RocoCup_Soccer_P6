@@ -182,12 +182,18 @@ def determine_objective_goalie(state: PlayerState):
 
 
 def determine_objective(state: PlayerState):
-    if state.world_view.game_state == 'before_kick_off':
+    opponent_side = "r" if state.world_view.side == "l" else "l"
+    # Just do idle orientation if before kick off or kick_off by opponent team, since players simply teleport to positions
+    if state.world_view.game_state == 'before_kick_off' or state.world_view.game_state == "kick_off_{0}".format(opponent_side):
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
     # If opponent has ball in some way judged by the referee, simply position
-    opponent_side = "r" if state.world_view.side == "l" else "l"
-    if state.world_view.game_state.endswith("_{0}".format(opponent_side)):
+    # Also just do position, if the game state is free_kick_fault_l if team l.
+    # This leads to free_kick_fault_l -> free_kick_r
+    if (state.world_view.game_state.endswith("_{0}".format(opponent_side)) and "fault" not in state.world_view.game_state)\
+            or "fault_{0}".format(state.world_view.side) in state.world_view.game_state:
+        if "fault_{0}".format(state.world_view.side) in state.world_view.game_state:
+            print("FAULT position")
         _position_optimally_objective(state)
 
     # Goalie
@@ -362,6 +368,8 @@ def _optimal_striker_pos(state: PlayerState) -> Coordinate:
 
 def _optimal_midfielder_pos(state) -> Coordinate:
     side = 1 if state.world_view.side == 'l' else -1
+    if not state.world_view.ball.is_value_known():
+        return state.get_global_play_pos()
     ball: Coordinate = state.world_view.ball.get_value().coord
     play_position = state.get_global_play_pos()
     ball_delta_y = ball.pos_y - play_position.pos_y
