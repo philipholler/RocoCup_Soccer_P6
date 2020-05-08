@@ -11,6 +11,7 @@ from utils import DEBUG_DICT
 finished_successfully = False
 soccersim: SoccerSim
 
+
 def shut_down_gracefully() -> None:
     if finished_successfully:
         pass

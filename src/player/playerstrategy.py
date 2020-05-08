@@ -136,8 +136,6 @@ def determine_objective_goalie(state: PlayerState):
 
     # If in possession of the ball
     if state.is_near_ball(KICKABLE_MARGIN):
-        return Objective(state, lambda: actions.shoot_to(state, Coordinate(0, 0), power=70), lambda: False, 50)
-
         pass_target = _choose_pass_target(state)
         if pass_target is not None:
             return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
@@ -184,7 +182,6 @@ def determine_objective_goalie(state: PlayerState):
 
 
 def determine_objective(state: PlayerState):
-
     if state.world_view.game_state == 'before_kick_off':
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
@@ -220,7 +217,7 @@ def determine_objective(state: PlayerState):
 
     # Try to perform an interception of the ball if possible
     intercept_point, tick = state.ball_interception()
-    if intercept_point is not None and state.world_view.ball.get_value().distance > 1.0:
+    if intercept_point is not None and state.world_view.ball.get_value().distance > 1.0 and state.is_nearest_ball(1):
         state.mode = INTERCEPT_MODE
         if intercept_point.euclidean_distance_from(state.position.get_value()) > KICKABLE_MARGIN:
             return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())

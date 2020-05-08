@@ -467,6 +467,9 @@ def _extract_flag_directions(flag_strings, neck_angle):
 # Or ((B) distance direction)
 # distance, direction, dist_change, dir_change
 def _parse_ball(ball: str, ps: player.PlayerState):
+    if ps.is_test_player():
+        debug_msg(str(ps.now()) + " " + str(ball), "BALL")
+
     # If ball is not present at all or only seen behind the player
     if ball is None:
         return
@@ -856,6 +859,9 @@ def _parse_hear(text: str, ps: PlayerState):
 def _parse_body_sense(text: str, state: PlayerState):
     if "collision (ball" in text:
         state.ball_collision_time = state.now()
+        # We have collided with the ball so we cannot count on our previously calculated speed
+        state.action_history.expected_speed = None
+
     regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({0})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
@@ -867,14 +873,6 @@ def _parse_body_sense(text: str, state: PlayerState):
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
-
-    '''
-    if matched.group(23) is None: # todo Does not not work when no groups are present
-        print(text)
-        unum = "none"
-    else:
-        unum = int(matched.group(23))
-    '''
 
     # ps.body_state.time = int(matched.group(1))
     state.body_state.view_mode = matched.group(2)
@@ -888,8 +886,6 @@ def _parse_body_sense(text: str, state: PlayerState):
         state.action_history.expected_speed = None
     else:
         state.body_state.speed = float(matched.group(6))
-
-
 
     state.body_state.direction_of_speed = int(matched.group(7))
     state.body_state.neck_angle = int(matched.group(8))
