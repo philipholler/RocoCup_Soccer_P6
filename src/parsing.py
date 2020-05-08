@@ -228,8 +228,9 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
         # changed type. The type is not disclosed by the opponent team.
         return
-    elif msg.startswith("(ok clang"):
+    elif msg.startswith("(ok clang") or msg.startswith("(ok synch"):
         # Simply a confirmation, that the requested coach language was accepted
+        # Confirm syncrhonized see
         return
     else:
         raise Exception("Unknown message received: " + msg)

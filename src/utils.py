@@ -11,8 +11,10 @@ DEBUG_DICT = {
     "STATUS": True,
     "MODE": False,
     "GOALIE": False,
-    "DRIBBLE": False,
     "BALL": True
+    "PASS_TARGET": False,
+    "DRIBBLE": False,
+    "HAS_BALL": False
 }
 
 
@@ -27,4 +29,3 @@ def debug_msg(msg: str, key: str):
         print(msg)
     elif DEBUG_DICT[key]:
         print(msg)
-4

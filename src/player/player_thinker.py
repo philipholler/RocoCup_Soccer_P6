@@ -37,9 +37,9 @@ class Thinker(threading.Thread):
         else:
             init_string = "(init " + self.player_state.team_name + " (version 16))"
         self.player_conn.action_queue.put(init_string)
-        self.player_conn.action_queue.put("(synch_see)")
         init_msg: str = self.input_queue.get()
         parsing.parse_message_update_state(init_msg, self.player_state)
+        self.player_conn.action_queue.put("(synch_see)")
         self.position_player()
 
     def run(self) -> None:
@@ -67,6 +67,12 @@ class Thinker(threading.Thread):
                     can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
+                # Move player back to starting positions after goal
+                if ("goal" in self.player_state.world_view.game_state and "kick" not in self.player_state.world_view.game_state)\
+                        or (self.player_state.world_view.game_state == "before_kick_off" and self.is_positioned):
+                    self.move_back_to_start_pos()
+
+
             current_time = time.time()
             time_since_action += current_time - last_time
             last_time = current_time
@@ -92,10 +98,15 @@ class Thinker(threading.Thread):
                 self.player_state.body_angle.get_value(), self.player_state.body_state.neck_angle,
                 self.player_state.action_history.turn_in_progress), "STATUS")
         if self.player_state.is_test_player():
-            debug_msg("{0} Commands: {1}".format(self.player_state.world_view.sim_time, commands), "GOALIE")
+            debug_msg("{0} Commands: {1}".format(self.player_state.world_view.sim_time, commands), "MESSAGES")
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)
+
+    def move_back_to_start_pos(self):
+        move_action = "(move {0} {1})".format(self.player_state.starting_position.pos_x
+                                              , self.player_state.starting_position.pos_y)
+        self.player_conn.action_queue.put(move_action)
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:
