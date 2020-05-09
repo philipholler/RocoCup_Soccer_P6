@@ -438,7 +438,7 @@ def _choose_pass_target(state: PlayerState):
     am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 
     # If free targets forward -> Pass forward
-    forward_team_mates = state.world_view.get_free_forward_team_mates(state.team_name, side, state.position.get_value(), max_data_age=3, min_distance_free=3, min_dist_from_me=3)
+    forward_team_mates = state.world_view.get_non_offside_forward_team_mates(state.team_name, side, state.position.get_value(), max_data_age=4, min_distance_free=2, min_dist_from_me=2)
     if len(forward_team_mates) > 0:
         # If free team mates sort by closest to opposing teams goal
         opposing_team_goal: Coordinate = Coordinate(52.5, 0) if side == "l" else Coordinate(-52.5, 0)

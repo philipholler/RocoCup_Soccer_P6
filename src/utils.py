@@ -7,14 +7,15 @@ DEBUG_DICT = {
     "KICK": False,
     "ACTIONS": False,
     "ORIENTATION": False,
-    "MESSAGES": False,
+    "MESSAGES": True,
     "STATUS": False,
     "MODE": False,
     "GOALIE": False,
     "PASS_TARGET": False,
     "DRIBBLE": False,
     "BALL": False,
-    "HAS_BALL": False
+    "HAS_BALL": False,
+    "OFFSIDE": False
 }
 
 

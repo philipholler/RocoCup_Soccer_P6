@@ -414,6 +414,28 @@ class WorldView:
 
         return free_forward_team_mates
 
+    def get_non_offside_forward_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free, min_dist_from_me=1):
+        free_forward_team_mates: [ObservedPlayer] = self.get_free_forward_team_mates(team, side, my_coord, max_data_age, min_distance_free, min_dist_from_me)
+        opponents: [ObservedPlayer] = self.get_opponents(team, max_data_age)
+
+        # If no opponents are seen, no one is offside
+        if len(opponents) < 1:
+            return free_forward_team_mates
+
+        reverse = True if side == "l" else False
+        furthest_behind_opponent: ObservedPlayer = list(sorted(opponents, key=lambda p: p.coord.pos_x, reverse=reverse))[0]
+        furthest_opp_x_pos = furthest_behind_opponent.coord.pos_x
+        if side == "l":
+            non_offside_players = list(filter(lambda p: (p.coord.pos_x < furthest_opp_x_pos
+                                                        and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me)
+                                                        or p.coord.pos_x < 0, free_forward_team_mates))
+        else:
+            non_offside_players = list(filter(lambda p: (p.coord.pos_x > furthest_opp_x_pos
+                                                        and p.coord.euclidean_distance_from(my_coord) > min_dist_from_me)
+                                                        or p.coord.pos_x > 0, free_forward_team_mates))
+        debug_msg("Further_opp_x_pos={0} | free_forward_team_mates={1} | furthest_behind_opponent={2} | non_offisde_players={3}".format(furthest_opp_x_pos, free_forward_team_mates, furthest_behind_opponent, non_offside_players), "OFFSIDE")
+        return non_offside_players
+
     def get_free_behind_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free, min_dist_from_me=3):
         free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
         if side == "l":
@@ -435,9 +457,11 @@ class WorldView:
                                                 and x.get_value().team != team), self.other_players)
         return list(map(lambda x: x.get_value(), precarious_filtered))
 
-    def get_free_team_mates(self, team, max_data_age, min_distance=1) -> [ObservedPlayer]:
+    def get_free_team_mates(self, team, max_data_age, min_distance=2) -> [ObservedPlayer]:
         team_mates: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)
-        opponents: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)
+        opponents: [ObservedPlayer] = self.get_opponents(team, max_data_age=max_data_age)
+
+        debug_msg("Team_mates={0} | opponents={1} | other_players:{2}".format(team_mates, opponents, self.other_players), "OFFSIDE")
 
         free_team_mates = []
 

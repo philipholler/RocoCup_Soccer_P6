@@ -67,10 +67,10 @@ class Thinker(threading.Thread):
                     can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
-                # Move player back to starting positions after goal
+                """# Move player back to starting positions after goal
                 if ("goal" in self.player_state.world_view.game_state and "kick" not in self.player_state.world_view.game_state)\
                         or (self.player_state.world_view.game_state == "before_kick_off" and self.is_positioned):
-                    self.move_back_to_start_pos()
+                    self.move_back_to_start_pos()"""
 
 
             current_time = time.time()
