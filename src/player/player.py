@@ -39,7 +39,7 @@ class PlayerState:
         self.playing_position: Coordinate = None
         self.last_see_global_angle = 0
         self.current_objective = None
-        self.face_dir = 0
+        self.face_dir = PrecariousData(0, 0)
         super().__init__()
 
     def __str__(self) -> str:
@@ -200,17 +200,36 @@ class PlayerState:
             projected_speed *= constants.PLAYER_SPEED_DECAY
         return ticks + 3
 
-
-
-
     def update_body_angle(self, new_angle, time):
         # If value is uninitialized, then accept new_angle as actual angle
         self.body_angle.set_value(new_angle, time)
 
-    def update_position(self, new_position, time):
-        self.position.set_value(new_position, time)
+    def update_position(self, new_position: Coordinate):
+        self.position.set_value(new_position, self.now())
         # print("PARSED : ", time, " | Position: ", new_position)
         self.action_history.projected_position = new_position
+
+    def update_angle(self, new_global_angle):
+        if self.action_history.turn_in_progress:
+            history = self.action_history
+            actual_angle_change = abs(new_global_angle - self.face_dir.get_value())
+
+            if history.missed_turn_last_see:
+                # Missed turn update in last see message, so it must have been included in this see update
+                history.turn_in_progress = False
+                history.missed_turn_last_see = False
+            elif actual_angle_change + 0.1 >= abs(history.expected_angle_change) / 2 or actual_angle_change > 2.0:
+                # Turn registered
+                history.turn_in_progress = False
+            else:
+                # Turn not registered
+                history.missed_turn_last_see = True
+
+            # Reset expected angle
+            history.expected_angle_change = 0
+
+        self.face_dir.set_value(new_global_angle, self.now())
+        self.update_body_angle(new_global_angle - self.body_state.neck_angle, self.now())
 
     def on_see_update(self):
         self.action_history.three_see_updates_ago = self.action_history.two_see_updates_ago
@@ -227,8 +246,7 @@ class PlayerState:
             # We're looking in the direction of the ball and not seeing it, so it must be missing
             self._ball_seen_since_missing = False
 
-
-    def update_ball(self, new_ball, time):
+    def update_ball(self, new_ball: Ball, time):
         self.world_view.ball.set_value(new_ball, time)
         self._ball_seen_since_missing = True
 
@@ -281,6 +299,7 @@ class ActionHistory:
         self.expected_speed = None
         self.projected_position = Coordinate(0, 0)
         self.has_looked_for_targets = False
+        self.expected_angle_change = 0
 
 
 class ViewFrequency:

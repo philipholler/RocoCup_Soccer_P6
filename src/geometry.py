@@ -100,7 +100,6 @@ def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float
 def get_distance_between_coords(c1, c2):
     x = c2.pos_x - c1.pos_x
     y = c2.pos_y - c1.pos_y
-
     return math.sqrt(pow(x, 2) + pow(y, 2))
 
 

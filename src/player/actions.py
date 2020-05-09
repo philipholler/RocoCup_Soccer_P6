@@ -1,5 +1,6 @@
 import math
 import geometry
+
 from constants import PLAYER_JOG_POWER, PLAYER_RUSH_POWER, KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
     WARNING_PREFIX, DRIBBLE_KICK_POWER, DRIBBLE_DASH_POWER
@@ -166,17 +167,19 @@ def update_fov(state: PlayerState, fov):
     state.body_state.fov = fov
 
 
-def register_neck_turn(state: PlayerState, angle):
-    state.action_history.expected_neck_angle = (state.body_state.neck_angle + angle) % 360
-    state.action_history.turn_in_progress = True
-
-
 def register_catch(state: PlayerState):
     state.action_history.last_catch = state.world_view.sim_time
 
 
+def register_neck_turn(state: PlayerState, angle):
+    state.action_history.expected_angle_change += angle
+    state.action_history.expected_neck_angle = (state.body_state.neck_angle + angle) % 360
+    state.action_history.turn_in_progress = True
+
+
 def register_body_turn(state: PlayerState, body_turn_moment=0):
     turn_angle = _calculate_actual_turn_angle(state.body_state.speed, body_turn_moment)
+    state.action_history.expected_angle_change += turn_angle
     if state.body_angle.is_value_known(state.action_history.two_see_updates_ago):
         state.action_history.expected_body_angle = (state.body_angle.get_value() + turn_angle) % 360
     state.action_history.turn_in_progress = True

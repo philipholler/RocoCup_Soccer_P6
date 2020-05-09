@@ -1,10 +1,13 @@
 import math
 import re
+import pyclipper
+from time import time
+
 import shapely
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
-from constants import WARNING_PREFIX
+from constants import WARNING_PREFIX, QUANTIZE_STEP_LANDMARKS
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
     calculate_full_origin_angle_radians, smallest_angle_difference, find_mean_angle
 from player import player, world_objects
@@ -14,7 +17,7 @@ from player.player import PlayerState
 from player.world_objects import Coordinate, Ball
 from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
-from utils import debug_msg, get_quantize_range
+from utils import debug_msg, get_flag_quantize_range
 
 _REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 _SIGNED_INT_REGEX = "[-0-9]+"
@@ -222,7 +225,12 @@ def parse_message_update_state(msg: str, ps: PlayerState):
             return  # Discard duplicate messages
 
         _update_time(msg, ps)
+        before = time()
         _parse_see(msg, ps)
+        after = time()
+        if ps.is_test_player():
+            print((after - before) * 1000)
+
         ps.on_see_update()
 
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
@@ -260,7 +268,7 @@ New protocol 7-16:
 '''
 
 
-def _parse_see(msg, ps: player.PlayerState):
+def _parse_see(msg, state: player.PlayerState):
     regex2 = re.compile(_SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
@@ -283,20 +291,27 @@ def _parse_see(msg, ps: player.PlayerState):
         else:
             raise Exception("Unknown see element: " + str(element))
 
-    flags = create_flags(flag_strings, ps)
+    flags = create_flags(flag_strings, state)
 
-    _parse_lines(lines, ps)
-    _approx_angle_lines(ps)
-    _approx_position_lines(ps, flags)
+    _parse_lines(lines, state)
+    if len(lines) == 0:
+        print("NO LINES " + msg)
 
-    _approx_position(flags, ps)
-    _approx_body_angle(flags, ps)
-    _parse_players(players, ps)
-    _parse_goals(goals, ps)
-    _parse_ball(ball, ps)
+    # Find angle from visible lines
+    new_global_angle = _approx_angle_lines(state, lines)
+    if new_global_angle is not None:
+        state.update_angle(new_global_angle)
 
+    # Approximate and update position value
+    new_pos = _approx_position_lines(state, flags)
+    if new_pos is not None:
+        state.update_position(new_pos)
 
-
+    # _approx_position(flags, state)
+    # _approx_body_angle(flags, state)
+    #_parse_goals(goals, state)
+    _parse_players(players, state)
+    _parse_ball(ball, state)
 
 
 def _parse_lines(lines, ps):
@@ -485,7 +500,7 @@ def _extract_flag_directions(flag_strings, neck_angle):
         # ['13.5', '-31', '2', '-5']
 
         direction = float(split_by_whitespaces[1])
-        #direction += neck_angle  # Account for neck angle
+        # direction += neck_angle  # Account for neck angle
         direction %= 360
         flag_directions.append(direction)
     return flag_directions
@@ -496,9 +511,6 @@ def _extract_flag_directions(flag_strings, neck_angle):
 # Or ((B) distance direction)
 # distance, direction, dist_change, dir_change
 def _parse_ball(ball: str, ps: player.PlayerState):
-    if ps.is_test_player():
-        debug_msg(str(ps.now()) + " " + str(ball), "BALL")
-
     # If ball is not present at all or only seen behind the player
     if ball is None:
         return
@@ -527,12 +539,9 @@ def _parse_ball(ball: str, ps: player.PlayerState):
         distance_chng = split_by_whitespaces[3]
         dir_chng = split_by_whitespaces[4]
 
-    # print("Pretty: Distance ({0}), Direction ({1}), distance_chng ({2}), dir_chng ({3})".format(distance, direction,
-    #                                                                                            distance_chng,
-    #                                                                                            dir_chng))
     ball_coord = None
     # The position of the ball can only be calculated, if the position of the player is known
-    if ps.position.is_value_known() and ps.get_global_angle().is_value_known():
+    if ps.position.is_value_known(ps.now()) and ps.face_dir.is_value_known(ps.now()):
         pos: Coordinate = ps.position.get_value()
         ball_coord: Coordinate = get_object_position(object_rel_angle=int(direction), dist_to_obj=float(distance),
                                                      my_x=pos.pos_x,
@@ -1163,9 +1172,10 @@ def _approx_position(flags: [Flag], state: PlayerState):
             # print("impossible position solution or no solution at all" + str(solution))
 
 
-def _approx_angle_lines(state: PlayerState):
+def _approx_angle_lines(state: PlayerState, lines):
     lines = sorted(state.world_view.lines, key=lambda x: x.distance)
     if len(lines) == 0:
+        print("ANGLE NOT FOUND")
         debug_msg(str(state.now()) + "Could not get angle. Outside field facing out", "POSITIONAL")
         return
     line = lines[0]
@@ -1187,74 +1197,94 @@ def _approx_angle_lines(state: PlayerState):
     else:
         face_dir = 90 - face_dir
 
-    state.face_dir = face_dir % 360
+    return face_dir % 360
 
 
 def _approx_position_lines(state: PlayerState, flags: [Flag]):
-    def avg_coord(coords: [Coordinate]):
-        sum_coord = Coordinate(0, 0)
-        for c in coords:
-            sum_coord = sum_coord + c
-        length = float(len(coords))
-        return Coordinate(sum_coord.pos_x / length, sum_coord.pos_y / length)
+    solution_paths = []
+    flags = sorted(flags, key=lambda f: f.relative_distance)
 
-    solution_shapes: [Polygon] = []
-    positions = []
-
+    # Create solution shapes for all flags
     for flag in flags:
-        solution_shapes.append(create_solution_shape(state, flag))
-        flag_angle = state.face_dir + flag.body_relative_direction
-        rel_pos_x = flag.relative_distance * math.cos(flag_angle * math.pi / 180)
-        rel_pos_y = flag.relative_distance * math.sin(flag_angle * math.pi / 180)
-        relative_pos = Coordinate(rel_pos_x, rel_pos_y)
-        approx_play_pos = flag.coordinate - relative_pos
-        positions.append(approx_play_pos)
+        solution_paths.append(create_solution_shape(state, flag))
 
-    #if state.is_test_player():
-    #    print(Coordinate(-36, 20).euclidean_distance_from(avg_coord(positions)))
+    SCALE_FACTOR = 1000
+    pc = pyclipper.Pyclipper()
+    pc.AddPath(pyclipper.scale_to_clipper(solution_paths[0], SCALE_FACTOR), pyclipper.PT_SUBJECT, True)
+    for path in solution_paths[1:]:
+        pc.AddPath(pyclipper.scale_to_clipper(path, SCALE_FACTOR), pyclipper.PT_CLIP)
 
-    final_solution_area = solution_shapes[0]
-    for i, shape in enumerate(solution_shapes[1:]):
-        new_intersection = final_solution_area.intersection(shape)
-        if new_intersection.area == 0:
-            break
-        final_solution_area = new_intersection
+    res = pyclipper.scale_from_clipper(pc.Execute(pyclipper.CT_INTERSECTION), SCALE_FACTOR)
 
+    if len(res) == 0:
+        print("FAILED for player ", state.num, "Flags: ", len(flags), res)
+        # TODO Return average coordinate using normal trigonometry
+        return None
+
+    result = Polygon(res[0]).centroid.coords
+    result = Coordinate(result[0][0], -result[0][1])
     if state.is_test_player():
-        print("SOLUTION: " + str(final_solution_area.centroid))
+        print(result)
+    return result
 
 
 # Shape representing the space of possible solutions
 def create_solution_shape(state: PlayerState, flag: Flag):
-    flag_angle = state.face_dir + flag.body_relative_direction
+    flag_angle = state.face_dir.get_value() + flag.body_relative_direction
     max_angle = (flag_angle + 1) % 360  # Rounding error
     min_angle = (flag_angle - 1) % 360  # Rounding error
-    min_dist, max_dist = get_quantize_range(flag.relative_distance)
-    min_dist *= 0.99
-    max_dist *= 1.01
+    min_dist, max_dist = get_flag_quantize_range(flag.relative_distance)
 
     # Closest curve of the cone
-    p1 = solve_point_as_list(min_angle, min_dist, flag.coordinate)
-    p2 = solve_point_as_list(flag_angle, min_dist, flag.coordinate)
-    p3 = solve_point_as_list(max_angle, min_dist, flag.coordinate)
+    p1 = solve_point_as_pair(min_angle, min_dist, flag.coordinate)
+    p2 = solve_point_as_pair(flag_angle, min_dist, flag.coordinate)
+    p3 = solve_point_as_pair(max_angle, min_dist, flag.coordinate)
 
     # Furthest curve of the cone
-    p4 = solve_point_as_list(max_angle, max_dist, flag.coordinate)
-    p5 = solve_point_as_list(flag_angle, max_dist, flag.coordinate)
-    p6 = solve_point_as_list(min_angle, max_dist, flag.coordinate)
+    p4 = solve_point_as_pair(max_angle, max_dist, flag.coordinate)
+    p5 = solve_point_as_pair(flag_angle, max_dist, flag.coordinate)
+    p6 = solve_point_as_pair(min_angle, max_dist, flag.coordinate)
 
-    polygon = Polygon([p1, p2, p3, p4, p5, p6])
-
-    if state.is_test_player() and not polygon.intersects(Point(-36, 20)):
-        print("Missing intersection with point. ", flag, str(polygon))
-
-    return polygon
+    return p1, p2, p3, p4, p5, p6
 
 
-def solve_point_as_list(angle, distance, offset):
+def solve_point_as_pair(angle, distance, offset):
     rel_pos_x = distance * math.cos(angle * math.pi / 180)
     rel_pos_y = distance * math.sin(angle * math.pi / 180)
     relative_coord = Coordinate(rel_pos_x, rel_pos_y)
     point_pos = offset - relative_coord
+    return point_pos.pos_x, point_pos.pos_y
 
-    return [point_pos.pos_x, point_pos.pos_y]
+
+"""def common_area(solution_shapes: [sympy.Polygon]):
+    # Find overlapping area for all solution shapes
+    final_solution_area = solution_shapes[0]
+    length = len(solution_shapes)
+
+    if length == 1:
+        return solution_shapes[0]
+
+    if length == 2:
+        return solution_shapes[0].intersection(solution_shapes[1])
+
+    else:
+        shape1 = common_area(solution_shapes[:math.ceil(length / 2)])
+        shape2 = common_area(solution_shapes[math.ceil(length / 2):])
+        return shape1.intersection(shape2)"""
+
+
+"""def _create_grid(shape: Polygon):
+    bounds = shape.bounds
+    cells = []
+    grid_cell_size = 0.05
+    cells_x = math.ceil(abs(bounds[0] - bounds[2]) * (1.0 / grid_cell_size))
+    cells_y = math.ceil(abs(bounds[1] - bounds[3]) * (1.0 / grid_cell_size))
+    min_x = bounds[0]
+    min_y = bounds[1]
+    for x in range(cells_x):
+        min_x += grid_cell_size
+        for y in range(cells_y):
+            min_y += grid_cell_size
+            cells.append(shapely.geometry.box(min_x, min_y, min_x + grid_cell_size, min_y + grid_cell_size))
+
+    return cells"""

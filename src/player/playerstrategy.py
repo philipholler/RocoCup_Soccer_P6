@@ -184,7 +184,7 @@ def determine_objective_goalie(state: PlayerState):
 def determine_objective(state: PlayerState):
     # Just do idle orientation if before kick off or kick_off by opponent team, since players simply teleport to positions
     opponent_side = "r" if state.world_view.side == "l" else "l"
-    if state.world_view.game_state == 'before_kick_off' or state.world_view.game_state == "kick_off_{0}".format(opponent_side) or True:
+    if state.world_view.game_state == 'before_kick_off' or state.world_view.game_state == "kick_off_{0}".format(opponent_side):
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
     # If opponent has ball in some way judged by the referee, simply position
