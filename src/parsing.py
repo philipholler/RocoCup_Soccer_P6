@@ -223,16 +223,9 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         last_update = ps.action_history.last_see_update
         if ps.world_view.game_state == 'play_on' and msg.startswith("(see {0}".format(last_update)):
             return  # Discard duplicate messages
-
         _update_time(msg, ps)
-        before = time()
         _parse_see(msg, ps)
-        after = time()
-        if ps.is_test_player():
-            print((after - before) * 1000)
-
         ps.on_see_update()
-
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
@@ -1211,6 +1204,9 @@ def _approx_position_lines(state: PlayerState, flags: [Flag]):
     for flag in flags:
         solution_paths.append(create_solution_shape(state, flag))
 
+    if len(flags) == 0:
+        return None
+
     SCALE_FACTOR = 1000
     pc = pyclipper.Pyclipper()
     pc.AddPath(pyclipper.scale_to_clipper(solution_paths[0], SCALE_FACTOR), pyclipper.PT_SUBJECT, True)
@@ -1226,8 +1222,6 @@ def _approx_position_lines(state: PlayerState, flags: [Flag]):
 
     result = Polygon(res[0]).centroid.coords
     result = Coordinate(result[0][0], -result[0][1])
-    if state.is_test_player():
-        print(result)
     return result
 
 
