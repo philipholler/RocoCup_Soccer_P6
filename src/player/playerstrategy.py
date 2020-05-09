@@ -5,13 +5,15 @@ from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_P
 from geometry import calculate_full_origin_angle_radians
 from player import actions
 from player.actions import Command, _calculate_relative_angle
-from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE, CATCH_MODE, DRIBBLING_MODE
+from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE, CATCH_MODE, \
+    DRIBBLING_MODE
 from player.world_objects import Coordinate, Ball
 from utils import clamp, debug_msg
 
 
 class Objective:
-    def __init__(self, state: PlayerState, command_generator, completion_criteria=lambda: True, maximum_duration=1) -> None:
+    def __init__(self, state: PlayerState, command_generator, completion_criteria=lambda: True,
+                 maximum_duration=1) -> None:
         self.command_generator = command_generator
         self.completion_criteria = completion_criteria
         self.deadline = state.now() + maximum_duration
@@ -69,7 +71,8 @@ def _dribble_objective(state: PlayerState):
         debug_msg(str(state.now()) + "looking for pass targets", "DRIBBLE")
         state.action_history.has_looked_for_targets = True
 
-        return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
+        return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(
+            state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
 
     target = _choose_pass_target(state)
     if target is not None:
@@ -122,15 +125,18 @@ def determine_objective_goalie(state: PlayerState):
         return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
 
     # If catch ball successful or goal_kick, pass to teammate
-    if state.world_view.game_state == "free_kick_{0}".format(state.world_view.side) or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side):
+    if state.world_view.game_state == "free_kick_{0}".format(
+            state.world_view.side) or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side):
         if state.is_near_ball(KICKABLE_MARGIN):
             pass_target = _choose_pass_target(state)
             if pass_target is not None:
-                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
+                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True,
+                                 1)
             # No suitable pass target
             return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
         else:
-            return Objective(state, lambda: actions.jog_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
+            return Objective(state, lambda: actions.jog_to(state, state.world_view.ball.get_value().coord),
+                             lambda: True, 1)
 
     ball: Ball = state.world_view.ball.get_value()
 
@@ -151,7 +157,6 @@ def determine_objective_goalie(state: PlayerState):
         if ball_pos_1_tick.euclidean_distance_from(state.position.get_value()) < CATCHABLE_MARGIN:
             return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)
 
-
     # Try to perform an interception of the ball if possible
     intercept_point, ticks = state.ball_interception()
     if intercept_point is not None and state.world_view.ball.get_value().distance > 0.5:
@@ -165,7 +170,8 @@ def determine_objective_goalie(state: PlayerState):
 
     # If ball within 2 meters, run to it
     if state.is_near_ball(7):
-        return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
+        return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True,
+                         1)
 
     # Stay close to y_pos of ball
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
@@ -174,7 +180,8 @@ def determine_objective_goalie(state: PlayerState):
         optimal_y_value = _get_goalie_y_value(state)
         if abs(optimal_y_value - goalie_coord.pos_y) > delta or abs(goalie_coord.pos_x) - 50 > delta:
             if state.world_view.side == "l":
-                return Objective(state, lambda: actions.jog_to(state, Coordinate(-50, optimal_y_value)), lambda: True, 1)
+                return Objective(state, lambda: actions.jog_to(state, Coordinate(-50, optimal_y_value)), lambda: True,
+                                 1)
             else:
                 return Objective(state, lambda: actions.jog_to(state, Coordinate(50, optimal_y_value)), lambda: True, 1)
         else:
@@ -184,17 +191,25 @@ def determine_objective_goalie(state: PlayerState):
 def determine_objective(state: PlayerState):
     opponent_side = "r" if state.world_view.side == "l" else "l"
     # Just do idle orientation if before kick off or kick_off by opponent team, since players simply teleport to positions
-    if state.world_view.game_state == 'before_kick_off' or state.world_view.game_state == "kick_off_{0}".format(opponent_side):
+    if state.world_view.game_state == 'before_kick_off' or state.world_view.game_state == "kick_off_{0}".format(
+            opponent_side) or "goal" in state.world_view.game_state:
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
-    # If opponent has ball in some way judged by the referee, simply position
-    # Also just do position, if the game state is free_kick_fault_l if team l.
-    # This leads to free_kick_fault_l -> free_kick_r
-    if (state.world_view.game_state.endswith("_{0}".format(opponent_side)) and "fault" not in state.world_view.game_state)\
-            or "fault_{0}".format(state.world_view.side) in state.world_view.game_state:
-        if "fault_{0}".format(state.world_view.side) in state.world_view.game_state:
-            print("FAULT position")
-        _position_optimally_objective(state)
+    # If some fault has been made by our team, position optimally
+    if "fault_{0}".format(state.world_view.side) in state.world_view.game_state:
+        return _position_optimally_objective(state)
+
+    # If we have a free kick, corner_kick or kick_in
+    # If closest -> Go to ball and pass, else position optimally
+    if state.world_view.game_state == "free_kick_{0}".format(state.world_view.side) \
+            or state.world_view.game_state == "corner_kick_{0}".format(state.world_view.side) \
+            or state.world_view.game_state == "kick_in_{0}".format(state.world_view.side):
+        if state.is_near_ball(KICKABLE_MARGIN):
+            return _pass_objective(state)
+        elif state.is_nearest_ball(1):
+            return _jog_to_ball_objective(state)
+        else:
+            return _position_optimally_objective(state)
 
     # Goalie
     if state.num == 1:
@@ -279,6 +294,7 @@ def _intercept_objective_goalie(state):
     else:
         return determine_objective_goalie(state)
 
+
 def _intercept_objective(state):
     ball: Ball = state.world_view.ball.get_value()
     dist = ball.distance
@@ -305,6 +321,9 @@ def _intercept_objective(state):
 def _rush_to_ball_objective(state):
     return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 1)
 
+def _jog_to_ball_objective(state):
+    return Objective(state, lambda: actions.jog_to_ball(state), lambda: state.is_near_ball(), 1)
+
 
 def _position_optimally_objective(state: PlayerState):
     if "kick_off" in state.world_view.game_state:
@@ -318,7 +337,7 @@ def _position_optimally_objective(state: PlayerState):
     elif state.player_type == "midfield":
         optimal_position = _optimal_midfielder_pos(state)
     else:  # Striker
-        optimal_position = _optimal_striker_pos(state) #_optimal_attacker_pos(state)
+        optimal_position = _optimal_striker_pos(state)  # _optimal_attacker_pos(state)
 
     current_position: Coordinate = state.position.get_value()
     dist = current_position.euclidean_distance_from(optimal_position)
@@ -383,7 +402,6 @@ def _optimal_midfielder_pos(state) -> Coordinate:
         # Defending
         optimal_x = clamp(play_position.pos_x + ball.pos_x * 0.4, -45, 45)
 
-
     # Used to make players position themselves closer to the goal on the y-axis when far up/down the field
     y_goal_factor = 1 - (abs(optimal_x) - 35) * 0.05 if abs(optimal_x) > 35 else 1.0
     optimal_y = clamp(play_position.pos_y + ball_delta_y * 0.2 + ball.pos_y * 0.2, -25, 25) * y_goal_factor
@@ -438,12 +456,15 @@ def _choose_pass_target(state: PlayerState):
     am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 
     # If free targets forward -> Pass forward
-    forward_team_mates = state.world_view.get_non_offside_forward_team_mates(state.team_name, side, state.position.get_value(), max_data_age=4, min_distance_free=2, min_dist_from_me=2)
+    forward_team_mates = state.world_view.get_non_offside_forward_team_mates(state.team_name, side,
+                                                                             state.position.get_value(), max_data_age=4,
+                                                                             min_distance_free=2, min_dist_from_me=2)
     if len(forward_team_mates) > 0:
         # If free team mates sort by closest to opposing teams goal
         opposing_team_goal: Coordinate = Coordinate(52.5, 0) if side == "l" else Coordinate(-52.5, 0)
         debug_msg("forward_team_mates: " + str(forward_team_mates), "PASS_TARGET")
-        good_target = list(sorted(forward_team_mates, key=lambda p: p.coord.euclidean_distance_from(opposing_team_goal), reverse=False))[0]
+        good_target = list(sorted(forward_team_mates, key=lambda p: p.coord.euclidean_distance_from(opposing_team_goal),
+                                  reverse=False))[0]
         return good_target
 
     # If no free targets forward, but i am not marked -> dribble forward
@@ -452,12 +473,15 @@ def _choose_pass_target(state: PlayerState):
         return None
 
     # If no free targets forward, but free targets behind, and i am marked -> Pass back
-    behind_team_mates = state.world_view.get_free_behind_team_mates(state.team_name, side, state.position.get_value(), max_data_age=3, min_distance_free=3, min_dist_from_me=3)
+    behind_team_mates = state.world_view.get_free_behind_team_mates(state.team_name, side, state.position.get_value(),
+                                                                    max_data_age=3, min_distance_free=3,
+                                                                    min_dist_from_me=3)
     if len(behind_team_mates) > 0:
         # Get the player furthest forward and free
         opposing_team_goal: Coordinate = Coordinate(52.5, 0) if side == "l" else Coordinate(-52.5, 0)
         debug_msg("Behind_team_mates: " + str(behind_team_mates), "PASS_TARGET")
-        good_target = list(sorted(behind_team_mates, key=lambda p: p.coord.euclidean_distance_from(opposing_team_goal), reverse=False))[0]
+        good_target = list(sorted(behind_team_mates, key=lambda p: p.coord.euclidean_distance_from(opposing_team_goal),
+                                  reverse=False))[0]
         return good_target
 
     # If no free targets and i am marked -> Try to dribble anyway

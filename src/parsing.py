@@ -811,6 +811,9 @@ def _parse_hear(text: str, ps: PlayerState):
 
         ps.world_view.game_state = matched.group(2)
 
+        if ("goal" in matched.group(2) and "kick" not in matched.group(2)) or matched.group(2) == "before_kick_off":
+            ps.should_reset_to_start_position = True
+
         return
     elif sender == "self":
         return

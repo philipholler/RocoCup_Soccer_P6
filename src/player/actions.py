@@ -299,6 +299,19 @@ def rush_to_ball(state: PlayerState):
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
 
+def jog_to_ball(state: PlayerState):
+    debug_msg(str(state.now()) + "JOG TO BALL", "ACTIONS")
+    if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
+        debug_msg("ACTION: LOCATE BALL", "INTERCEPTION")
+        return locate_ball(state)
+
+    ball: Ball = state.world_view.ball.get_value()
+    locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
+    if locations is not None:
+        return go_to(state, locations[4], dash_power_limit=PLAYER_JOG_POWER)
+    else:
+        return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_JOG_POWER)
+
 
 def jog_to(state: PlayerState, target: Coordinate):
     return go_to(state, target, dash_power_limit=PLAYER_JOG_POWER)
