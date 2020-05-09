@@ -15,10 +15,11 @@ DEBUG_DICT = {
     "STATUS": False,
     "MODE": False,
     "GOALIE": False,
-    "BALL": False,
     "PASS_TARGET": False,
     "DRIBBLE": False,
+    "BALL": False,
     "HAS_BALL": False,
+    "OFFSIDE": False,
     "QUANTIZATION": True
 }
 

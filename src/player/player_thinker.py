@@ -10,7 +10,7 @@ import client_connection
 from player.playerstrategy import Objective
 import time
 import parsing
-from player.playerstrategy import determine_objective
+from player.playerstrategy import determine_objective, determine_objective_goalie
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
 from utils import debug_msg
@@ -66,11 +66,9 @@ class Thinker(threading.Thread):
                     can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
-                # Move player back to starting positions after goal
-                if ("goal" in self.player_state.world_view.game_state and "kick" not in self.player_state.world_view.game_state)\
-                        or (self.player_state.world_view.game_state == "before_kick_off" and self.is_positioned):
-                    pass
-                    # self.move_back_to_start_pos() todo Reimplement with flag
+                # Move player back to starting positions after goal.
+                if self.player_state.should_reset_to_start_position:
+                    self.move_back_to_start_pos()
 
 
             current_time = time.time()
@@ -109,6 +107,7 @@ class Thinker(threading.Thread):
         move_action = "(move {0} {1})".format(self.player_state.starting_position.pos_x
                                               , self.player_state.starting_position.pos_y)
         self.player_conn.action_queue.put(move_action)
+        self.player_state.should_reset_to_start_position = False
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:
