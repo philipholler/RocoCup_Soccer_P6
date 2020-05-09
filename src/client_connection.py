@@ -38,7 +38,8 @@ class Connection(threading.Thread):
                 self.sending = True
                 if self._stop_event.is_set():
                     return
-                self._send_message(self.action_queue.get())
+                msg = self.action_queue.get()
+                self._send_message(msg)
 
             if self._stop_event.is_set():
                 return

@@ -147,7 +147,8 @@ def determine_objective_goalie(state: PlayerState):
     if state.world_view.game_state == "free_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "corner_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "kick_in_{0}".format(state.world_view.side) \
-            or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side):
+            or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side) \
+            or state.world_view.game_state == "offside_{0}".format(opponent_side):
         if _ball_unknown(state):
             return _locate_ball_objective(state)
         if state.is_near_ball(KICKABLE_MARGIN):
@@ -192,7 +193,7 @@ def determine_objective_goalie(state: PlayerState):
             return Objective(state, lambda: actions.rush_to(state, positions[1]), lambda: True, 1)
 
     # If ball within 5 meters, run to it
-    if state.is_near_ball(5):
+    if state.is_near_ball(5) and state.is_inside_own_box():
         return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
 
     # If position not alligned with ball y-position -> Adjust y-position
@@ -230,7 +231,8 @@ def determine_objective_field(state: PlayerState):
     if state.world_view.game_state == "free_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "corner_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "kick_in_{0}".format(state.world_view.side) \
-            or state.world_view.game_state == "kick_off_{0}".format(state.world_view.side):
+            or state.world_view.game_state == "kick_off_{0}".format(state.world_view.side) \
+            or state.world_view.game_state == "offside_{0}".format(opponent_side):
         if _ball_unknown(state):
             return _locate_ball_objective(state)
         if state.is_near_ball(KICKABLE_MARGIN):
@@ -371,6 +373,8 @@ def _position_optimally_objective(state: PlayerState):
         optimal_position = _optimal_defender_pos(state)
     elif state.player_type == "midfield":
         optimal_position = _optimal_midfielder_pos(state)
+    elif state.player_type == "goalie":
+        optimal_position = Coordinate(state.get_global_start_pos().pos_x, _get_goalie_y_value(state))
     else:  # Striker
         optimal_position = _optimal_striker_pos(state)  # _optimal_attacker_pos(state)
 
