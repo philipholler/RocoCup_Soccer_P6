@@ -148,11 +148,15 @@ def determine_objective_goalie(state: PlayerState):
             or state.world_view.game_state == "corner_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "kick_in_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side):
+        if _ball_unknown(state):
+            return _locate_ball_objective(state)
         if state.is_near_ball(KICKABLE_MARGIN):
-            # You get 2 ticks for looking for pass targets
             if state.world_view.sim_time - state.action_history.last_look_for_pass_targets > 2:
-                return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
-            return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 2)
+                return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
+            if _choose_pass_target(state, must_pass=True) is not None:
+                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 1)
+            else:
+                return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
         elif state.is_nearest_ball(1):
             return _jog_to_ball_objective(state)
         else:
@@ -227,11 +231,15 @@ def determine_objective_field(state: PlayerState):
             or state.world_view.game_state == "corner_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "kick_in_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "kick_off_{0}".format(state.world_view.side):
+        if _ball_unknown(state):
+            return _locate_ball_objective(state)
         if state.is_near_ball(KICKABLE_MARGIN):
-            # You get 2 ticks for looking for pass targets
             if state.world_view.sim_time - state.action_history.last_look_for_pass_targets > 2:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
-            return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 1)
+            if _choose_pass_target(state, must_pass=True) is not None:
+                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 1)
+            else:
+                return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
         elif state.is_nearest_ball(1):
             return _jog_to_ball_objective(state)
         else:

@@ -68,7 +68,7 @@ class Thinker(threading.Thread):
                     can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
 
-                # Move player back to starting positions after goal
+                # Move player back to starting positions after goal.
                 if self.player_state.should_reset_to_start_position:
                     self.move_back_to_start_pos()
 
