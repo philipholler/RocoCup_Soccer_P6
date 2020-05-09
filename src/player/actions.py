@@ -674,6 +674,7 @@ def positional_adjustment(state, adjustment: Coordinate):
 
     return command_builder.command_list
 
+
 def dribble(state: PlayerState, dir: int):
     command_builder = CommandBuilder()
     dribble_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=dir)

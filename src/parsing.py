@@ -521,16 +521,14 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     # These are always included
     distance = float(split_by_whitespaces[1])
     direction = int(split_by_whitespaces[2])
-    # direction += ps.body_state.neck_angle # Accommodates non-zero neck angles
-    # direction %= 360
     # These might be included depending on the distance and view of the player
-    distance_chng = PrecariousData.unknown()
-    dir_chng = PrecariousData.unknown()
+    distance_chng = None
+    dir_chng = None
 
     # If we also know dist_change and dir_change
     if len(split_by_whitespaces) > 3:
-        distance_chng = split_by_whitespaces[3]
-        dir_chng = split_by_whitespaces[4]
+        distance_chng = float(split_by_whitespaces[3])
+        dir_chng = float(split_by_whitespaces[4])
 
     ball_coord = None
     # The position of the ball can only be calculated, if the position of the player is known
@@ -548,7 +546,7 @@ def _parse_ball(ball: str, ps: player.PlayerState):
             old_position_history = ps.world_view.ball.get_value().position_history
             old_dist_history = ps.world_view.ball.get_value().dist_history
 
-        new_ball = Ball(distance=distance, direction=direction, coord=ball_coord,
+        new_ball = Ball(distance, direction, distance_chng, dir_chng, coord=ball_coord,
                         pos_history=old_position_history, time=ps.now(), dist_history=old_dist_history)
 
         ps.update_ball(new_ball, ps.now())

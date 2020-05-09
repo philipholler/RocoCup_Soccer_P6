@@ -153,3 +153,32 @@ def find_mean_angle(angles, acceptable_variance=3.0):
 # This function averages angles that are close together.
 def average(numbers):
     return sum(numbers) / len(numbers)
+
+
+class Vector2D:
+    def __init__(self, x, y):
+        self.x = float(x)
+        self.y = float(y)
+
+    @staticmethod
+    def velocity_to_xy(velocity, direction):
+        x = math.cos(math.radians(direction)) * velocity
+        y = -math.sin(math.radians(direction)) * velocity
+        return Vector2D(x, y)
+
+    def direction(self):
+        return math.degrees(math.atan(self.y / self.x))
+
+    def magnitude(self):
+        return math.sqrt(self.x ** 2 + self.y ** 2)
+
+    def __add__(self, other):
+        return Vector2D(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        return Vector2D(self.x - other.x, self.y - other.y)
+
+    def __repr__(self) -> str:
+        return "(" + str(self.x) + ", " + str(self.y) + ")"
+
+

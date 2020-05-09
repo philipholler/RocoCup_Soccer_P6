@@ -1,10 +1,11 @@
+import math
 from collections import deque
 from itertools import islice
 from math import sqrt, atan, degrees, exp
 
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from geometry import is_angle_in_range, find_mean_angle, Coordinate, \
-    calculate_full_origin_angle_radians, get_xy_vector
+    calculate_full_origin_angle_radians, get_xy_vector, Vector2D
 from utils import debug_msg
 
 
@@ -76,11 +77,13 @@ UPPER_FIELD_BOUND = Coordinate(60, 40)
 class Ball:
     MAX_HISTORY_LEN = 16
 
-    def __init__(self, distance: float, direction: int, coord: Coordinate, time, pos_history: deque = None,
+    def __init__(self, distance: float, direction: int, dist_change, dir_change, coord: Coordinate, time, pos_history: deque = None,
                  dist_history: deque = None) -> None:
         super().__init__()
         self.distance = distance
         self.direction = direction
+        self.dist_change = dist_change
+        self.dir_change = dir_change
         self.coord: Coordinate = coord
         self.projection = None
         if pos_history is None:
@@ -274,6 +277,20 @@ class Ball:
             return False
 
         return self.dist_history[0][0] < self.dist_history[1][0]
+
+    def get_absolute_velocity(self, observer_velocity: Vector2D):
+        if self.dir_change is None or self.dist_change is None or observer_velocity is None:
+            return None
+        if self.dist_change == 0:
+            return observer_velocity
+        rel_velocity_x = self.dist_change
+        rel_velocity_y = self.dir_change * self.distance * (math.pi/180)
+        rel_speed = sqrt((rel_velocity_x ** 2) + (rel_velocity_y ** 2))
+
+        rotated_angle = math.atan(rel_velocity_y / rel_velocity_x) + self.direction * (math.pi / 180)
+        rel_velocity_x = rel_speed * math.cos(rotated_angle)
+        rel_velocity_y = rel_speed * math.sin(rotated_angle)
+        return Vector2D(rel_velocity_x, rel_velocity_y) + observer_velocity
 
 
 class Goal:
