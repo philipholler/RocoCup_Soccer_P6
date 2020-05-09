@@ -668,7 +668,8 @@ def dribble(state: PlayerState, dir: int):
 
 
 @require_angle_update
-def look_for_pass_target(state):
+def look_for_pass_target(state: PlayerState):
+    state.action_history.last_look_for_pass_targets = state.world_view.sim_time
     command_builder = CommandBuilder()
     # Perform an orientation with boundaries of neck movement
     _append_orient(state, neck_movement_only=False, command_builder=command_builder, fov=FOV_NORMAL)

@@ -49,7 +49,7 @@ class SoccerSim(threading.Thread):
 
         # Use soccerwindow2: soccerwindow2 --kill-server
         # Use regular monitor: exec rcssmonitor --show-status-bar 1 --show-kick-accel-area 1 --show-catch-area 1 --geometry=1280x800
-        self.soccer_monitor = subprocess.Popen(["exec soccerwindow2 --kill-server"], shell=True)
+        self.soccer_monitor = subprocess.Popen(["exec rcssmonitor --show-status-bar 1 --show-kick-accel-area 1 --show-catch-area 1 --geometry=1280x800"], shell=True)
 
 
     def run(self) -> None:

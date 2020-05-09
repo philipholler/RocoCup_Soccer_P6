@@ -10,7 +10,7 @@ import client_connection
 from player.playerstrategy import Objective
 import time
 import parsing
-from player.playerstrategy import determine_objective
+from player.playerstrategy import determine_objective, determine_objective_goalie
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
 from utils import debug_msg
@@ -55,6 +55,7 @@ class Thinker(threading.Thread):
 
     def think(self):
         can_send = False
+
         self.player_state.current_objective = determine_objective(self.player_state)
         time_since_action = 0
         last_time = time.time()
