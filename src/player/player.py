@@ -47,6 +47,15 @@ class PlayerState:
         return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name
                                                                                   , self.num, self.position)
 
+    def is_inside_field(self):
+        position: Coordinate = self.position.get_value()
+        if -52.5 > position.pos_x or position.pos_x > 52.5:
+            return False
+        if  -34 > position.pos_y or position.pos_y > 34:
+            return False
+        return True
+
+
     def is_approaching_goal(self):
         if self.position.is_value_known():
             pos: Coordinate = self.position.get_value()
@@ -129,7 +138,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 2 and self.team_name == "Team1"
+        return self.num == 1 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)

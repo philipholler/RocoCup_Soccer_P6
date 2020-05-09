@@ -1,4 +1,5 @@
 from math import log, exp, ceil
+
 import numpy
 
 from constants import QUANTIZE_STEP_OBJECTS, QUANTIZE_STEP_LANDMARKS, EPSILON

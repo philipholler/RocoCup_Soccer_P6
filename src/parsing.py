@@ -3,7 +3,6 @@ import re
 import pyclipper
 from time import time
 
-import shapely
 from shapely.geometry import Polygon
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
@@ -284,7 +283,7 @@ def _parse_see(msg, state: player.PlayerState):
         else:
             raise Exception("Unknown see element: " + str(element))
 
-    flags = create_flags(flag_strings, state)
+    flags = create_flags(flag_strings, goals, state)
 
     _parse_lines(lines, state)
     if len(lines) == 0:
@@ -302,7 +301,6 @@ def _parse_see(msg, state: player.PlayerState):
 
     # _approx_position(flags, state)
     # _approx_body_angle(flags, state)
-    #_parse_goals(goals, state)
     _parse_players(players, state)
     _parse_ball(ball, state)
 
@@ -368,7 +366,7 @@ class Flag:
                ", direction: " + str(self.body_relative_direction)
 
 
-def create_flags(flag_strings, state: PlayerState):
+def create_flags(flag_strings, goal_flags, state: PlayerState):
     known_flags_strings = []
 
     # Remove flags out of field of view
@@ -376,6 +374,9 @@ def create_flags(flag_strings, state: PlayerState):
         if not str(flag).startswith("((F)"):
             known_flags_strings.append(flag)
 
+    for flag in goal_flags:
+        if "((G" not in flag:
+            known_flags_strings.append(flag)
     ids = _extract_flag_identifiers(known_flags_strings)
     coords = _extract_flag_coordinates(ids)
     distances = _extract_flag_distances(known_flags_strings)
@@ -951,20 +952,30 @@ def _match(regex_string, text):
 
 
 def _extract_flag_identifiers(flags):
+    goal_flag_ident_regex = ".*\\(([^\\)]*)\\)"
     flag_identifiers_regex = ".*\\(f ([^\\)]*)\\)"
     flag_identifiers = []
     for flag in flags:
-        m = _match(flag_identifiers_regex, flag)
-        flag_identifiers.append(m.group(1).replace(" ", ""))
+        if str(flag).startswith("((f"):
+            m = _match(flag_identifiers_regex, flag)
+            flag_identifiers.append(m.group(1).replace(" ", ""))
+        elif str(flag).startswith("((g"):
+            m = _match(goal_flag_ident_regex, flag)
+            flag_identifiers.append(m.group(1).replace(" ", ""))
     return flag_identifiers
 
 
 def _extract_flag_distances(flags):
+    goal_flag_distance_regex = ".*\\([^\\)]*\\) ({0}) ".format(_REAL_NUM_REGEX)
     flag_distance_regex = ".*\\(f [^\\)]*\\) ({0}) ".format(_REAL_NUM_REGEX)
     flag_distances = []
     for flag in flags:
-        m = _match(flag_distance_regex, flag)
-        flag_distances.append(m.group(1).replace(" ", ""))
+        if str(flag).startswith("((f"):
+            m = _match(flag_distance_regex, flag)
+            flag_distances.append(m.group(1).replace(" ", ""))
+        elif str(flag).startswith("((g"):
+            m = _match(goal_flag_distance_regex, flag)
+            flag_distances.append(m.group(1).replace(" ", ""))
     return flag_distances
 
 
@@ -1169,7 +1180,11 @@ def _approx_position(flags: [Flag], state: PlayerState):
 
 
 def _approx_angle_lines(state: PlayerState, lines):
-    lines = sorted(state.world_view.lines, key=lambda x: x.distance)
+    if not state.position.is_value_known() or state.is_inside_field():
+        lines = sorted(state.world_view.lines, key=lambda x: x.distance)
+    else:
+        lines = sorted(state.world_view.lines, key=lambda x: x.distance, reverse=True)
+
     if len(lines) == 0:
         print("ANGLE NOT FOUND")
         debug_msg(str(state.now()) + "Could not get angle. Outside field facing out", "POSITIONAL")
@@ -1209,11 +1224,17 @@ def _approx_position_lines(state: PlayerState, flags: [Flag]):
 
     SCALE_FACTOR = 1000
     pc = pyclipper.Pyclipper()
-    pc.AddPath(pyclipper.scale_to_clipper(solution_paths[0], SCALE_FACTOR), pyclipper.PT_SUBJECT, True)
-    for path in solution_paths[1:]:
-        pc.AddPath(pyclipper.scale_to_clipper(path, SCALE_FACTOR), pyclipper.PT_CLIP)
+    try:
+        pc.AddPath(pyclipper.scale_to_clipper(solution_paths[0], SCALE_FACTOR), pyclipper.PT_SUBJECT, True)
 
-    res = pyclipper.scale_from_clipper(pc.Execute(pyclipper.CT_INTERSECTION), SCALE_FACTOR)
+
+        for path in solution_paths[1:]:
+            pc.AddPath(pyclipper.scale_to_clipper(path, SCALE_FACTOR), pyclipper.PT_CLIP)
+
+        res = pyclipper.scale_from_clipper(pc.Execute(pyclipper.CT_INTERSECTION), SCALE_FACTOR)
+
+    except pyclipper.ClipperException:
+        return None
 
     if len(res) == 0:
         print("FAILED for player ", state.num, "Flags: ", len(flags), res)
