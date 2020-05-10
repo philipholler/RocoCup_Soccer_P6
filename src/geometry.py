@@ -172,6 +172,11 @@ class Vector2D:
     def magnitude(self):
         return math.sqrt(self.x ** 2 + self.y ** 2)
 
+    def rotated(self, radians):
+        x2 = self.x * math.cos(radians) - self.y * math.sin(radians)
+        y2 = self.x * math.sin(radians) + self.y * math.cos(radians)
+        return Vector2D(x2, y2)
+
     def __add__(self, other):
         return Vector2D(self.x + other.x, self.y + other.y)
 
@@ -182,3 +187,5 @@ class Vector2D:
         return "(" + str(self.x) + ", " + str(self.y) + ")"
 
 
+def inverse_y_axis(degrees):
+    return (360 - degrees) % 360

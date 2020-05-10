@@ -521,7 +521,7 @@ def _parse_ball(ball: str, ps: player.PlayerState):
 
     # These are always included
     distance = float(split_by_whitespaces[1])
-    direction = int(split_by_whitespaces[2])
+    relative_ball_dir = int(split_by_whitespaces[2])
     # These might be included depending on the distance and view of the player
     distance_chng = None
     dir_chng = None
@@ -535,10 +535,12 @@ def _parse_ball(ball: str, ps: player.PlayerState):
     # The position of the ball can only be calculated, if the position of the player is known
     if ps.position.is_value_known(ps.now()) and ps.face_dir.is_value_known(ps.now()):
         pos: Coordinate = ps.position.get_value()
-        ball_coord: Coordinate = get_object_position(object_rel_angle=int(direction), dist_to_obj=float(distance),
+        ball_coord: Coordinate = get_object_position(object_rel_angle=int(relative_ball_dir), dist_to_obj=float(distance),
                                                      my_x=pos.pos_x,
                                                      my_y=pos.pos_y,
                                                      my_global_angle=ps.get_global_angle().get_value())
+        # Global ball direction
+        global_ball_direction = ps.face_dir.get_value() + relative_ball_dir
 
         # Save old ball information
         old_position_history = None
@@ -547,8 +549,9 @@ def _parse_ball(ball: str, ps: player.PlayerState):
             old_position_history = ps.world_view.ball.get_value().position_history
             old_dist_history = ps.world_view.ball.get_value().dist_history
 
-        new_ball = Ball(distance, direction, distance_chng, dir_chng, coord=ball_coord,
-                        pos_history=old_position_history, time=ps.now(), dist_history=old_dist_history)
+        new_ball = Ball(distance, relative_ball_dir, distance_chng, dir_chng, global_ball_direction,
+                        ps.get_velocity_vector(), coord=ball_coord, pos_history=old_position_history,
+                        time=ps.now(), dist_history=old_dist_history)
 
         ps.update_ball(new_ball, ps.now())
 

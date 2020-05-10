@@ -89,10 +89,6 @@ class Thinker(threading.Thread):
 
         commands = self.player_state.current_objective.get_next_commands(self.player_state)
         if self.player_state.is_test_player():
-            player_vel = self.player_state.get_velocity_vector()
-            ball_velocity = self.player_state.world_view.ball.get_value().get_absolute_velocity(player_vel)
-            if ball_velocity is not None:
-                print(self.player_state.now(), ball_velocity, player_vel)
             debug_msg(str(self.player_state.now()) + " Sending commands : " + str(commands), "ACTIONS")
             debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "
                                                      "TurnInProgress : {4}".format(
