@@ -292,7 +292,7 @@ def _parse_see(msg, state: player.PlayerState):
     # Find angle from visible lines
     new_global_angle = _approx_angle_lines(state, lines)
     if new_global_angle is not None:
-        state.update_angle(new_global_angle)
+        state.update_face_dir(new_global_angle)
 
     # Approximate and update position value
     new_pos = _approx_position_lines(state, flags)
@@ -1213,6 +1213,9 @@ def _approx_angle_lines(state: PlayerState, lines):
     else:
         face_dir = 90 - face_dir
 
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " | New face dir : " + str(face_dir % 360) + " | Neck angle : "
+                  + str(state.body_state.neck_angle), "ORIENTATION")
     return face_dir % 360
 
 
@@ -1227,24 +1230,25 @@ def _approx_position_lines(state: PlayerState, flags: [Flag]):
     if len(flags) == 0:
         return None
 
+    if len(flags) == 1:
+        result = Polygon(create_solution_shape(state, flags[0])).centroid.coords
+        result = Coordinate(result[0][0], -result[0][1])
+        return result
+
     SCALE_FACTOR = 1000
     pc = pyclipper.Pyclipper()
     try:
         pc.AddPath(pyclipper.scale_to_clipper(solution_paths[0], SCALE_FACTOR), pyclipper.PT_SUBJECT, True)
-
-
         for path in solution_paths[1:]:
             pc.AddPath(pyclipper.scale_to_clipper(path, SCALE_FACTOR), pyclipper.PT_CLIP)
-
         res = pyclipper.scale_from_clipper(pc.Execute(pyclipper.CT_INTERSECTION), SCALE_FACTOR)
-
     except pyclipper.ClipperException:
-        return None
+        return _emergency_approximation(state, flags)
 
     if len(res) == 0:
         print("FAILED for player ", state.num, "Flags: ", len(flags), res)
         # TODO Return average coordinate using normal trigonometry
-        return None
+        return _emergency_approximation(state, flags)
 
     result = Polygon(res[0]).centroid.coords
     result = Coordinate(result[0][0], -result[0][1])
@@ -1279,35 +1283,21 @@ def solve_point_as_pair(angle, distance, offset):
     return point_pos.pos_x, point_pos.pos_y
 
 
-"""def common_area(solution_shapes: [sympy.Polygon]):
-    # Find overlapping area for all solution shapes
-    final_solution_area = solution_shapes[0]
-    length = len(solution_shapes)
+def _emergency_approximation(state, flags):
+    def avg_coord(coords: [Coordinate]):
+        sum_coord = Coordinate(0, 0)
+        for c in coords:
+            sum_coord = sum_coord + c
+        length = float(len(coords))
+        return Coordinate(sum_coord.pos_x / length, sum_coord.pos_y / length)
 
-    if length == 1:
-        return solution_shapes[0]
+    positions = []
+    for flag in flags:
+        flag_angle = state.face_dir.get_value() + flag.body_relative_direction
+        rel_pos_x = flag.relative_distance * math.cos(flag_angle * math.pi / 180)
+        rel_pos_y = flag.relative_distance * math.sin(flag_angle * math.pi / 180)
+        relative_pos = Coordinate(rel_pos_x, rel_pos_y)
+        approx_play_pos = flag.coordinate - relative_pos
+        positions.append(approx_play_pos)
 
-    if length == 2:
-        return solution_shapes[0].intersection(solution_shapes[1])
-
-    else:
-        shape1 = common_area(solution_shapes[:math.ceil(length / 2)])
-        shape2 = common_area(solution_shapes[math.ceil(length / 2):])
-        return shape1.intersection(shape2)"""
-
-
-"""def _create_grid(shape: Polygon):
-    bounds = shape.bounds
-    cells = []
-    grid_cell_size = 0.05
-    cells_x = math.ceil(abs(bounds[0] - bounds[2]) * (1.0 / grid_cell_size))
-    cells_y = math.ceil(abs(bounds[1] - bounds[3]) * (1.0 / grid_cell_size))
-    min_x = bounds[0]
-    min_y = bounds[1]
-    for x in range(cells_x):
-        min_x += grid_cell_size
-        for y in range(cells_y):
-            min_y += grid_cell_size
-            cells.append(shapely.geometry.box(min_x, min_y, min_x + grid_cell_size, min_y + grid_cell_size))
-
-    return cells"""
+    return avg_coord(positions)

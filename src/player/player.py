@@ -157,6 +157,7 @@ class PlayerState:
         return sorted_distances[degree - 1] > ball_position.euclidean_distance_from(self.position.get_value())
 
     def ball_interception(self):
+        return None, None
         wv = self.world_view
 
         if wv.ball.is_value_known(self.now() - 4):
@@ -223,7 +224,7 @@ class PlayerState:
         # print("PARSED : ", time, " | Position: ", new_position)
         self.action_history.projected_position = new_position
 
-    def update_angle(self, new_global_angle):
+    def update_face_dir(self, new_global_angle):
         if self.action_history.turn_in_progress:
             history = self.action_history
             actual_angle_change = abs(new_global_angle - self.face_dir.get_value())
@@ -232,9 +233,11 @@ class PlayerState:
                 # Missed turn update in last see message, so it must have been included in this see update
                 history.turn_in_progress = False
                 history.missed_turn_last_see = False
+                history.expected_body_angle = None
             elif actual_angle_change + 0.1 >= abs(history.expected_angle_change) / 2 or actual_angle_change > 2.0:
                 # Turn registered
                 history.turn_in_progress = False
+                history.expected_body_angle = None
             else:
                 # Turn not registered
                 history.missed_turn_last_see = True
@@ -309,12 +312,11 @@ class ActionHistory:
         self.has_just_intercept_kicked = False
         self.turn_in_progress = False
         self.missed_turn_last_see = False
-        self.expected_body_angle = None
-        self.expected_neck_angle = None
         self.expected_speed = None
         self.projected_position = Coordinate(0, 0)
         self.has_looked_for_targets = False
         self.expected_angle_change = 0
+        self.expected_body_angle = None
         self.last_look_for_pass_targets = 0
 
 

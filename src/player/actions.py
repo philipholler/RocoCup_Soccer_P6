@@ -158,7 +158,7 @@ def _kick_stop_ball_msg(state, speed, ball_dir):
 
 
 def renew_angle(state: PlayerState, angle_to_turn, fov):
-    target_dir = (state.body_angle.get_value() + state.body_state.neck_angle + angle_to_turn) % 360
+    target_dir = (state.face_dir.get_value() + angle_to_turn) % 360
     state.action_history.turn_history.renew_angle(target_dir, fov)
     state.body_state.fov = fov
 
@@ -173,15 +173,13 @@ def register_catch(state: PlayerState):
 
 def register_neck_turn(state: PlayerState, angle):
     state.action_history.expected_angle_change += angle
-    state.action_history.expected_neck_angle = (state.body_state.neck_angle + angle) % 360
     state.action_history.turn_in_progress = True
 
 
 def register_body_turn(state: PlayerState, body_turn_moment=0):
     turn_angle = _calculate_actual_turn_angle(state.body_state.speed, body_turn_moment)
     state.action_history.expected_angle_change += turn_angle
-    if state.body_angle.is_value_known(state.action_history.two_see_updates_ago):
-        state.action_history.expected_body_angle = (state.body_angle.get_value() + turn_angle) % 360
+    state.action_history.expected_body_angle = state.body_angle.get_value() + turn_angle
     state.action_history.turn_in_progress = True
 
 
@@ -293,13 +291,16 @@ def rush_to(state: PlayerState, target: Coordinate):
 
 def rush_to_ball(state: PlayerState):
     debug_msg(str(state.now()) + "RUSH TO BALL", "ACTIONS")
+
     if not state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago) or state.is_ball_missing():
         debug_msg("ACTION: LOCATE BALL", "INTERCEPTION")
         return locate_ball(state)
 
     ball: Ball = state.world_view.ball.get_value()
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
-    if locations is not None:
+    print(ball.absolute_velocity)
+    if locations is not None and False:
+        debug_msg("Using prediction point: " + str(locations[4]), "ACTIONS")
         return go_to(state, locations[4], dash_power_limit=PLAYER_RUSH_POWER)
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
@@ -312,7 +313,7 @@ def jog_to_ball(state: PlayerState):
 
     ball: Ball = state.world_view.ball.get_value()
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
-    if locations is not None:
+    if locations is not None and False:
         return go_to(state, locations[4], dash_power_limit=PLAYER_JOG_POWER)
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_JOG_POWER)
@@ -355,7 +356,7 @@ def go_to(state: PlayerState, target: Coordinate, dash_power_limit=100):
             projected_speed *= PLAYER_SPEED_DECAY
 
         turn_moment = round(_calculate_turn_moment(projected_speed, rotation), 2)
-        debug_msg(str(state.now()) + "global angle: " + str(state.last_see_global_angle) + " off by: " + str(rotation), "POSITIONAL")
+        debug_msg(str(state.now()) + "global angle: " + str(state.last_see_global_angle) + " off by: " + str(rotation), "ACTIONS")
 
         if turn_moment < 0:
             first_turn_moment = max(turn_moment, -180)
@@ -435,18 +436,18 @@ def append_last_dash_actions(state, projected_speed, distance, command_builder: 
 @require_angle_update
 @orient_if_position_or_angle_unknown
 def locate_ball(state: PlayerState):
-    if state.is_test_player():
-        debug_msg(str(state.now()) + "locate_ball", "ORIENTATION")
-
     commandBuilder = CommandBuilder()
-
     commandBuilder.append_fov_change(state, FOV_WIDE)
 
     turn_history = state.action_history.turn_history
     angle = turn_history.least_updated_angle(FOV_WIDE)
+    turn_history.renew_angle(angle, FOV_WIDE)
     _append_look_direction(state, angle, FOV_WIDE, commandBuilder)
 
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " locate_ball. Looking towards : " + str(angle), "ORIENTATION")
     return commandBuilder.command_list
+
 
 def catch_ball(state: PlayerState, ball_pos_1_tick: Coordinate):
     commandBuilder = CommandBuilder()

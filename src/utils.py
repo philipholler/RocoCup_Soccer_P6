@@ -8,12 +8,12 @@ DEBUG_DICT = {
     "POSITIONAL": False,
     "ALL": False,
     "SCENARIOS": False,
-    "INTERCEPTION": False,
+    "INTERCEPTION": True,
     "KICK": False,
-    "ACTIONS": False,
-    "ORIENTATION": False,
+    "ACTIONS": True,
+    "ORIENTATION": True,
     "MESSAGES": False,
-    "STATUS": False,
+    "STATUS": True,
     "MODE": False,
     "GOALIE": False,
     "PASS_TARGET": False,
@@ -21,8 +21,8 @@ DEBUG_DICT = {
     "BALL": False,
     "HAS_BALL": False,
     "OFFSIDE": False,
-    "QUANTIZATION": True,
-    "VELOCITY": True
+    "QUANTIZATION": False,
+    "VELOCITY": False
 }
 
 

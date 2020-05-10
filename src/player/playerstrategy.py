@@ -283,8 +283,6 @@ def determine_objective_field(state: PlayerState):
 
     # If closest to ball of team -> rush to ball
     if state.is_nearest_ball(1):
-        if state.is_test_player():
-            debug_msg(str(state.now()) + " Rush to ball!", "ACTIONS")
         return _rush_to_ball_objective(state)
 
     # If ball not incoming -> Position optimally while looking at ball
