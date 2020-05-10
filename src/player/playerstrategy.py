@@ -117,6 +117,8 @@ def _lost_orientation(state):
 
 
 def determine_objective_goalie(state: PlayerState):
+    return Objective(state, lambda: actions.idle_orientation(state))
+
     opponent_side = "r" if state.world_view.side == "l" else "l"
     # If goalie and goal_kick -> Go to ball and pass
     if state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side) and state.num == 1:
@@ -489,6 +491,12 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     If no free targets and i am marked -> Try to dribble anyway
     :return: Parse target or None, if dribble
     """
+    team_mates = state.world_view.get_teammates(state.team_name, 4)
+    team_mates = list(filter(lambda t: not t.is_goalie, team_mates))
+    if len(team_mates) != 0:
+        return choice(team_mates)
+    else:
+        return None
     side = state.world_view.side
     am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 

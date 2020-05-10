@@ -103,8 +103,8 @@ class Ball:
         self.dist_history = dist_history
         self.velocity_history = velocity_history
 
-        self.relative_velocity = self._get_relative_velocity(dist_change, dir_change, global_dir)
-        self.absolute_velocity = self._get_absolute_velocity(observer_velocity, now)
+        self.relative_velocity: Vector2D = self._get_relative_velocity(dist_change, dir_change, global_dir)
+        self.absolute_velocity: Vector2D = self._get_absolute_velocity(observer_velocity, now)
         self.projection = None
 
         # Register current position, distance and velocity vector in history list
@@ -115,7 +115,7 @@ class Ball:
             self.velocity_history.add_data_point(self.absolute_velocity, now)
 
         # Debug
-        if self.absolute_velocity is not None:
+        """  if self.absolute_velocity is not None:
             pos, direct, vel = self.approximate_position_direction_speed(2)
             old_method_text = "None"
             if direct is not None:
@@ -123,7 +123,7 @@ class Ball:
             debug_msg(str(now) + " | Global Angle:" + str(global_dir) + " | Ball velocity: "
                       + str(self.absolute_velocity) + "| Player velocity: " + str(observer_velocity) +
                       " | Dist_change: " + str(dist_change) + "| Dir_change: " + str(dir_change)
-                      + "| Old velocity method: " + old_method_text, "VELOCITY")
+                      + "| Old velocity method: " + old_method_text, "VELOCITY")"""
 
     def approximate_position_direction_speed(self, minimum_data_points_used) -> (Coordinate, int, int):
         if self.projection is not None:
@@ -199,22 +199,22 @@ class Ball:
         self.projection = self.position_history.list[0][0], direction, final_speed
         return self.position_history.list[0][0], direction, final_speed
 
-    def project_ball_position(self, ticks: int, offset: int, minimum_data_points=4):
+    def project_ball_position(self, ticks: int, offset: int):
         positions = []
-        coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points)
+        # coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points)
 
-        if direction is None:
+        if self.absolute_velocity is None:
             return None  # No prediction can be made
 
-        def advance(previous_location: Coordinate, vx, vy):
-            return Coordinate(previous_location.pos_x + vx, previous_location.pos_y + vy)
+        def advance(previous_location: Coordinate, vel_vector: Vector2D):
+            return Coordinate(previous_location.pos_x + vel_vector.x, previous_location.pos_y + vel_vector.y)
 
-        velocity = get_xy_vector(direction=-direction, length=speed)
-        positions.append(advance(coord, velocity.pos_x, velocity.pos_y))
+        velocity = self.absolute_velocity.decayed(BALL_DECAY, 1)
+        positions.append(advance(self.coord, self.absolute_velocity))
 
         for i in range(1, ticks + offset):
-            velocity *= BALL_DECAY
-            positions.append(advance(positions[i - 1], velocity.pos_x, velocity.pos_y))
+            velocity = velocity.decayed(BALL_DECAY, 1)
+            positions.append(advance(positions[i - 1], velocity))
 
         return positions[offset:]
 
@@ -296,9 +296,9 @@ class Ball:
 
         return start_time + ticks_until_collision
 
-    def project_ball_collision_time_2(self, player_coord, time, minimum_data_points):
+    def project_ball_collision_time_2(self, player_coord, time):
         offset = time - self.position_history.list[0][1]
-        positions: [Coordinate] = self.project_ball_position(5, offset, minimum_data_points)
+        positions: [Coordinate] = self.project_ball_position(5, offset)
         if positions is not None:
             for i, pos in enumerate(positions):
                 if pos.euclidean_distance_from(player_coord) < KICKABLE_MARGIN - 0.1:

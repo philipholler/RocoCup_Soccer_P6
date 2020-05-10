@@ -157,32 +157,38 @@ class PlayerState:
         return sorted_distances[degree - 1] > ball_position.euclidean_distance_from(self.position.get_value())
 
     def ball_interception(self):
-        return None, None
         wv = self.world_view
+        ball = wv.ball.get_value()
+        ball_known = wv.ball.is_value_known(self.now() - 4)
+        if (not ball_known) or ball.absolute_velocity is None or ball.absolute_velocity.magnitude() < 0.2:
+            return None, None
 
         if wv.ball.is_value_known(self.now() - 4):
             ball: Ball = wv.ball.get_value()
-            dist = ball.distance
-
-            required_points = 4 if dist <= 10 else round(4 + (dist - 8) / 2)
-
-            coord, direction, speed = ball.approximate_position_direction_speed(required_points)
-            if direction is None or speed < 0.3:
-                return None, None
 
             tick_offset = self.now() - wv.ball.last_updated_time
-            project_positions = ball.project_ball_position(10, tick_offset, required_points)
+            project_positions = ball.project_ball_position(10, tick_offset)
             if project_positions is None:
                 return None, None
 
             all_ticks = range(1, 11)
             positions_and_ticks = zip(project_positions, all_ticks)
-            positions_and_ticks = sorted(positions_and_ticks, key=lambda pos_and_t: pos_and_t[0].euclidean_distance_from(self.position.get_value()))
+            printable_list = [(pt[0], pt[1]) for pt in positions_and_ticks]
+            #positions_and_ticks = sorted(positions_and_ticks, key=lambda pos_and_t: pos_and_t[0].euclidean_distance_from(self.position.get_value()))
 
             for (position, tick) in positions_and_ticks:
                 if self.can_player_reach(position, tick):
-                    debug_msg("Projected (coord, tick_offset): " + str(positions_and_ticks), "INTERCEPTION")
+                    debug_msg(str(self.now()) + " | Based on ball velocity : " + str(ball.absolute_velocity)
+                              , "INTERCEPTION")
+                    debug_msg(str(self.now()) + " | Projected (coord, tick_offset): "
+                              + str(printable_list), "INTERCEPTION")
                     return position, tick
+
+            if self.is_test_player():
+                debug_msg(str(self.now()) + " | Based on ball velocity : " + str(ball.absolute_velocity)
+                          , "INTERCEPTION")
+                debug_msg(str(self.now()) + " | Predictions : " + str(printable_list)
+                          , "INTERCEPTION")
 
         return None, None
 
@@ -199,6 +205,7 @@ class PlayerState:
                 extra_time += 1
 
         return self.time_to_rush_distance(distance) <= ticks + extra_time
+
 
     def time_to_rush_distance(self, distance):
         def distance_in_n_ticks(speed, ticks):
@@ -274,6 +281,12 @@ class PlayerState:
 
         ball: Ball = self.world_view.ball.get_value()
         dist = ball.distance
+        if ball.absolute_velocity is not None:
+            ball_move_dir = ball.absolute_velocity.world_direction()
+            ball_relative_dir = self.face_dir.get_value() + ball.direction
+            dif = abs(smallest_angle_difference((ball_move_dir + 180) % 360, ball_relative_dir))
+            return dif < 15
+
         position, projected_direction, speed = ball.approximate_position_direction_speed(2)
         if projected_direction is None or speed < 0.25:
             return False

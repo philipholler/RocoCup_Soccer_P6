@@ -225,32 +225,33 @@ def require_angle_update(function):
 
 
 def intercept(state: PlayerState, intercept_point: Coordinate):
-    debug_msg("intercepting at: " + str(intercept_point), "INTERCEPTION")
+    debug_msg(str(state.now()) + "intercepting at: " + str(intercept_point), "INTERCEPTION")
 
     state.action_history.has_just_intercept_kicked = False
     command_builder = CommandBuilder()
     delta: Coordinate = intercept_point - state.position.get_value()
     _append_rushed_position_adjustment(state, delta.pos_x, delta.pos_y, command_builder)
 
-    coord, direction, speed = state.world_view.ball.get_value().approximate_position_direction_speed(4)
+    """
     for com in command_builder.command_list:
         com.add_function(lambda c=com: kick_if_collision(state, com, speed=speed, ball_dir=direction))
-
+    """
     return command_builder.command_list
 
 
 def receive_ball(state: PlayerState):
+    debug_msg(str(state.now()) + " | Receiving ball", "ACTIONS")
     command_builder = CommandBuilder()
     if not state.action_history.turn_in_progress:
         append_look_at_ball(state, command_builder)
-    ball = state.world_view.ball.get_value()
+    ball: Ball = state.world_view.ball.get_value()
 
-    coord, direction, speed = ball.approximate_position_direction_speed(2)
     command_builder.append_empty_actions(4, False)
-
+    """
     for com in command_builder.command_list:
-        com.add_function(lambda c=com: kick_if_collision(state, c, speed=speed, ball_dir=direction))
-
+        com.add_function(lambda c=com: kick_if_collision(state, c, speed=ball.absolute_velocity.magnitude(),
+                                                         ball_dir=ball.absolute_velocity.world_direction()))
+    """
     return command_builder.command_list
 
 
@@ -298,12 +299,13 @@ def rush_to_ball(state: PlayerState):
 
     ball: Ball = state.world_view.ball.get_value()
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
-    print(ball.absolute_velocity)
-    if locations is not None and False:
+
+    if locations is not None:
         debug_msg("Using prediction point: " + str(locations[4]), "ACTIONS")
         return go_to(state, locations[4], dash_power_limit=PLAYER_RUSH_POWER)
     else:
         return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
+
 
 def jog_to_ball(state: PlayerState):
     debug_msg(str(state.now()) + "JOG TO BALL", "ACTIONS")
@@ -590,7 +592,7 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
     # Look towards ball as far as possible
     body_angle = (state.body_angle.get_value() + body_dir_change) % 360
     ball = state.world_view.ball.get_value()
-    ball_projection = state.world_view.ball.get_value().project_ball_position(1, state.now() - state.world_view.ball.last_updated_time, 2)
+    ball_projection = state.world_view.ball.get_value().project_ball_position(1, state.now() - state.world_view.ball.last_updated_time)
     if ball_projection is None:
         ball_position = ball.coord
     else:

@@ -504,17 +504,17 @@ def _extract_flag_directions(flag_strings, neck_angle):
 # or ((b) 44.7 -20)
 # Or ((B) distance direction)
 # distance, direction, dist_change, dir_change
-def _parse_ball(old_ball: str, ps: player.PlayerState):
+def _parse_ball(ball_text: str, ps: player.PlayerState):
     # If ball is not present at all or only seen behind the player
-    if old_ball is None:
+    if ball_text is None:
         return
 
     # Remove ) from the items
-    old_ball = str(old_ball).replace(")", "")
-    old_ball = str(old_ball).replace("(", "")
+    ball_text = str(ball_text).replace(")", "")
+    ball_text = str(ball_text).replace("(", "")
 
     split_by_whitespaces = []
-    split_by_whitespaces = re.split('\\s+', old_ball)
+    split_by_whitespaces = re.split('\\s+', ball_text)
 
     # We now have a list of elements like this:
     # ['b', '13.5', '-31', '2', '-5']
