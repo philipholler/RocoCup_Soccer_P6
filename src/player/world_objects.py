@@ -384,7 +384,6 @@ class Ball:
         avg_direction = (current_velocity.direction() + avg_direction_delta) % 360
 
         final_projection = Vector2D.velocity_to_xy(velocity=avg_magnitude, direction=avg_direction)
-        print(now, " | Observed velocity:", current_velocity, " | Projection:", final_projection)
         return final_projection
 
 
