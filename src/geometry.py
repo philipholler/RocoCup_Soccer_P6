@@ -169,6 +169,9 @@ class Vector2D:
     def direction(self):
         return math.degrees(math.atan(self.y / self.x))
 
+    def world_direction(self):
+        return 360 - math.degrees(math.atan(self.y / self.x))
+
     def magnitude(self):
         return math.sqrt(self.x ** 2 + self.y ** 2)
 
@@ -176,6 +179,10 @@ class Vector2D:
         x2 = self.x * math.cos(radians) - self.y * math.sin(radians)
         y2 = self.x * math.sin(radians) + self.y * math.cos(radians)
         return Vector2D(x2, y2)
+
+    def decayed(self, decay_rate, ticks=1):
+        total_decay = decay_rate ** ticks
+        return Vector2D(self.x * total_decay, self.y * total_decay)
 
     def __add__(self, other):
         return Vector2D(self.x + other.x, self.y + other.y)

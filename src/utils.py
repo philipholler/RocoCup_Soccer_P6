@@ -21,7 +21,8 @@ DEBUG_DICT = {
     "BALL": False,
     "HAS_BALL": False,
     "OFFSIDE": False,
-    "QUANTIZATION": True
+    "QUANTIZATION": True,
+    "VELOCITY": True
 }
 
 

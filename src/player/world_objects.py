@@ -90,8 +90,9 @@ class Ball:
 
         # Debug
         if self.absolute_velocity is not None:
-            print(time, "Global Angle:", global_dir, "| Ball velocity: ", self.absolute_velocity, "| Player velocity: "
-                  , observer_velocity, " | Dist_change: ", dist_change, "| Dir_change:", dir_change)
+            debug_msg(str(time) + " | Global Angle:" + str(global_dir) + " | Ball velocity: "
+                      + str(self.absolute_velocity) + "| Player velocity: " + str(observer_velocity) +
+                      " | Dist_change: " + str(dist_change) + "| Dir_change: " + str(dir_change), "VELOCITY")
 
         self.projection = None
         if pos_history is None:
