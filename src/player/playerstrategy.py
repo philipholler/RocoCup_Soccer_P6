@@ -105,7 +105,6 @@ def _get_goalie_y_value(state):
     """
     Used for finding the wanted y value, that the goalie should take according to the ball position
     """
-    goalie_coord: Coordinate = state.position.get_value()
     ball: Ball = state.world_view.ball.get_value()
 
     return clamp(ball.coord.pos_y * 0.8, -5, 5)
@@ -116,9 +115,7 @@ def _lost_orientation(state):
            or (not state.position.is_value_known(state.action_history.two_see_updates_ago))
 
 
-def determine_objective_goalie(state: PlayerState):
-    return Objective(state, lambda: actions.idle_orientation(state))
-
+def determine_objective_goalie_default(state: PlayerState):
     opponent_side = "r" if state.world_view.side == "l" else "l"
     # If goalie and goal_kick -> Go to ball and pass
     if state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side) and state.num == 1:
@@ -178,7 +175,7 @@ def determine_objective_goalie(state: PlayerState):
     # If ball coming to goalie inside box -> Catch ball
     positions = ball.project_ball_position(2, 0)
     position, direction, speed = ball.approximate_position_direction_speed(4)
-    if positions is not None and speed > 0.2 and state.is_inside_own_box():
+    if positions is not None and speed is not None and speed > 0.2 and state.is_inside_own_box():
         ball_pos_1_tick: Coordinate = positions[0]
         if ball_pos_1_tick.euclidean_distance_from(state.position.get_value()) < CATCHABLE_MARGIN:
             return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)
@@ -200,20 +197,16 @@ def determine_objective_goalie(state: PlayerState):
 
     # If position not alligned with ball y-position -> Adjust y-position
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
-        goalie_coord: Coordinate = state.position.get_value()
+        optimal_position: Coordinate = _optimal_goalie_pos(state)
         delta = 1.5
-        optimal_y_value = _get_goalie_y_value(state)
-        if abs(optimal_y_value - goalie_coord.pos_y) > delta or abs(goalie_coord.pos_x) - 50 > delta:
-            if state.world_view.side == "l":
-                return Objective(state, lambda: actions.jog_to(state, Coordinate(-50, optimal_y_value)), lambda: True,
-                                 1)
-            else:
-                return Objective(state, lambda: actions.jog_to(state, Coordinate(50, optimal_y_value)), lambda: True, 1)
-        else:
-            return Objective(state, lambda: actions.face_ball(state), lambda: True, 1)
+        if optimal_position.euclidean_distance_from(state.position.get_value()) > delta:
+            return _position_optimally_objective(state)
+
+    # If nothing to do -> Face ball
+    return Objective(state, lambda: actions.face_ball(state), lambda: True, 1)
 
 
-def determine_objective_field(state: PlayerState):
+def determine_objective_field_default(state: PlayerState):
     # If lost orientation -> blind orient
     if _lost_orientation(state):
         return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
@@ -298,10 +291,17 @@ def determine_objective_field(state: PlayerState):
 
 
 def determine_objective(state: PlayerState):
-    if state.player_type == "goalie":
-        return determine_objective_goalie(state)
+    if state.objective_behaviour == "default":
+        if state.player_type == "goalie":
+            return determine_objective_goalie_default(state)
+        else:
+            return determine_objective_field_default(state)
+    elif state.objective_behaviour == "idle_orientation":
+        return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
+    elif state.objective_behaviour == "idle":
+        return Objective(state, lambda: [], lambda: True, 1)
     else:
-        return determine_objective_field(state)
+        raise Exception("Unknown objective behaviour pattern: " + state.objective_behaviour)
 
 def _ball_unknown(state):
     seen_recently = state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago)
@@ -329,7 +329,7 @@ def _intercept_objective_goalie(state):
             return Objective(state, lambda: actions.receive_ball(state), lambda: state.is_near_ball())
 
     else:
-        return determine_objective_goalie(state)
+        return determine_objective(state)
 
 
 def _intercept_objective(state):
@@ -362,6 +362,13 @@ def _jog_to_ball_objective(state):
     return Objective(state, lambda: actions.jog_to_ball(state), lambda: state.is_near_ball(), 1)
 
 
+def _optimal_goalie_pos(state):
+    ball: Ball = state.world_view.ball.get_value()
+
+    y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
+
+    return Coordinate(state.get_global_start_pos().pos_x, y_value)
+
 def _position_optimally_objective(state: PlayerState):
     if "kick_off" in state.world_view.game_state:
         # If already close to starting position, do idle orientation
@@ -374,7 +381,7 @@ def _position_optimally_objective(state: PlayerState):
     elif state.player_type == "midfield":
         optimal_position = _optimal_midfielder_pos(state)
     elif state.player_type == "goalie":
-        optimal_position = Coordinate(state.get_global_start_pos().pos_x, _get_goalie_y_value(state))
+        optimal_position = _optimal_goalie_pos(state)
     else:  # Striker
         optimal_position = _optimal_striker_pos(state)  # _optimal_attacker_pos(state)
 
@@ -491,12 +498,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     If no free targets and i am marked -> Try to dribble anyway
     :return: Parse target or None, if dribble
     """
-    team_mates = state.world_view.get_teammates(state.team_name, 4)
-    team_mates = list(filter(lambda t: not t.is_goalie, team_mates))
-    if len(team_mates) != 0:
-        return choice(team_mates)
-    else:
-        return None
+
     side = state.world_view.side
     am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 

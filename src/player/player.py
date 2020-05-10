@@ -42,6 +42,7 @@ class PlayerState:
         self.current_objective = None
         self.face_dir = PrecariousData(0, 0)
         self.should_reset_to_start_position = False
+        self.objective_behaviour = "idle"
         super().__init__()
 
     def get_y_north_velocity_vector(self):
@@ -55,7 +56,7 @@ class PlayerState:
         position: Coordinate = self.position.get_value()
         if -52.5 > position.pos_x or position.pos_x > 52.5:
             return False
-        if  -34 > position.pos_y or position.pos_y > 34:
+        if -34 > position.pos_y or position.pos_y > 34:
             return False
         return True
 

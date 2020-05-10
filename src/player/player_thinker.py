@@ -10,7 +10,7 @@ import client_connection
 from player.playerstrategy import Objective
 import time
 import parsing
-from player.playerstrategy import determine_objective, determine_objective_goalie
+from player.playerstrategy import determine_objective
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
 from utils import debug_msg
@@ -141,6 +141,7 @@ class Thinker(threading.Thread):
         else:
             raise Exception("Could not position player: " + str(self.player_state))
         self.player_state.starting_position = Coordinate(pos[0], pos[1])
+        self.player_state.objective_behaviour = pos[2]
         self.player_conn.action_queue.put(move_action)
         self.is_positioned = True
 
