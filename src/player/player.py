@@ -2,7 +2,7 @@ import math
 
 import constants
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference, get_xy_vector, \
-    Vector2D
+    Vector2D, inverse_y_axis
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from player.world_objects import PrecariousData, Coordinate, Ball, ObservedPlayer
 from utils import debug_msg
@@ -44,8 +44,8 @@ class PlayerState:
         self.should_reset_to_start_position = False
         super().__init__()
 
-    def get_velocity_vector(self):
-        return Vector2D.velocity_to_xy(self.body_state.speed, self.body_angle.get_value())
+    def get_y_north_velocity_vector(self):
+        return Vector2D.velocity_to_xy(self.body_state.speed, inverse_y_axis(self.body_angle.get_value()))
 
     def __str__(self) -> str:
         return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name

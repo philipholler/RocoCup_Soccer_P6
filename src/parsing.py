@@ -13,7 +13,7 @@ from player import player, world_objects
 from math import sqrt
 
 from player.player import PlayerState
-from player.world_objects import Coordinate, Ball
+from player.world_objects import Coordinate, Ball, History
 from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
 from utils import debug_msg, get_flag_quantize_range
@@ -504,17 +504,17 @@ def _extract_flag_directions(flag_strings, neck_angle):
 # or ((b) 44.7 -20)
 # Or ((B) distance direction)
 # distance, direction, dist_change, dir_change
-def _parse_ball(ball: str, ps: player.PlayerState):
+def _parse_ball(old_ball: str, ps: player.PlayerState):
     # If ball is not present at all or only seen behind the player
-    if ball is None:
+    if old_ball is None:
         return
 
     # Remove ) from the items
-    ball = str(ball).replace(")", "")
-    ball = str(ball).replace("(", "")
+    old_ball = str(old_ball).replace(")", "")
+    old_ball = str(old_ball).replace("(", "")
 
     split_by_whitespaces = []
-    split_by_whitespaces = re.split('\\s+', ball)
+    split_by_whitespaces = re.split('\\s+', old_ball)
 
     # We now have a list of elements like this:
     # ['b', '13.5', '-31', '2', '-5']
@@ -543,15 +543,19 @@ def _parse_ball(ball: str, ps: player.PlayerState):
         global_ball_direction = ps.face_dir.get_value() + relative_ball_dir
 
         # Save old ball information
-        old_position_history = None
-        old_dist_history = None
+        old_position_history = History(Ball.MAX_HISTORY_LEN)
+        old_dist_history = History(Ball.MAX_HISTORY_LEN)
+        old_velocity_history = History(Ball.MAX_HISTORY_LEN)
         if ps.world_view.ball.is_value_known():
-            old_position_history = ps.world_view.ball.get_value().position_history
-            old_dist_history = ps.world_view.ball.get_value().dist_history
+            old_ball: Ball = ps.world_view.ball.get_value()
+            old_position_history = old_ball.position_history
+            old_dist_history = old_ball.dist_history
+            old_velocity_history = old_ball.velocity_history
 
         new_ball = Ball(distance, relative_ball_dir, distance_chng, dir_chng, global_ball_direction,
-                        ps.get_velocity_vector(), coord=ball_coord, pos_history=old_position_history,
-                        time=ps.now(), dist_history=old_dist_history)
+                        ps.get_y_north_velocity_vector(), now=ps.now(), coord=ball_coord,
+                        pos_history=old_position_history, velocity_history=old_velocity_history,
+                        dist_history=old_dist_history)
 
         ps.update_ball(new_ball, ps.now())
 

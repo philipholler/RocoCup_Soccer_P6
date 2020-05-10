@@ -163,14 +163,16 @@ class Vector2D:
     @staticmethod
     def velocity_to_xy(velocity, direction):
         x = math.cos(math.radians(direction)) * velocity
-        y = -math.sin(math.radians(direction)) * velocity
+        y = math.sin(math.radians(direction)) * velocity
         return Vector2D(x, y)
 
     def direction(self):
-        return math.degrees(math.atan(self.y / self.x))
+        if self.x == 0:
+            return 90 if self.y >= 0 else -90
+        return math.degrees(math.atan2(self.y, self.x)) % 360
 
     def world_direction(self):
-        return 360 - math.degrees(math.atan(self.y / self.x))
+        return 360 - math.degrees(math.atan2(self.y, self.x)) % 360
 
     def magnitude(self):
         return math.sqrt(self.x ** 2 + self.y ** 2)
@@ -192,6 +194,9 @@ class Vector2D:
 
     def __repr__(self) -> str:
         return "(" + str(self.x) + ", " + str(self.y) + ")"
+
+    def __mul__(self, factor):
+        return Vector2D(self.x * factor, self.y * factor)
 
 
 def inverse_y_axis(degrees):
