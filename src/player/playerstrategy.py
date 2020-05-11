@@ -257,7 +257,6 @@ def determine_objective_field_default(state: PlayerState):
     if state.mode is POSSESSION_MODE:
         return _pass_objective(state)
 
-    last_see_update = state.action_history.last_see_update
     # If position known, but ball not -> Locate ball
     if _ball_unknown(state):
         return _locate_ball_objective(state)
@@ -267,6 +266,7 @@ def determine_objective_field_default(state: PlayerState):
         state.mode = DRIBBLING_MODE
         return _dribble_objective(state)
 
+    return Objective(state, lambda: actions.intercept_2(state))
     # If ball coming towards us -> Intercept
     intercept_point, tick = state.ball_interception()
     if intercept_point is not None and state.world_view.ball.get_value().distance > 1.0 and state.is_nearest_ball(1):
@@ -500,6 +500,13 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     """
 
     side = state.world_view.side
+
+    # TODO : TESTING ONLY ----------------------------------------------------------
+    teammates = state.world_view.get_teammates(state.team_name, 2)
+    if len(teammates) is not 0:
+        return choice(teammates)
+    # todo --------------------------------------------------------------------------
+
     am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 
     # If free targets forward -> Pass forward
