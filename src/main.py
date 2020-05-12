@@ -40,7 +40,7 @@ DEBUG_DICT["ALL"] = False
 COACHES_ENABLED = True
 
 # Enable trainer for a single run
-TRAINER_SINGLE_RUN_ENABLED = True
+TRAINER_SINGLE_RUN_ENABLED = False
 
 try:
     # Run multiple games sequentially

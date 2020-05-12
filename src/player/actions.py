@@ -1,9 +1,9 @@
 import math
 import geometry
 
-from constants import PLAYER_JOG_POWER, PLAYER_RUSH_POWER, KICK_POWER_RATE, BALL_DECAY, \
+from constants import KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
-    WARNING_PREFIX, DRIBBLE_KICK_POWER, DRIBBLE_DASH_POWER
+    WARNING_PREFIX, DRIBBLE_KICK_POWER
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 from geometry import Vector2D
 from player.player import PlayerState
@@ -500,7 +500,7 @@ def _append_rushed_position_adjustment(state: PlayerState, delta_x, delta_y, com
 
 
 def rush_to(state: PlayerState, target: Coordinate):
-    return go_to(state, target, dash_power_limit=PLAYER_RUSH_POWER)
+    return go_to(state, target, dash_power_limit=state.body_state.max_dash_power)
 
 
 def rush_to_ball(state: PlayerState):
@@ -545,9 +545,9 @@ def rush_to_ball(state: PlayerState):
 
     if locations is not None and False:
         debug_msg("Using prediction point: " + str(locations[4]), "ACTIONS")
-        return go_to(state, locations[4], dash_power_limit=PLAYER_RUSH_POWER)
+        return go_to(state, locations[4], dash_power_limit=state.body_state.max_dash_power)
     else:
-        return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_RUSH_POWER)
+        return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=state.body_state.max_dash_power)
 
 
 def jog_to_ball(state: PlayerState):
@@ -559,9 +559,9 @@ def jog_to_ball(state: PlayerState):
     ball: Ball = state.world_view.ball.get_value()
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
     if locations is not None and False:
-        return go_to(state, locations[4], dash_power_limit=PLAYER_JOG_POWER)
+        return go_to(state, locations[4], dash_power_limit=state.body_state.jog)
     else:
-        return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=PLAYER_JOG_POWER)
+        return go_to(state, state.world_view.ball.get_value().coord, dash_power_limit=state.body_state.jog_dash_power)
 
 
 def rush_collide_ball(state: PlayerState):
@@ -579,7 +579,7 @@ def rush_collide_ball(state: PlayerState):
 
 
 def jog_to(state: PlayerState, target: Coordinate):
-    return go_to(state, target, dash_power_limit=PLAYER_JOG_POWER)
+    return go_to(state, target, dash_power_limit=state.body_state.jog_dash_power)
 
 
 @orient_if_position_or_angle_unknown
@@ -909,7 +909,7 @@ def pass_to_player(state, player: ObservedPlayer):
 def positional_adjustment(state, adjustment: Coordinate):
     command_builder = CommandBuilder()
 
-    max_power = PLAYER_JOG_POWER
+    max_power = state.body_state.jog_dash_power
     distance = Coordinate(0, 0).euclidean_distance_from(adjustment)
 
     target_body_angle = math.degrees(calculate_full_origin_angle_radians(adjustment, Coordinate(0, 0)))
@@ -936,7 +936,7 @@ def dribble(state: PlayerState, dir: int):
     command_builder.next_tick()
     command_builder.append_turn_action(state, _calculate_turn_moment(state.body_state.speed, dribble_dir))
     command_builder.next_tick()
-    command_builder.append_dash_action(state, DRIBBLE_DASH_POWER, urgent=True)
+    command_builder.append_dash_action(state, state.body_state.dribble_dash_power, urgent=True)
 
     return command_builder.command_list
 
