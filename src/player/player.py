@@ -1,7 +1,8 @@
 import math
 
 import constants
-from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference, get_xy_vector
+from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference, get_xy_vector, \
+    Vector2D, inverse_y_axis
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from player.world_objects import PrecariousData, Coordinate, Ball, ObservedPlayer
 from utils import debug_msg
@@ -39,11 +40,25 @@ class PlayerState:
         self.playing_position: Coordinate = None
         self.last_see_global_angle = 0
         self.current_objective = None
+        self.face_dir = PrecariousData(0, 0)
+        self.should_reset_to_start_position = False
+        self.objective_behaviour = "idle"
         super().__init__()
+
+    def get_y_north_velocity_vector(self):
+        return Vector2D.velocity_to_xy(self.body_state.speed, inverse_y_axis(self.body_angle.get_value()))
 
     def __str__(self) -> str:
         return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name
                                                                                   , self.num, self.position)
+
+    def is_inside_field(self):
+        position: Coordinate = self.position.get_value()
+        if -52.5 > position.pos_x or position.pos_x > 52.5:
+            return False
+        if -34 > position.pos_y or position.pos_y > 34:
+            return False
+        return True
 
     def is_approaching_goal(self):
         if self.position.is_value_known():
@@ -143,30 +158,34 @@ class PlayerState:
 
     def ball_interception(self):
         wv = self.world_view
+        ball = wv.ball.get_value()
+        ball_known = wv.ball.is_value_known(self.now() - 4)
+        if (not ball_known) or ball.absolute_velocity is None or ball.absolute_velocity.magnitude() < 0.2:
+            return None, None
 
         if wv.ball.is_value_known(self.now() - 4):
             ball: Ball = wv.ball.get_value()
-            dist = ball.distance
-
-            required_points = 4 if dist <= 10 else round(4 + (dist - 8) / 2)
-
-            coord, direction, speed = ball.approximate_position_direction_speed(required_points)
-            if direction is None or speed < 0.3:
-                return None, None
 
             tick_offset = self.now() - wv.ball.last_updated_time
-            project_positions = ball.project_ball_position(10, tick_offset, required_points)
+            project_positions = ball.project_ball_position(10, tick_offset)
             if project_positions is None:
                 return None, None
 
             all_ticks = range(1, 11)
-            positions_and_ticks = zip(project_positions, all_ticks)
-            positions_and_ticks = sorted(positions_and_ticks, key=lambda pos_and_t: pos_and_t[0].euclidean_distance_from(self.position.get_value()))
-
+            positions_and_ticks = list(zip(project_positions, all_ticks))
+            printable_list = [(pt[0], pt[1]) for pt in positions_and_ticks]
+            # positions_and_ticks = sorted(positions_and_ticks, key=lambda pos_and_t: pos_and_t[0].euclidean_distance_from(self.position.get_value()))
             for (position, tick) in positions_and_ticks:
                 if self.can_player_reach(position, tick):
-                    debug_msg("Projected (coord, tick_offset): " + str(positions_and_ticks), "INTERCEPTION")
+                    debug_msg(str(self.now()) + " | Found reachable position: " + str(ball.absolute_velocity)
+                              , "INTERCEPTION")
                     return position, tick
+
+            if self.is_test_player():
+                debug_msg(str(self.now()) + " | Based on ball velocity : " + str(ball.absolute_velocity)
+                          , "INTERCEPTION")
+                debug_msg(str(self.now()) + " | Predictions : " + str(printable_list)
+                          , "INTERCEPTION")
 
         return None, None
 
@@ -199,17 +218,39 @@ class PlayerState:
             projected_speed *= constants.PLAYER_SPEED_DECAY
         return ticks + 3
 
-
-
-
     def update_body_angle(self, new_angle, time):
         # If value is uninitialized, then accept new_angle as actual angle
         self.body_angle.set_value(new_angle, time)
 
-    def update_position(self, new_position, time):
-        self.position.set_value(new_position, time)
+    def update_position(self, new_position: Coordinate):
+        self.position.set_value(new_position, self.now())
         # print("PARSED : ", time, " | Position: ", new_position)
         self.action_history.projected_position = new_position
+
+    def update_face_dir(self, new_global_angle):
+        if self.action_history.turn_in_progress:
+            history = self.action_history
+            actual_angle_change = abs(new_global_angle - self.face_dir.get_value())
+
+            if history.missed_turn_last_see:
+                # Missed turn update in last see message, so it must have been included in this see update
+                history.turn_in_progress = False
+                history.missed_turn_last_see = False
+                history.expected_body_angle = None
+            elif actual_angle_change + 0.1 >= abs(history.expected_angle_change) / 2 or actual_angle_change > 2.0:
+                # Turn registered
+                history.turn_in_progress = False
+                history.expected_body_angle = None
+            else:
+                # Turn not registered
+                history.missed_turn_last_see = True
+
+            # Reset expected angle
+            history.expected_angle_change = 0
+
+        self.last_see_global_angle = new_global_angle
+        self.face_dir.set_value(new_global_angle, self.now())
+        self.update_body_angle(new_global_angle - self.body_state.neck_angle, self.now())
 
     def on_see_update(self):
         self.action_history.three_see_updates_ago = self.action_history.two_see_updates_ago
@@ -226,8 +267,7 @@ class PlayerState:
             # We're looking in the direction of the ball and not seeing it, so it must be missing
             self._ball_seen_since_missing = False
 
-
-    def update_ball(self, new_ball, time):
+    def update_ball(self, new_ball: Ball, time):
         self.world_view.ball.set_value(new_ball, time)
         self._ball_seen_since_missing = True
 
@@ -237,6 +277,12 @@ class PlayerState:
 
         ball: Ball = self.world_view.ball.get_value()
         dist = ball.distance
+        if ball.absolute_velocity is not None:
+            ball_move_dir = ball.absolute_velocity.world_direction()
+            ball_relative_dir = self.face_dir.get_value() + ball.direction
+            dif = abs(smallest_angle_difference((ball_move_dir + 180) % 360, ball_relative_dir))
+            return dif < 15
+
         position, projected_direction, speed = ball.approximate_position_direction_speed(2)
         if projected_direction is None or speed < 0.25:
             return False
@@ -275,11 +321,13 @@ class ActionHistory:
         self.has_just_intercept_kicked = False
         self.turn_in_progress = False
         self.missed_turn_last_see = False
-        self.expected_body_angle = None
-        self.expected_neck_angle = None
         self.expected_speed = None
         self.projected_position = Coordinate(0, 0)
         self.has_looked_for_targets = False
+        self.expected_angle_change = 0
+        self.expected_body_angle = None
+        self.last_look_for_pass_targets = 0
+        self.intercepting = False
 
 
 class ViewFrequency:
@@ -365,13 +413,141 @@ class WorldView:
     def __repr__(self) -> str:
         return super().__repr__()
 
+    def is_marked(self, team, max_data_age, min_distance=3):
+        opponents: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)
+        for opponent in opponents:
+            if opponent.distance < min_distance:
+                return True
+
+        return False
+
     def ticks_ago(self, ticks):
         return self.sim_time - ticks
+
+    def team_has_ball(self, team, max_data_age, min_possession_distance=3):
+        if not self.ball.is_value_known():
+            debug_msg("{0} has ball".format("Team2"), "HAS_BALL")
+            return False
+
+        all_players: [ObservedPlayer] = self.get_all_known_players(team, max_data_age)
+
+        # Sort players by distance to ball
+        sorted_list: [ObservedPlayer] = list(
+            sorted(all_players, key=lambda p: p.coord.euclidean_distance_from(self.ball.get_value().coord),
+                   reverse=False))
+
+        if len(sorted_list) < 1:
+            return False
+
+        # If closest player to ball team is known and is our team, return True
+        closest_player: ObservedPlayer = sorted_list[0]
+        if closest_player.team is not None and closest_player.team == team and closest_player.coord.euclidean_distance_from(
+                self.ball.get_value().coord) < min_possession_distance:
+            debug_msg("{0} has ball | player: {1}".format(team, closest_player), "HAS_BALL")
+            return True
+
+        debug_msg("{0} has ball".format("Team2"), "HAS_BALL")
+        return False
+
+
+    def get_all_known_players(self, team, max_data_age):
+        all_players: [ObservedPlayer] = []
+        all_players.extend(self.get_teammates(team, max_data_age))
+        all_players.extend(self.get_opponents(team, max_data_age))
+        return all_players
+
+    def get_free_forward_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free,
+                                    min_dist_from_me=3):
+        free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
+        debug_msg("Free_team_mates={0}".format(free_team_mates), "OFFSIDE")
+        if side == "l":
+            free_forward_team_mates = list(filter(
+                lambda p: p.coord.pos_x > my_coord.pos_x and p.coord.euclidean_distance_from(
+                    my_coord) > min_dist_from_me, free_team_mates))
+        else:
+            free_forward_team_mates = list(filter(
+                lambda p: p.coord.pos_x < my_coord.pos_x and p.coord.euclidean_distance_from(
+                    my_coord) > min_dist_from_me, free_team_mates))
+
+        return free_forward_team_mates
+
+    def get_non_offside_forward_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free,
+                                           min_dist_from_me=1):
+        free_forward_team_mates: [ObservedPlayer] = self.get_free_forward_team_mates(team, side, my_coord, max_data_age,
+                                                                                     min_distance_free,
+                                                                                     min_dist_from_me)
+        opponents: [ObservedPlayer] = self.get_opponents(team, max_data_age)
+
+        # If no opponents are seen, no one is offside
+        if len(opponents) < 1:
+            debug_msg("free_forward_team_mates={0}".format(free_forward_team_mates), "OFFSIDE")
+            return free_forward_team_mates
+
+        reverse = True if side == "l" else False
+        furthest_behind_opponent: ObservedPlayer = \
+        list(sorted(opponents, key=lambda p: p.coord.pos_x, reverse=reverse))[0]
+        furthest_opp_x_pos = furthest_behind_opponent.coord.pos_x
+        if side == "l":
+            non_offside_players = list(filter(lambda p: (p.coord.pos_x < furthest_opp_x_pos
+                                                         and p.coord.euclidean_distance_from(
+                        my_coord) > min_dist_from_me)
+                                                        or p.coord.pos_x < 0, free_forward_team_mates))
+        else:
+            non_offside_players = list(filter(lambda p: (p.coord.pos_x > furthest_opp_x_pos
+                                                         and p.coord.euclidean_distance_from(
+                        my_coord) > min_dist_from_me)
+                                                        or p.coord.pos_x > 0, free_forward_team_mates))
+        debug_msg(
+            "Further_opp_x_pos={0} | free_forward_team_mates={1} | furthest_behind_opponent={2} | non_offisde_players={3}".format(
+                furthest_opp_x_pos, free_forward_team_mates, furthest_behind_opponent, non_offside_players), "OFFSIDE")
+        return non_offside_players
+
+    def get_free_behind_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free,
+                                   min_dist_from_me=3):
+        free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
+        if side == "l":
+            free_behind_team_mates = list(filter(lambda p: p.coord.pos_x < my_coord.pos_x
+                                                           and p.coord.euclidean_distance_from(
+                my_coord) > min_dist_from_me
+                                                           and p.num != 1, free_team_mates))
+        else:
+            free_behind_team_mates = list(filter(
+                lambda p: p.coord.pos_x > my_coord.pos_x and p.coord.euclidean_distance_from(
+                    my_coord) > min_dist_from_me, free_team_mates))
+
+        return free_behind_team_mates
 
     def get_teammates(self, team, max_data_age):
         precarious_filtered = filter(lambda x: (x.is_value_known(self.sim_time - max_data_age)
                                                 and x.get_value().team == team), self.other_players)
         return list(map(lambda x: x.get_value(), precarious_filtered))
+
+    def get_opponents(self, team, max_data_age):
+        precarious_filtered = filter(lambda x: (x.is_value_known(self.sim_time - max_data_age)
+                                                and x.get_value().team != team), self.other_players)
+        return list(map(lambda x: x.get_value(), precarious_filtered))
+
+    def get_free_team_mates(self, team, max_data_age, min_distance=2) -> [ObservedPlayer]:
+        team_mates: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)
+        opponents: [ObservedPlayer] = self.get_opponents(team, max_data_age=max_data_age)
+
+        debug_msg(
+            "Team_mates={0} | opponents={1} | other_players:{2}".format(team_mates, opponents, self.other_players),
+            "OFFSIDE")
+
+        free_team_mates = []
+
+        if len(opponents) < 1:
+            return team_mates
+
+        for team_mate in team_mates:
+            for opponent in opponents:
+                tm: ObservedPlayer = team_mate
+                op: ObservedPlayer = opponent
+                if tm.coord.euclidean_distance_from(op.coord) > min_distance and tm not in free_team_mates:
+                    free_team_mates.append(tm)
+
+        return free_team_mates
 
     def update_player_view(self, observed_player: ObservedPlayer):
         for i, data_point in enumerate(self.other_players):

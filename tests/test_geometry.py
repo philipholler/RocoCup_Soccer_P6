@@ -87,4 +87,8 @@ class Test(TestCase):
         expected_mean = 359.5
         self.assertAlmostEqual(mean_angle, expected_mean, 1)
 
+    def test_find_mean_angle_big_difference(self):
+        angles = [161.59438184601854, 246.7735850288153]
+        mean_angle = geometry.find_mean_angle(angles, 179)
+        self.assertAlmostEqual(mean_angle, 204.2, 1)
 

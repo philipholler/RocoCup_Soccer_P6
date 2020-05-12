@@ -13,6 +13,7 @@ import parsing
 from player.playerstrategy import determine_objective
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
+from uppaal import strategy
 from utils import debug_msg
 
 
@@ -37,9 +38,9 @@ class Thinker(threading.Thread):
         else:
             init_string = "(init " + self.player_state.team_name + " (version 16))"
         self.player_conn.action_queue.put(init_string)
-        self.player_conn.action_queue.put("(synch_see)")
         init_msg: str = self.input_queue.get()
         parsing.parse_message_update_state(init_msg, self.player_state)
+        self.player_conn.action_queue.put("(synch_see)")
         self.position_player()
 
     def run(self) -> None:
@@ -54,7 +55,8 @@ class Thinker(threading.Thread):
         self._stop_event.set()
 
     def think(self):
-        can_send = False
+        if strategy.has_applicable_strat_player(self.player_state):
+            strat_acts = strategy.generate_strategy_player(self.player_state)
         self.player_state.current_objective = determine_objective(self.player_state)
         time_since_action = 0
         last_time = time.time()
@@ -66,6 +68,11 @@ class Thinker(threading.Thread):
                 if msg.startswith("(sense_body"):
                     can_send = True
                 parsing.parse_message_update_state(msg, self.player_state)
+
+                # Move player back to starting positions after goal.
+                if self.player_state.should_reset_to_start_position:
+                    self.move_back_to_start_pos()
+
 
             current_time = time.time()
             time_since_action += current_time - last_time
@@ -84,18 +91,26 @@ class Thinker(threading.Thread):
             self.player_state.current_objective = determine_objective(self.player_state)
 
         commands = self.player_state.current_objective.get_next_commands(self.player_state)
-        if self.player_state.is_test_player() and self.player_state.world_view.ball.get_value() is not None:
-            debug_msg(str(self.player_state.now()) + str(commands), "ACTIONS")
+        if self.player_state.is_test_player():
+            debug_msg(str(self.player_state.now()) + " Sending commands : " + str(commands), "SENT_COMMANDS")
             debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "
                                                      "TurnInProgress : {4}".format(
                 self.player_state.position.get_value(), self.player_state.body_state.speed,
                 self.player_state.body_angle.get_value(), self.player_state.body_state.neck_angle,
                 self.player_state.action_history.turn_in_progress), "STATUS")
+
         if self.player_state.is_test_player():
-            debug_msg("{0} Commands: {1}".format(self.player_state.world_view.sim_time, commands), "GOALIE")
+            debug_msg("{0} Commands: {1}".format(self.player_state.world_view.sim_time, commands), "MESSAGES")
+
         for command in commands:
             if command is not None:
                 self.player_conn.action_queue.put(command)
+
+    def move_back_to_start_pos(self):
+        move_action = "(move {0} {1})".format(self.player_state.starting_position.pos_x
+                                              , self.player_state.starting_position.pos_y)
+        self.player_conn.action_queue.put(move_action)
+        self.player_state.should_reset_to_start_position = False
 
     def position_player(self):
         if (len(goalie_pos) + len(defenders_pos) + len(midfielders_pos) + len(strikers_pos)) > 11:
@@ -129,6 +144,7 @@ class Thinker(threading.Thread):
         else:
             raise Exception("Could not position player: " + str(self.player_state))
         self.player_state.starting_position = Coordinate(pos[0], pos[1])
+        self.player_state.objective_behaviour = pos[2]
         self.player_conn.action_queue.put(move_action)
         self.is_positioned = True
 

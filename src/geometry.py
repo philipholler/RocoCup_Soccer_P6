@@ -100,7 +100,6 @@ def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float
 def get_distance_between_coords(c1, c2):
     x = c2.pos_x - c1.pos_x
     y = c2.pos_y - c1.pos_y
-
     return math.sqrt(pow(x, 2) + pow(y, 2))
 
 
@@ -126,38 +125,89 @@ def find_mean_angle(angles, acceptable_variance=3.0):
 
     # We expect more than half of the angles to be close together (eliminate outliers)
     expected_close_angles = int(len(angles) / 2 + 1)
-    cluster_size_best_solution = 0
-    best_cluster = []
+    best_angle_so_far = 0
+    best_cluster_size = 0
 
     for i, first_angle in enumerate(angles):
-        cluster = [first_angle]
+        differences = [0]
         for other_angle in angles[i + 1:]:
-            # Handle wrap-around 360 degrees
-            if first_angle < 0 + acceptable_variance:
-                if other_angle > 360 - acceptable_variance:
-                    other_angle = -(360 - other_angle)
-            # Handle other case of wrap-around 360 degrees
-            elif first_angle > 360 - acceptable_variance:
-                if other_angle < acceptable_variance:
-                    other_angle = 360 + other_angle
+            difference = smallest_angle_difference(from_angle=first_angle, to_angle=other_angle)
+            if abs(difference) <= acceptable_variance:
+                differences.append(difference)
 
-            if abs(first_angle - other_angle) <= acceptable_variance:
-                cluster.append(other_angle)
+        if len(differences) >= expected_close_angles:
+            return (first_angle + average(differences)) % 360
 
-        if len(cluster) >= expected_close_angles:
-            return average(cluster) % 360
-
-        if len(cluster) > cluster_size_best_solution:
-            cluster_size_best_solution = len(cluster)
-            best_cluster = cluster
+        if len(differences) > best_cluster_size:
+            best_angle_so_far = (first_angle + average(differences)) % 360
+            best_cluster_size = len(differences)
 
     # No angles were close enough to provide a non-ambiguous solution
-    if len(best_cluster) <= 1:
+    if best_cluster_size <= 1:
         return None
-    return average(best_cluster) % 360
+
+    return best_angle_so_far
 
 
 # Note that the mean value of angles is not well defined (fx. what is the mean angle of (0, 90, 180, 270)?)
 # This function averages angles that are close together.
 def average(numbers):
     return sum(numbers) / len(numbers)
+
+
+class Vector2D:
+    def __init__(self, x, y):
+        self.x = float(x)
+        self.y = float(y)
+
+    @staticmethod
+    def velocity_to_xy(velocity, degrees):
+        x = math.cos(math.radians(degrees)) * velocity
+        y = math.sin(math.radians(degrees)) * velocity
+        return Vector2D(x, y)
+
+    def direction(self):
+        if self.x == 0:
+            return 90 if self.y >= 0 else -90
+        return math.degrees(math.atan2(self.y, self.x)) % 360
+
+    def world_direction(self):
+        return 360 - math.degrees(math.atan2(self.y, self.x)) % 360
+
+    def magnitude(self):
+        return math.sqrt(self.x ** 2 + self.y ** 2)
+
+    def rotated(self, radians):
+        x2 = self.x * math.cos(radians) - self.y * math.sin(radians)
+        y2 = self.x * math.sin(radians) + self.y * math.cos(radians)
+        return Vector2D(x2, y2)
+
+    def decayed(self, decay_rate, ticks=1):
+        total_decay = decay_rate ** ticks
+        return Vector2D(self.x * total_decay, self.y * total_decay)
+
+    def distance_from(self, other):
+        return math.sqrt(((self.x - other.x) ** 2) + ((self.y - other.y) ** 2))
+
+    def extend_length_to(self, new_length):
+        factor = new_length / self.magnitude()
+        return self * factor
+
+    def coord(self):
+        return Coordinate(self.x, self.y)
+
+    def __add__(self, other):
+        return Vector2D(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        return Vector2D(self.x - other.x, self.y - other.y)
+
+    def __repr__(self) -> str:
+        return "(" + str(self.x) + ", " + str(self.y) + ")"
+
+    def __mul__(self, factor):
+        return Vector2D(self.x * factor, self.y * factor)
+
+
+def inverse_y_axis(degrees):
+    return (360 - degrees) % 360

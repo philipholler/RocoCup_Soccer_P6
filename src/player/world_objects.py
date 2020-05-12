@@ -1,10 +1,12 @@
+import math
 from collections import deque
 from itertools import islice
 from math import sqrt, atan, degrees, exp
 
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from geometry import is_angle_in_range, find_mean_angle, Coordinate, \
-    calculate_full_origin_angle_radians, get_xy_vector
+    calculate_full_origin_angle_radians, get_xy_vector, Vector2D, smallest_angle_difference, \
+    inverse_y_axis
 from utils import debug_msg
 
 
@@ -73,41 +75,66 @@ LOWER_FIELD_BOUND = Coordinate(-60, -40)
 UPPER_FIELD_BOUND = Coordinate(60, 40)
 
 
-class Ball:
-    MAX_HISTORY_LEN = 16
+class History:
 
-    def __init__(self, distance: float, direction: int, coord: Coordinate, time, pos_history: deque = None,
-                 dist_history: deque = None) -> None:
+    def __init__(self, max_size) -> None:
+        self.list = deque([])
+        self.max_size = max_size
+
+    def add_data_point(self, element, time_stamp):
+        self.list.appendleft((element, time_stamp))
+
+        if len(self.list) > self.max_size:
+            self.list.pop()  # Pop oldest element
+
+
+class Ball:
+    MAX_HISTORY_LEN = 10
+
+    def __init__(self, distance: float, direction: int, dist_change, dir_change, global_dir, observer_velocity,
+                 coord: Coordinate, now, velocity_history: History = History(MAX_HISTORY_LEN),
+                 pos_history: History = History(MAX_HISTORY_LEN), dist_history: History = History(MAX_HISTORY_LEN)):
         super().__init__()
         self.distance = distance
         self.direction = direction
+        self.global_dir = global_dir
         self.coord: Coordinate = coord
+        self.dist_change = dist_change
+        self.dir_change = dir_change
+
+        self.position_history = pos_history
+        self.dist_history = dist_history
+        self.velocity_history = velocity_history
+
+        self.relative_velocity: Vector2D = self._get_relative_velocity(dist_change, dir_change, global_dir)
+        self.absolute_velocity: Vector2D = self._get_absolute_velocity(observer_velocity, now)
         self.projection = None
-        if pos_history is None:
-            self.position_history: deque = deque([])
-        else:
-            self.position_history: deque = pos_history
 
-        if dist_history is None:
-            self.dist_history: deque = deque([])
-        else:
-            self.dist_history: deque = dist_history
+        # Register current position, distance and velocity vector in history list
+        self.position_history.add_data_point(coord, now)
+        self.dist_history.add_data_point(distance, now)
 
-        self.position_history.appendleft((coord, time))
-        self.dist_history.appendleft((distance, time))
+        if self.absolute_velocity is not None:
+            self.velocity_history.add_data_point(self.absolute_velocity, now)
 
-        if len(self.position_history) > self.MAX_HISTORY_LEN:
-            self.position_history.pop()  # Pop oldest element
-        if len(self.dist_history) > self.MAX_HISTORY_LEN:
-            self.dist_history.pop()  # Pop oldest element
+        # Debug
+        """  if self.absolute_velocity is not None:
+            pos, direct, vel = self.approximate_position_direction_speed(2)
+            old_method_text = "None"
+            if direct is not None:
+                old_method_text = str(Vector2D.velocity_to_xy(vel, direct))
+            debug_msg(str(now) + " | Global Angle:" + str(global_dir) + " | Ball velocity: "
+                      + str(self.absolute_velocity) + "| Player velocity: " + str(observer_velocity) +
+                      " | Dist_change: " + str(dist_change) + "| Dir_change: " + str(dir_change)
+                      + "| Old velocity method: " + old_method_text, "VELOCITY")"""
 
     def approximate_position_direction_speed(self, minimum_data_points_used) -> (Coordinate, int, int):
         if self.projection is not None:
             return self.projection
 
-        if len(self.position_history) <= 1:
+        if len(self.position_history.list) <= 1:
             return None, None, None  # No information can be deduced about movement of ball
-        history = self.position_history
+        history = self.position_history.list
 
         time_1 = history[0][1]
         time_2 = history[1][1]
@@ -116,44 +143,52 @@ class Ball:
         first_coord = c1
         last_coord = c2
 
-        if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.1:
+        if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.1 or c1.euclidean_distance_from(c2) > 4.2:
             return c1, 0, 0
 
         final_speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * BALL_DECAY
         final_direction = degrees(calculate_full_origin_angle_radians(c1, c2))
         angles = [final_direction]  # Used for calculating 'average' angle
 
-        max_deviation = 60  # angle deviation
-        max_speed_deviation = 1.2
+        max_deviation = 50  # angle deviation
+        max_speed_deviation = 0.8
         age = time_1 - time_2
         max_age = 20
 
+        def allowed_angle_deviation(index):
+            return 90 if index == 0 else max_deviation
+
+        previous_dist = final_speed
         data_points_used = 2
         for i, pos_and_time in enumerate(islice(history, 2, len(history))):
             c1 = c2
             c2 = pos_and_time[0]
             time_1 = time_2
             time_2 = pos_and_time[1]
-
-            if time_1 == time_2 or c1.euclidean_distance_from(c2) < 0.05:
-                break
-
             age += time_1 - time_2
-            speed = (c1.euclidean_distance_from(c2) / (time_1 - time_2)) * pow(BALL_DECAY, age)
-            direction = degrees(calculate_full_origin_angle_radians(c1, c2))
 
-            direction_similar = is_angle_in_range(direction, (final_direction - max_deviation) % 360,
-                                                  (final_direction + max_deviation) % 360)
+            dist = c1.euclidean_distance_from(c2)
+            if time_1 == time_2 or dist <= 0.05 or (dist < 0.3 and previous_dist < 0.3) or dist > 4.2:
+                break
+            previous_dist = dist
+
+            # calculate angle from point observed 2 ticks prior
+            direction = degrees(calculate_full_origin_angle_radians(history[i][0], c2))
+            direction_similar = is_angle_in_range(direction, (final_direction - allowed_angle_deviation(i)) % 360,
+                                                  (final_direction + allowed_angle_deviation(i)) % 360)
+
+            speed = (dist / (time_1 - time_2)) * pow(BALL_DECAY, age)
             speed_similar = (final_speed - max_speed_deviation) <= speed <= (final_speed + max_speed_deviation)
 
             if direction_similar and speed_similar and age < max_age:
                 data_points_used += 1
                 last_coord = c2
-                angles.append(direction)
+                angles.append(degrees(calculate_full_origin_angle_radians(first_coord, c2)))
                 final_speed = (final_speed * age + speed) / (age + 1)  # calculate average with new value
-                final_direction = find_mean_angle(angles, max_deviation)
+                final_direction = find_mean_angle(angles, 179)
             else:
-                debug_msg("Previous points did not match. Speed : " + str(speed) + "vs." + str(final_speed) + "| Direction :" + str(direction) +
+                debug_msg("Previous points did not match. Speed : " + str(speed) + "vs." + str(
+                    final_speed) + "| Direction :" + str(direction) +
                           "vs." + str(final_direction) + "| age: " + str(age) + str(c1) + str(c2), "POSITIONAL")
                 break  # This vector did not fit projection, so no more history is used in the projection
 
@@ -164,12 +199,30 @@ class Ball:
                   , "INTERCEPTION")
 
         direction = degrees(calculate_full_origin_angle_radians(first_coord, last_coord))
-        self.projection = self.position_history[0][0], direction, final_speed
-        return self.position_history[0][0], direction, final_speed
+        self.projection = self.position_history.list[0][0], direction, final_speed
+        return self.position_history.list[0][0], direction, final_speed
 
-    def project_ball_position(self, ticks: int, offset: int, minimum_data_points=4):
+    def project_ball_position(self, ticks: int, offset: int):
         positions = []
-        coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points)
+        # coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points)
+
+        if self.absolute_velocity is None:
+            return None  # No prediction can be made
+
+        def advance(previous_location: Coordinate, vel_vector: Vector2D):
+            return Coordinate(previous_location.pos_x + vel_vector.x, previous_location.pos_y + vel_vector.y)
+
+        velocity = self.absolute_velocity.decayed(BALL_DECAY, 1)
+        positions.append(advance(self.coord, self.absolute_velocity))
+
+        for i in range(1, ticks + offset):
+            velocity = velocity.decayed(BALL_DECAY, 1)
+            positions.append(advance(positions[i - 1], velocity))
+
+        return positions[offset:]
+
+    def project_ball_position_vector_method(self, ticks: int, offset: int, minimum_data_points=4):
+        """positions = []
 
         if direction is None:
             return None  # No prediction can be made
@@ -184,7 +237,8 @@ class Ball:
             velocity *= BALL_DECAY
             positions.append(advance(positions[i - 1], velocity.pos_x, velocity.pos_y))
 
-        return positions[offset:]
+        return positions[offset:]"""
+        pass
 
     def will_hit_goal_within(self, ticks):
         ball_positions = self.project_ball_position(ticks, 0)
@@ -206,13 +260,13 @@ class Ball:
         return None
 
     def project_ball_collision_time(self):
-        start_time = self.dist_history[0][1]
-        start_dist = self.dist_history[0][0]
+        start_time = self.dist_history.list[0][1]
+        start_dist = self.dist_history.list[0][0]
         previous_dist = start_dist
         previous_tick = start_time
         avg_speed = 0
 
-        for i, (dist, tick) in enumerate(islice(self.dist_history, 1, len(self.dist_history))):
+        for i, (dist, tick) in enumerate(islice(self.dist_history.list, 1, len(self.dist_history.list))):
             dist_delta = dist - previous_dist
             time_delta = previous_tick - tick
 
@@ -245,9 +299,9 @@ class Ball:
 
         return start_time + ticks_until_collision
 
-    def project_ball_collision_time_2(self, player_coord, time, minimum_data_points):
-        offset = time - self.position_history[0][1]
-        positions: [Coordinate] = self.project_ball_position(5, offset, minimum_data_points)
+    def project_ball_collision_time_2(self, player_coord, time):
+        offset = time - self.position_history.list[0][1]
+        positions: [Coordinate] = self.project_ball_position(5, offset)
         if positions is not None:
             for i, pos in enumerate(positions):
                 if pos.euclidean_distance_from(player_coord) < KICKABLE_MARGIN - 0.1:
@@ -263,10 +317,101 @@ class Ball:
             self.distance, self.direction, self.coord)
 
     def is_moving_closer(self):
-        if len(self.dist_history) < 2:
+        if len(self.dist_history.list) < 2:
             return False
 
-        return self.dist_history[0][0] < self.dist_history[1][0]
+        return self.dist_history.list[0][0] < self.dist_history.list[1][0]
+
+    def _get_relative_velocity(self, dist_change, dir_change, global_dir):
+        if dir_change is None or dist_change is None:
+            return None
+        if dist_change == 0:
+            return Vector2D(0, 0)  # TODO dist_change = zero does not imply no motion
+        rel_velocity_x = dist_change
+        rel_velocity_y = (-math.radians(dir_change)) * self.distance
+        relative_velocity_vector = Vector2D(rel_velocity_x, rel_velocity_y)
+        rel_speed = relative_velocity_vector.magnitude()
+
+        # Rotate to match our coordinate system
+        velocity_angle = (math.radians(inverse_y_axis(global_dir)) + math.atan2(rel_velocity_y, rel_velocity_x))
+        rel_velocity_x = rel_speed * math.cos(velocity_angle)
+        rel_velocity_y = rel_speed * math.sin(velocity_angle)
+        return Vector2D(rel_velocity_x, rel_velocity_y)
+        #rotation = (rotation + 180) % 360
+        #relative_velocity_vector = Vector2D.velocity_to_xy(velocity=rel_speed, degrees=rotation)
+        #print("Global ball direction: ", inverse_y_axis(global_dir), "Ball velocity direction:", rotation, "vector: ", relative_velocity_vector)
+
+
+        #rotation = math.radians(360 - global_dir)
+        #relative_velocity_vector = relative_velocity_vector.rotated(rotation)
+
+        """x2 = math.cos(rotation) * rel_velocity_x - math.sin(rotation) * rel_velocity_y
+        y2 = math.sin(rotation) * rel_velocity_x + math.cos(rotation) * rel_velocity_y
+        rel_speed = sqrt((rel_velocity_x ** 2) + (rel_velocity_y ** 2))
+        rotated_angle = math.atan2(rel_velocity_y, rel_velocity_x) + math.radians(-global_dir)
+        rel_velocity_x = rel_speed * math.cos(rotated_angle)
+        rel_velocity_y = rel_speed * math.sin(rotated_angle)"""
+        return relative_velocity_vector
+
+    def _get_absolute_velocity(self, observer_velocity: Vector2D, now):
+        if observer_velocity is None or self.relative_velocity is None:
+            return None
+
+        current_velocity = self.relative_velocity + observer_velocity
+        if current_velocity.magnitude() < 0.09:
+            return Vector2D(0, 0)
+
+        if current_velocity.magnitude() < 0.14:
+            return current_velocity * 0.5
+
+        avg_magnitude = current_velocity.magnitude() * 1.4
+        avg_direction_delta = 0
+        total_weight = 1.4
+        previous_time = now
+        points_used = 0
+
+        for i, velocity_and_time in enumerate(self.velocity_history.list):
+            velocity = velocity_and_time[0]
+            time = velocity_and_time[1]
+
+            if velocity.magnitude() < 0.05:
+                break
+
+            weight = max(1.0, (1.4 - (i + 1) * 0.1))
+            time_delta = previous_time - time
+            projected_velocity: Vector2D = velocity.decayed(BALL_DECAY, now - time)
+
+            angle_delta = smallest_angle_difference(from_angle=current_velocity.direction(),
+                                                    to_angle=projected_velocity.direction())
+            speed_delta = projected_velocity.magnitude() - current_velocity.magnitude()
+            MAX_ANGLE_DELTA = 8
+            MAX_SPEED_DELTA = 0.3
+            MAX_TIME_DELTA = 7
+
+            if abs(angle_delta) > MAX_ANGLE_DELTA or abs(speed_delta) > MAX_SPEED_DELTA or time_delta > MAX_TIME_DELTA:
+                ##print("DELTA TOO BIG. Angle: ", angle_delta, "| Speed:", speed_delta, "time delta", time_delta)
+                break
+
+            avg_magnitude += projected_velocity.magnitude() * weight
+            avg_direction_delta += angle_delta * weight
+            total_weight += weight
+            points_used += 1
+
+        avg_magnitude /= total_weight
+        avg_direction_delta /= total_weight
+        avg_direction = (current_velocity.direction() + avg_direction_delta) % 360
+        final_projection = Vector2D.velocity_to_xy(velocity=avg_magnitude, degrees=avg_direction)
+
+        """print("HISTORY (used {0}): ".format(points_used), list(map(lambda v: v[0].world_direction(), self.velocity_history.list)))
+        print("HISTORY (used {0}): ".format(points_used), list(map(lambda v: v[0].magnitude(), self.velocity_history.list)))
+        print("AVERAGE vector:", final_projection, "| angle: ", final_projection.world_direction(), "| speed:", final_projection.magnitude())
+"""
+        return final_projection
+
+    def relative_ball_position_vector(self):
+        rel_x = self.distance * math.cos(math.radians(self.global_dir))
+        rel_y = self.distance * math.sin(math.radians(self.global_dir))
+        return Vector2D(rel_x, -rel_y)
 
 
 class Goal:

@@ -38,7 +38,8 @@ class Connection(threading.Thread):
                 self.sending = True
                 if self._stop_event.is_set():
                     return
-                self._send_message(self.action_queue.get())
+                msg = self.action_queue.get()
+                self._send_message(msg)
 
             if self._stop_event.is_set():
                 return
@@ -58,7 +59,7 @@ class Connection(threading.Thread):
     def _receive_message(self):
         ready = select.select([self.sock], [], [], 0.01)
         if ready[0]:
-            player_info, address = self.sock.recvfrom(1024)
+            player_info, address = self.sock.recvfrom(2048)
             # The client will be sent the init ok message from a different port.
             # Adapt socket to this port. Each client gets it's own port like this.
             if self.addr != address:

@@ -1,17 +1,22 @@
 import math
 import re
+import pyclipper
+from time import time
+
+from shapely.geometry import Polygon
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from constants import WARNING_PREFIX, QUANTIZE_STEP_LANDMARKS
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
     calculate_full_origin_angle_radians, smallest_angle_difference, find_mean_angle
 from player import player, world_objects
 from math import sqrt
 
 from player.player import PlayerState
-from player.world_objects import Coordinate, Ball
+from player.world_objects import Coordinate, Ball, History
 from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
-from utils import debug_msg
+from utils import debug_msg, get_flag_quantize_range
 
 _REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 _SIGNED_INT_REGEX = "[-0-9]+"
@@ -217,19 +222,18 @@ def parse_message_update_state(msg: str, ps: PlayerState):
         last_update = ps.action_history.last_see_update
         if ps.world_view.game_state == 'play_on' and msg.startswith("(see {0}".format(last_update)):
             return  # Discard duplicate messages
-
         _update_time(msg, ps)
         _parse_see(msg, ps)
         ps.on_see_update()
-
     elif msg.startswith("(server_param") or msg.startswith("(player_param") or msg.startswith("(player_type"):
         return
     elif msg.startswith("(change_player_type"):
         # (change player type UNUM TYPE) if team player changed type. (change player type UNUM) if opponent player
         # changed type. The type is not disclosed by the opponent team.
         return
-    elif msg.startswith("(ok clang"):
+    elif msg.startswith("(ok clang") or msg.startswith("(ok synch"):
         # Simply a confirmation, that the requested coach language was accepted
+        # Confirm syncrhonized see
         return
     else:
         raise Exception("Unknown message received: " + msg)
@@ -256,7 +260,7 @@ New protocol 7-16:
 '''
 
 
-def _parse_see(msg, ps: player.PlayerState):
+def _parse_see(msg, state: player.PlayerState):
     regex2 = re.compile(_SEE_MSG_REGEX)
     matches = regex2.findall(msg)
 
@@ -279,17 +283,30 @@ def _parse_see(msg, ps: player.PlayerState):
         else:
             raise Exception("Unknown see element: " + str(element))
 
-    flags = create_flags(flag_strings, ps)
+    flags = create_flags(flag_strings, goals, state)
 
-    _approx_position(flags, ps)
-    _approx_body_angle(flags, ps)
-    _parse_players(players, ps)
-    _parse_goals(goals, ps)
-    _parse_ball(ball, ps)
-    _parse_lines(lines, ps)
+    _parse_lines(lines, state)
+    if len(lines) == 0:
+        print("NO LINES " + msg)
+
+    # Find angle from visible lines
+    new_global_angle = _approx_angle_lines(state, lines)
+    if new_global_angle is not None:
+        state.update_face_dir(new_global_angle)
+
+    # Approximate and update position value
+    new_pos = _approx_position_lines(state, flags)
+    if new_pos is not None:
+        state.update_position(new_pos)
+
+    # _approx_position(flags, state)
+    # _approx_body_angle(flags, state)
+    _parse_players(players, state)
+    _parse_ball(ball, state)
 
 
 def _parse_lines(lines, ps):
+    ps.world_view.lines.clear()
     for line in lines:
         if str(line).startswith("((L"):
             continue
@@ -349,7 +366,7 @@ class Flag:
                ", direction: " + str(self.body_relative_direction)
 
 
-def create_flags(flag_strings, state: PlayerState):
+def create_flags(flag_strings, goal_flags, state: PlayerState):
     known_flags_strings = []
 
     # Remove flags out of field of view
@@ -357,6 +374,9 @@ def create_flags(flag_strings, state: PlayerState):
         if not str(flag).startswith("((F)"):
             known_flags_strings.append(flag)
 
+    for flag in goal_flags:
+        if "((G" not in flag:
+            known_flags_strings.append(flag)
     ids = _extract_flag_identifiers(known_flags_strings)
     coords = _extract_flag_coordinates(ids)
     distances = _extract_flag_distances(known_flags_strings)
@@ -371,7 +391,8 @@ def create_flags(flag_strings, state: PlayerState):
 
 
 def _approx_body_angle(flags: [Flag], state):
-    if not state.position.is_value_known():
+    if state.position.last_updated_time < state.now() or not state.position.is_value_known():
+        use_expected_angles(state)
         return
 
     estimated_angles = []
@@ -425,8 +446,9 @@ def _approx_body_angle(flags: [Flag], state):
             else:
                 # No significant turn has been detected since last see update,
                 # so the turn is assumed to have been missed
-                debug_msg(str(state.now()) + "Turn missed in see update! (expected,actual) body : " + str(expected_body_delta) +
-                          str(actual_body_delta) + " neck: " + str(expected_neck_delta) + str(actual_neck_delta), "POSITIONAL")
+                debug_msg(str(state.now()) + "Turn missed in see update! (expected,actual) body : "
+                          + str(expected_body_delta) + ", " + str(actual_body_delta) + " neck: "
+                          + str(expected_neck_delta) + ", " + str(actual_neck_delta), "POSITIONAL")
                 state.action_history.turn_in_progress = True
                 state.action_history.missed_turn_last_see = True
 
@@ -435,6 +457,22 @@ def _approx_body_angle(flags: [Flag], state):
         # state.body_angle.set_value(mean_angle, state.position.last_updated_time)
     else:
         debug_msg("No angle could be found", "POSITIONAL")
+        use_expected_angles(state)
+        return
+
+
+def use_expected_angles(state):
+    if state.action_history.expected_body_angle is not None:
+        debug_msg("Using expected body angle instead", "POSITIONAL")
+        state.body_angle.set_value(state.action_history.expected_body_angle, state.now())
+        state.action_history.expected_body_angle = None
+        state.action_history.turn_in_progress = False
+
+    if state.action_history.expected_neck_angle is not None:
+        debug_msg("Using expected neck angle instead", "POSITIONAL")
+        state.body_angle.set_value(state.action_history.expected_neck_angle, state.now())
+        state.action_history.expected_neck_angle = None
+        state.action_history.turn_in_progress = False
 
 
 # ((flag g r b) 99.5 -5)
@@ -456,7 +494,7 @@ def _extract_flag_directions(flag_strings, neck_angle):
         # ['13.5', '-31', '2', '-5']
 
         direction = float(split_by_whitespaces[1])
-        direction += neck_angle  # Account for neck angle
+        # direction += neck_angle  # Account for neck angle
         direction %= 360
         flag_directions.append(direction)
     return flag_directions
@@ -466,56 +504,58 @@ def _extract_flag_directions(flag_strings, neck_angle):
 # or ((b) 44.7 -20)
 # Or ((B) distance direction)
 # distance, direction, dist_change, dir_change
-def _parse_ball(ball: str, ps: player.PlayerState):
+def _parse_ball(ball_text: str, ps: player.PlayerState):
     # If ball is not present at all or only seen behind the player
-    if ball is None:
+    if ball_text is None:
         return
 
     # Remove ) from the items
-    ball = str(ball).replace(")", "")
-    ball = str(ball).replace("(", "")
+    ball_text = str(ball_text).replace(")", "")
+    ball_text = str(ball_text).replace("(", "")
 
     split_by_whitespaces = []
-    split_by_whitespaces = re.split('\\s+', ball)
+    split_by_whitespaces = re.split('\\s+', ball_text)
 
     # We now have a list of elements like this:
     # ['b', '13.5', '-31', '2', '-5']
 
     # These are always included
     distance = float(split_by_whitespaces[1])
-    direction = int(split_by_whitespaces[2])
-    # direction += ps.body_state.neck_angle # Accommodates non-zero neck angles
-    # direction %= 360
+    relative_ball_dir = int(split_by_whitespaces[2])
     # These might be included depending on the distance and view of the player
-    distance_chng = PrecariousData.unknown()
-    dir_chng = PrecariousData.unknown()
+    distance_chng = None
+    dir_chng = None
 
     # If we also know dist_change and dir_change
     if len(split_by_whitespaces) > 3:
-        distance_chng = split_by_whitespaces[3]
-        dir_chng = split_by_whitespaces[4]
+        distance_chng = float(split_by_whitespaces[3])
+        dir_chng = float(split_by_whitespaces[4])
 
-    # print("Pretty: Distance ({0}), Direction ({1}), distance_chng ({2}), dir_chng ({3})".format(distance, direction,
-    #                                                                                            distance_chng,
-    #                                                                                            dir_chng))
     ball_coord = None
     # The position of the ball can only be calculated, if the position of the player is known
-    if ps.position.is_value_known() and ps.get_global_angle().is_value_known():
+    if ps.position.is_value_known(ps.now()) and ps.face_dir.is_value_known(ps.now()):
         pos: Coordinate = ps.position.get_value()
-        ball_coord: Coordinate = get_object_position(object_rel_angle=int(direction), dist_to_obj=float(distance),
+        ball_coord: Coordinate = get_object_position(object_rel_angle=int(relative_ball_dir), dist_to_obj=float(distance),
                                                      my_x=pos.pos_x,
                                                      my_y=pos.pos_y,
                                                      my_global_angle=ps.get_global_angle().get_value())
+        # Global ball direction
+        global_ball_direction = ps.face_dir.get_value() + relative_ball_dir
 
         # Save old ball information
-        old_position_history = None
-        old_dist_history = None
+        old_position_history = History(Ball.MAX_HISTORY_LEN)
+        old_dist_history = History(Ball.MAX_HISTORY_LEN)
+        old_velocity_history = History(Ball.MAX_HISTORY_LEN)
         if ps.world_view.ball.is_value_known():
-            old_position_history = ps.world_view.ball.get_value().position_history
-            old_dist_history = ps.world_view.ball.get_value().dist_history
+            old_ball: Ball = ps.world_view.ball.get_value()
+            old_position_history = old_ball.position_history
+            old_dist_history = old_ball.dist_history
+            old_velocity_history = old_ball.velocity_history
 
-        new_ball = Ball(distance=distance, direction=direction, coord=ball_coord,
-                        pos_history=old_position_history, time=ps.now(), dist_history=old_dist_history)
+        new_ball = Ball(distance, relative_ball_dir, distance_chng, dir_chng, global_ball_direction,
+                        ps.get_y_north_velocity_vector(), now=ps.now(), coord=ball_coord,
+                        pos_history=old_position_history, velocity_history=old_velocity_history,
+                        dist_history=old_dist_history)
 
         ps.update_ball(new_ball, ps.now())
 
@@ -807,6 +847,9 @@ def _parse_hear(text: str, ps: PlayerState):
 
         ps.world_view.game_state = matched.group(2)
 
+        if ("goal" in matched.group(2) and "kick" not in matched.group(2)) or matched.group(2) == "before_kick_off":
+            ps.should_reset_to_start_position = True
+
         return
     elif sender == "self":
         return
@@ -856,6 +899,9 @@ def _parse_hear(text: str, ps: PlayerState):
 def _parse_body_sense(text: str, state: PlayerState):
     if "collision (ball" in text:
         state.ball_collision_time = state.now()
+        # We have collided with the ball so we cannot count on our previously calculated speed
+        state.action_history.expected_speed = None
+
     regex_string = ".*sense_body ({1}).*view_mode ({2})\\).*stamina ({0}) ({0}) ({0})\\).*speed ({0}) ({1})\\)"
     regex_string += ".*head_angle ({1})\\).*kick ({1})\\).*dash ({1})\\).*turn ({1})\\)"
     regex_string += ".*say ({1})\\).*turn_neck ({1})\\).*catch ({1})\\).*move ({1})\\).*change_view ({1})\\)"
@@ -867,14 +913,6 @@ def _parse_body_sense(text: str, state: PlayerState):
 
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(text)
-
-    '''
-    if matched.group(23) is None: # todo Does not not work when no groups are present
-        print(text)
-        unum = "none"
-    else:
-        unum = int(matched.group(23))
-    '''
 
     # ps.body_state.time = int(matched.group(1))
     state.body_state.view_mode = matched.group(2)
@@ -888,8 +926,6 @@ def _parse_body_sense(text: str, state: PlayerState):
         state.action_history.expected_speed = None
     else:
         state.body_state.speed = float(matched.group(6))
-
-
 
     state.body_state.direction_of_speed = int(matched.group(7))
     state.body_state.neck_angle = int(matched.group(8))
@@ -921,20 +957,30 @@ def _match(regex_string, text):
 
 
 def _extract_flag_identifiers(flags):
+    goal_flag_ident_regex = ".*\\(([^\\)]*)\\)"
     flag_identifiers_regex = ".*\\(f ([^\\)]*)\\)"
     flag_identifiers = []
     for flag in flags:
-        m = _match(flag_identifiers_regex, flag)
-        flag_identifiers.append(m.group(1).replace(" ", ""))
+        if str(flag).startswith("((f"):
+            m = _match(flag_identifiers_regex, flag)
+            flag_identifiers.append(m.group(1).replace(" ", ""))
+        elif str(flag).startswith("((g"):
+            m = _match(goal_flag_ident_regex, flag)
+            flag_identifiers.append(m.group(1).replace(" ", ""))
     return flag_identifiers
 
 
 def _extract_flag_distances(flags):
+    goal_flag_distance_regex = ".*\\([^\\)]*\\) ({0}) ".format(_REAL_NUM_REGEX)
     flag_distance_regex = ".*\\(f [^\\)]*\\) ({0}) ".format(_REAL_NUM_REGEX)
     flag_distances = []
     for flag in flags:
-        m = _match(flag_distance_regex, flag)
-        flag_distances.append(m.group(1).replace(" ", ""))
+        if str(flag).startswith("((f"):
+            m = _match(flag_distance_regex, flag)
+            flag_distances.append(m.group(1).replace(" ", ""))
+        elif str(flag).startswith("((g"):
+            m = _match(goal_flag_distance_regex, flag)
+            flag_distances.append(m.group(1).replace(" ", ""))
     return flag_distances
 
 
@@ -942,7 +988,7 @@ def _extract_flag_coordinates(flag_ids):
     coords = []
     for flag_id in flag_ids:
         coord_pair = _FLAG_COORDS.get(flag_id)
-        coords.append(Coordinate(coord_pair[0], coord_pair[1]))
+        coords.append(Coordinate(coord_pair[0], -coord_pair[1]))
     return coords
 
 
@@ -1136,3 +1182,122 @@ def _approx_position(flags: [Flag], state: PlayerState):
         else:
             pass
             # print("impossible position solution or no solution at all" + str(solution))
+
+
+def _approx_angle_lines(state: PlayerState, lines):
+    if not state.position.is_value_known() or state.is_inside_field():
+        lines = sorted(state.world_view.lines, key=lambda x: x.distance)
+    else:
+        lines = sorted(state.world_view.lines, key=lambda x: x.distance, reverse=True)
+
+    if len(lines) == 0:
+        print("ANGLE NOT FOUND")
+        debug_msg(str(state.now()) + "Could not get angle. Outside field facing out", "POSITIONAL")
+        return
+    line = lines[0]
+
+    face_dir = float(line.relative_angle)
+    if face_dir > 0:
+        face_dir -= 90
+    elif face_dir < 0:
+        face_dir += 90
+    else:
+        print(WARNING_PREFIX + " PARRALLEL TO LINE. SHOULD NOT HAPPEN")
+
+    if line.line_side is 'l':
+        face_dir = 180 - face_dir
+    elif line.line_side is 'r':
+        face_dir = 0 - face_dir
+    elif line.line_side is 't':
+        face_dir = -90 - face_dir
+    else:
+        face_dir = 90 - face_dir
+
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " | New face dir : " + str(face_dir % 360) + " | Neck angle : "
+                  + str(state.body_state.neck_angle), "ORIENTATION")
+    return face_dir % 360
+
+
+def _approx_position_lines(state: PlayerState, flags: [Flag]):
+    solution_paths = []
+    flags = sorted(flags, key=lambda f: f.relative_distance)
+
+    # Create solution shapes for all flags
+    for flag in flags:
+        solution_paths.append(create_solution_shape(state, flag))
+
+    if len(flags) == 0:
+        return None
+
+    if len(flags) == 1:
+        result = Polygon(create_solution_shape(state, flags[0])).centroid.coords
+        result = Coordinate(result[0][0], -result[0][1])
+        return result
+
+    SCALE_FACTOR = 1000
+    pc = pyclipper.Pyclipper()
+    try:
+        pc.AddPath(pyclipper.scale_to_clipper(solution_paths[0], SCALE_FACTOR), pyclipper.PT_SUBJECT, True)
+        for path in solution_paths[1:]:
+            pc.AddPath(pyclipper.scale_to_clipper(path, SCALE_FACTOR), pyclipper.PT_CLIP)
+        res = pyclipper.scale_from_clipper(pc.Execute(pyclipper.CT_INTERSECTION), SCALE_FACTOR)
+    except pyclipper.ClipperException:
+        return _emergency_approximation(state, flags)
+
+    if len(res) == 0:
+        print("FAILED for player ", state.num, "Flags: ", len(flags), res)
+        # TODO Return average coordinate using normal trigonometry
+        return _emergency_approximation(state, flags)
+
+    result = Polygon(res[0]).centroid.coords
+    result = Coordinate(result[0][0], -result[0][1])
+    return result
+
+
+# Shape representing the space of possible solutions
+def create_solution_shape(state: PlayerState, flag: Flag):
+    flag_angle = state.face_dir.get_value() + flag.body_relative_direction
+    max_angle = (flag_angle + 1) % 360  # Rounding error
+    min_angle = (flag_angle - 1) % 360  # Rounding error
+    min_dist, max_dist = get_flag_quantize_range(flag.relative_distance)
+
+    # Closest curve of the cone
+    p1 = solve_point_as_pair(min_angle, min_dist, flag.coordinate)
+    p2 = solve_point_as_pair(flag_angle, min_dist, flag.coordinate)
+    p3 = solve_point_as_pair(max_angle, min_dist, flag.coordinate)
+
+    # Furthest curve of the cone
+    p4 = solve_point_as_pair(max_angle, max_dist, flag.coordinate)
+    p5 = solve_point_as_pair(flag_angle, max_dist, flag.coordinate)
+    p6 = solve_point_as_pair(min_angle, max_dist, flag.coordinate)
+
+    return p1, p2, p3, p4, p5, p6
+
+
+def solve_point_as_pair(angle, distance, offset):
+    rel_pos_x = distance * math.cos(angle * math.pi / 180)
+    rel_pos_y = distance * math.sin(angle * math.pi / 180)
+    relative_coord = Coordinate(rel_pos_x, rel_pos_y)
+    point_pos = offset - relative_coord
+    return point_pos.pos_x, point_pos.pos_y
+
+
+def _emergency_approximation(state, flags):
+    def avg_coord(coords: [Coordinate]):
+        sum_coord = Coordinate(0, 0)
+        for c in coords:
+            sum_coord = sum_coord + c
+        length = float(len(coords))
+        return Coordinate(sum_coord.pos_x / length, sum_coord.pos_y / length)
+
+    positions = []
+    for flag in flags:
+        flag_angle = state.face_dir.get_value() + flag.body_relative_direction
+        rel_pos_x = flag.relative_distance * math.cos(flag_angle * math.pi / 180)
+        rel_pos_y = flag.relative_distance * math.sin(flag_angle * math.pi / 180)
+        relative_pos = Coordinate(rel_pos_x, rel_pos_y)
+        approx_play_pos = flag.coordinate - relative_pos
+        positions.append(approx_play_pos)
+
+    return avg_coord(positions)
