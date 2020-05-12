@@ -15,7 +15,7 @@ DEBUG_DICT = {
     "MESSAGES": False,
     "STATUS": False,
     "MODE": False,
-    "GOALIE": True,
+    "GOALIE": False,
     "PASS_TARGET": False,
     "DRIBBLE": False,
     "BALL": False,

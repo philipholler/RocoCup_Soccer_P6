@@ -511,6 +511,36 @@ def rush_to_ball(state: PlayerState):
         return locate_ball(state)
 
     ball: Ball = state.world_view.ball.get_value()
+    ball_vel = ball.absolute_velocity
+    player_vel = state.get_y_north_velocity_vector()
+    if ball_vel is not None and player_vel is not None and ball_vel.magnitude() > 0.1 \
+            and abs(ball_vel.world_direction() - state.body_angle.get_value()) < 15:
+        ball_dist = ball.distance
+        command_builder = CommandBuilder()
+        if ball.direction >= 5:
+            moment = _calculate_turn_moment(state.body_state.speed, ball.direction)
+            command_builder.append_turn_action(state, moment)
+            append_look_at_ball_neck_only(state, command_builder, _calculate_actual_turn_angle(player_vel.magnitude(), moment))
+            command_builder.next_tick()
+            ball_dist += ball_vel.magnitude() - player_vel.magnitude()
+            ball_vel = ball_vel.decayed(BALL_DECAY, 1)
+            player_vel = player_vel.decayed(PLAYER_SPEED_DECAY, 1)
+
+        player_speed = player_vel.magnitude()
+        while ball_dist > 0 and command_builder.ticks < 4:
+            target_speed = ball_dist + ball_vel.magnitude()
+            dash_power, new_speed = _calculate_dash_power(player_speed, target_speed)
+            command_builder.append_dash_action(state, dash_power)
+            command_builder.next_tick()
+
+            ball_dist = ball_dist - new_speed + ball_vel.magnitude()
+            player_speed *= PLAYER_SPEED_DECAY
+            ball_vel = ball_vel.decayed(BALL_DECAY, 1)
+
+        return command_builder.command_list
+
+
+
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
 
     if locations is not None and False:
@@ -965,7 +995,7 @@ def _calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()
     dir_diff = abs(ball.direction)
     dist_ball = ball.distance
-    target_delivery_velocity = 0.8  # The velocity of the ball after traveling the given distance
+    target_delivery_velocity = 0.7  # The velocity of the ball after traveling the given distance
 
     time_to_travel_distance = 50 * math.log(
         (3 * distance + 50 * target_delivery_velocity) / (50 * target_delivery_velocity)) / 3
@@ -986,12 +1016,7 @@ def _calculate_actual_turn_angle(projected_speed, moment):
 def _calculate_dash_power(current_speed, target_speed):
     delta = target_speed - current_speed
     power = delta / DASH_POWER_RATE
-
-    if power < 0:
-        power = max(power, -100)
-    else:
-        power = min(power, 100)
-
+    power = clamp(power, -100, 100)
     projected_speed = current_speed + power * DASH_POWER_RATE
     return power, projected_speed
 
