@@ -48,23 +48,25 @@ def parse_logs():
             file.write(goal + "\n")
 
     file_left = open(os.path.join(log_directory, "%s_leftkicks.txt" % game.teams[0].name), "w")
-    # file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
+    file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
     file_l_goalie_kicks = open(os.path.join(log_directory, "%s_left_goalie_kicks.txt" % game.teams[0].name), "w")
-    # file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
+    file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
 
     write_possession_file(game)
 
-    files = [file_left, file_l_goalie_kicks]
+    files = [file_left, file_l_goalie_kicks, file_right, file_r_goalie_kicks]
 
     for stage in game.show_time:
         # print(game.show_time.index(stage))
         # print(stage.print_stage())
         file_left.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_l_kicks) + "\n")
-        # file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
+        file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
         for player in stage.players:
             if player.no == 1:
                 if player.side == "l":
                     file_l_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
+                if player.side =="r":
+                    file_r_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
 
     for file in files:
         file.close()
