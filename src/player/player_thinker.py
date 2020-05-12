@@ -13,6 +13,7 @@ import parsing
 from player.playerstrategy import determine_objective
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
+from uppaal import strategy
 from utils import debug_msg
 
 
@@ -54,6 +55,8 @@ class Thinker(threading.Thread):
         self._stop_event.set()
 
     def think(self):
+        if strategy.has_applicable_strat_player(self.player_state):
+            strat_acts = strategy.generate_strategy_player(self.player_state)
         self.player_state.current_objective = determine_objective(self.player_state)
         time_since_action = 0
         last_time = time.time()

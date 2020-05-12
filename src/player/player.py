@@ -179,10 +179,11 @@ class PlayerState:
 
             for (position, tick) in positions_and_ticks:
                 if self.can_player_reach(position, tick):
-                    debug_msg(str(self.now()) + " | Based on ball velocity : " + str(ball.absolute_velocity)
-                              , "INTERCEPTION")
-                    debug_msg(str(self.now()) + " | Projected (coord, tick_offset): "
-                              + str(printable_list), "INTERCEPTION")
+                    if self.is_test_player():
+                        debug_msg(str(self.now()) + " | Based on ball velocity : " + str(ball.absolute_velocity)
+                                  , "INTERCEPTION")
+                        debug_msg(str(self.now()) + " | Projected (coord, tick_offset): "
+                                  + str(printable_list), "INTERCEPTION")
                     return position, tick
 
             if self.is_test_player():

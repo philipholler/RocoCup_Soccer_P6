@@ -2,20 +2,19 @@ import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
-from player.player import WorldView
-
+from player.player import WorldView, PlayerState
 
 SYSTEM_PLAYER_NAMES = ["player0", "player1", "player2", "player3", "player4"]
 PLAYER_POS_DECL_NAME = "player_pos[team_members][2]"
 OPPONENT_POS_DECL_NAME = "opponent_pos[opponents][2]"
 
 
-def generate_strategy_player(wv: WorldView):
-    strategy_generator = _find_applicable_strat_player(wv)
+def generate_strategy_player(state: PlayerState):
+    strategy_generator = _find_applicable_strat_player(state)
     if strategy_generator is None:
         return
 
-    return strategy_generator.generate_strategy(wv)
+    return strategy_generator.generate_strategy(state)
 
 
 def generate_strategy(wv: WorldViewCoach):
@@ -39,6 +38,7 @@ class _StrategyGenerator:
         model = UppaalModel(self.strategy_name)
 
         # Update model data in accordance with chosen strategy and execute verifyta
+        # wv is a player_state for player strats!
         model_data = self._model_modifier(wv, model)
 
         execute_verifyta(model)
@@ -54,9 +54,14 @@ def has_applicable_strat(wv: WorldViewCoach) -> bool:
         return True
     return False
 
-def _find_applicable_strat_player(wv) -> _StrategyGenerator:
+def has_applicable_strat_player(state: PlayerState):
+    if _find_applicable_strat_player(state) is not None:
+        return True
+    return False
+
+def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
     # todo use player specific strategies once made available - Philip
-    pass
+    return None
 
 
 def _find_applicable_strat(world_view) -> _StrategyGenerator:
