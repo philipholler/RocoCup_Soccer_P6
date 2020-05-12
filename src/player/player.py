@@ -333,6 +333,8 @@ class ActionHistory:
         self.expected_angle_change = 0
         self.expected_body_angle = None
         self.last_look_for_pass_targets = 0
+        self.last_stamina_strat_generated = 0
+        self.dashes_last_stamina_strat = 0
 
 
 class ViewFrequency:
@@ -394,6 +396,7 @@ class BodyState:
         self.direction_of_speed = 0
         self.neck_angle = 0
         self.arm_movable_cycles = 0
+        self.dash_count = 0
         self.arm_expire_cycles = 0
         self.distance = 0
         self.direction = 0
@@ -403,6 +406,9 @@ class BodyState:
         self.charged = 0
         self.card = ""
         self.fov = 90
+        self.max_dash_power = 80
+        self.jog_dash_power = 80 * 0.6
+        self.dribble_dash_power = 80 * 0.65
 
 
 class WorldView:

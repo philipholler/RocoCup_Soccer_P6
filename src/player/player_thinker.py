@@ -55,13 +55,10 @@ class Thinker(threading.Thread):
         self._stop_event.set()
 
     def think(self):
-        if strategy.has_applicable_strat_player(self.player_state):
-            strat_acts = strategy.generate_strategy_player(self.player_state)
         self.player_state.current_objective = determine_objective(self.player_state)
         time_since_action = 0
         last_time = time.time()
         while not self._stop_event.is_set():
-
             while not self.input_queue.empty():
                 # Parse message and update player state / world view
                 msg: str = self.input_queue.get()
@@ -73,6 +70,11 @@ class Thinker(threading.Thread):
                 if self.player_state.should_reset_to_start_position:
                     self.move_back_to_start_pos()
 
+            # look for strat:
+            if strategy.has_applicable_strat_player(self.player_state):
+                strat = strategy.generate_strategy_player(self.player_state)
+                debug_msg("Has applicable strat: {0}".format(strat), "STAMINA_STRAT")
+                parsing.parse_strat_player(self.player_state, strat)
 
             current_time = time.time()
             time_since_action += current_time - last_time

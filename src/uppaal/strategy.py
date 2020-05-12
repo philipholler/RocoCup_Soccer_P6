@@ -1,6 +1,8 @@
+import math
 import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
+from constants import SECONDS_BETWEEN_STAMINA_STRAT
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
 from player.player import WorldView, PlayerState
 
@@ -59,8 +61,11 @@ def has_applicable_strat_player(state: PlayerState):
         return True
     return False
 
+
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    # todo use player specific strategies once made available - Philip
+    if state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2:
+        return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
+                                  _update_stamina3_model, _extract_stamina3_solution)
     return None
 
 
@@ -76,6 +81,27 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
 
     return None
 
+def _update_stamina3_model(state: PlayerState, model: UppaalModel):
+    dashes_since_last_strat = state.body_state.dash_count - state.action_history.dashes_last_stamina_strat
+    state.action_history.dashes_last_stamina_strat = state.body_state.dash_count
+
+    model.set_global_declaration_value("recovery_rate_per_sec", 300)
+    model.set_global_declaration_value("dashes_last_strategy", dashes_since_last_strat)
+    model.set_global_declaration_value("seconds_per_strategy", SECONDS_BETWEEN_STAMINA_STRAT)
+
+    return state.body_state.stamina
+
+def _extract_stamina3_solution(strategy: UppaalStrategy, current_stamina: int):
+    current_stamina_interval: int = math.floor(current_stamina / 1000)
+
+    for r in strategy.regressors:
+        if int(r.get_value("stamina_interval")) == current_stamina_interval:
+            highest_dash: str = str(r.get_highest_val_trans())
+            print("Result dash power: ", highest_dash)
+            return "(dash_power {0})".format(highest_dash[highest_dash.find("(") + 1:highest_dash.find(",")])
+
+
+    return None
 
 def _update_passing_model(wv, model: UppaalModel):
     '''

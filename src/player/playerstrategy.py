@@ -304,7 +304,25 @@ def determine_objective_field_default(state: PlayerState):
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
 
+def determine_objective_biptest(state: PlayerState):
+    # If lost orientation -> blind orient
+    if _lost_orientation(state):
+        return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
+
+    if state.position.is_value_known():
+        lower_goal: Coordinate = Coordinate(-25, -33)
+        upper_goal: Coordinate = Coordinate(-25, 33)
+        if not state.is_near(upper_goal, 2):
+            debug_msg("Going to left goal", "BIPTEST")
+            return Objective(state, lambda : actions.rush_to(state, upper_goal), lambda: state.is_near(upper_goal, 0.5), 1000)
+        else:
+            debug_msg("Going to right goal", "BIPTEST")
+            return Objective(state, lambda : actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5), 1000)
+
+
 def determine_objective(state: PlayerState):
+    if state.objective_behaviour == "biptest":
+        return determine_objective_biptest(state)
     if state.objective_behaviour == "default":
         if state.player_type == "goalie":
             return determine_objective_goalie_default(state)

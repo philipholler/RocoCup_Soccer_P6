@@ -22,7 +22,9 @@ DEBUG_DICT = {
     "HAS_BALL": False,
     "OFFSIDE": False,
     "QUANTIZATION": False,
-    "VELOCITY": False
+    "VELOCITY": False,
+    "BIPTEST": True,
+    "STAMINA_STRAT": True
 }
 
 

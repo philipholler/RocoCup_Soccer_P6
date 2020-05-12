@@ -535,7 +535,8 @@ def _parse_ball(ball_text: str, ps: player.PlayerState):
     # The position of the ball can only be calculated, if the position of the player is known
     if ps.position.is_value_known(ps.now()) and ps.face_dir.is_value_known(ps.now()):
         pos: Coordinate = ps.position.get_value()
-        ball_coord: Coordinate = get_object_position(object_rel_angle=int(relative_ball_dir), dist_to_obj=float(distance),
+        ball_coord: Coordinate = get_object_position(object_rel_angle=int(relative_ball_dir),
+                                                     dist_to_obj=float(distance),
                                                      my_x=pos.pos_x,
                                                      my_y=pos.pos_y,
                                                      my_global_angle=ps.get_global_angle().get_value())
@@ -929,6 +930,7 @@ def _parse_body_sense(text: str, state: PlayerState):
 
     state.body_state.direction_of_speed = int(matched.group(7))
     state.body_state.neck_angle = int(matched.group(8))
+    state.body_state.dash_count = int(matched.group(10))
     state.body_state.arm_movable_cycles = int(matched.group(17))
     state.body_state.arm_expire_cycles = int(matched.group(18))
     state.body_state.distance = float(matched.group(19))
@@ -1301,3 +1303,12 @@ def _emergency_approximation(state, flags):
         positions.append(approx_play_pos)
 
     return avg_coord(positions)
+
+
+def parse_strat_player(state: PlayerState, strat: str):
+    if "(dash_power" in strat:
+        dash_power: int = int(strat[strat.find("r") + 1: strat.find(")")])
+        state.body_state.max_dash_power = dash_power
+        state.body_state.jog_dash_power = dash_power * 0.6
+        state.body_state.dribble_dash_power = dash_power * 0.65
+        state.action_history.last_stamina_strat_generated = state.now()

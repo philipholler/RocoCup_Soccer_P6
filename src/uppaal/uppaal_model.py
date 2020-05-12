@@ -1,8 +1,10 @@
+import os
 import time
 import xml.etree.ElementTree as ET
 import re
 import subprocess
 from os import fdopen, remove
+from pathlib import Path
 
 from shutil import copymode, move
 from tempfile import mkstemp
@@ -12,9 +14,9 @@ from uppaal import MODELS_PATH, OUTPUT_DIR_PATH, QUERIES_PATH, VERIFYTA_PATH
 
 class UppaalStrategy:
 
-    def __init__(self, strategy_name : str) -> None:
+    def __init__(self, strategy_name: str) -> None:
         super().__init__()
-        self.path_to_strat_file = OUTPUT_DIR_PATH / strategy_name
+        self.path_to_strat_file = os.path.normpath(str(OUTPUT_DIR_PATH) + strategy_name)
         self.strategy_text = ""
         with open(self.path_to_strat_file, 'r') as f:
             for line in f:
@@ -209,8 +211,9 @@ class UppaalModel:
     def __init__(self, strategy_name) -> None:
         self.strategy_name = strategy_name
         self.xml_file_name = strategy_name + ".xml"
-        self.queries_file_name = strategy_name + ".q"
-        self.tree = ET.parse(MODELS_PATH / self.xml_file_name)
+        self.queries_path = os.path.normpath(str(QUERIES_PATH) + strategy_name + ".q")
+        self.path = os.path.normpath(str(MODELS_PATH) + self.xml_file_name)
+        self.tree = ET.parse(self.path)
         self.root = self.tree.getroot()
 
         self.system_decls: [SystemDeclaration]
@@ -239,7 +242,7 @@ class UppaalModel:
             global_decl_string += gd.get_uppaal_string() + "\n"
         global_decl_zone.text = global_decl_string
 
-        with open(MODELS_PATH / self.xml_file_name, 'wb') as f:
+        with open(self.path, 'wb') as f:
             # Include header to let UPPAAL know, the xml file is a UPPAAL file
             f.write(
                 '<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC \'-//Uppaal Team//DTD Flat System 1.1//EN\' \'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd\'>'.encode(
@@ -377,7 +380,7 @@ class Template:
 
 
 def _update_queries_write_path(model: UppaalModel):
-    query_path = QUERIES_PATH / model.queries_file_name
+    query_path = model.queries_path
     with open(query_path, 'r', encoding='utf8') as f:
         for l in f:
             stripped_line = l.strip()
@@ -385,8 +388,7 @@ def _update_queries_write_path(model: UppaalModel):
                 strat = re.search(',.*\)', stripped_line)
                 strat_name = strat.group(0)[1:-1]
                 strat_file_name = model.strategy_name
-                newline = 'saveStrategy("' + str(
-                    OUTPUT_DIR_PATH / strat_file_name) + '",' + strat_name + ')' + '\n'
+                newline = 'saveStrategy("' + os.path.normpath(str(OUTPUT_DIR_PATH) + strat_file_name) + '",' + strat_name + ')' + '\n'
                 _replace_in_file(query_path, l, newline)
                 # This does not work for more than one saveStrategy call
                 break
@@ -413,8 +415,8 @@ def execute_verifyta(model: UppaalModel):
     model.save_xml_file()
     _update_queries_write_path(model)
     # verifyta_path --print-strategies outputdir xml_path queries_dir learning-method?
-    command = "{0} {1} {2}".format(VERIFYTA_PATH, MODELS_PATH / model.xml_file_name
-                                   , QUERIES_PATH / model.queries_file_name)
+    command = "{0} {1} {2}".format(VERIFYTA_PATH, model.path
+                                   , model.queries_path)
 
     # Run uppaal verifyta command line tool
     verifyta = subprocess.Popen(command, shell=True)
