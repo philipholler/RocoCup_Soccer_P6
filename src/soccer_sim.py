@@ -47,7 +47,7 @@ class SoccerSim(threading.Thread):
             self.soccer_sim = subprocess.Popen(["exec rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0 player::player_types = 1"],
                                                 shell=True)
 
-        # Use soccerwindow2: soccerwindow2 --kill-server
+        # Use soccerwindow2: exec soccerwindow2 --kill-server --geometry=1440x900 --gradient 1 --field-grass-type lines
         # Use regular monitor: exec rcssmonitor --show-status-bar 1 --show-kick-accel-area 1 --show-catch-area 1 --geometry=1280x800
         self.soccer_monitor = subprocess.Popen(["exec rcssmonitor --show-status-bar 1 --show-kick-accel-area 1 --show-catch-area 1 --geometry=1280x800"], shell=True)
 

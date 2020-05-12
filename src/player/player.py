@@ -449,6 +449,7 @@ class WorldView:
         debug_msg("{0} has ball".format("Team2"), "HAS_BALL")
         return False
 
+
     def get_all_known_players(self, team, max_data_age):
         all_players: [ObservedPlayer] = []
         all_players.extend(self.get_teammates(team, max_data_age))
@@ -458,6 +459,7 @@ class WorldView:
     def get_free_forward_team_mates(self, team, side, my_coord: Coordinate, max_data_age, min_distance_free,
                                     min_dist_from_me=3):
         free_team_mates: [ObservedPlayer] = self.get_free_team_mates(team, max_data_age, min_distance_free)
+        debug_msg("Free_team_mates={0}".format(free_team_mates), "OFFSIDE")
         if side == "l":
             free_forward_team_mates = list(filter(
                 lambda p: p.coord.pos_x > my_coord.pos_x and p.coord.euclidean_distance_from(
@@ -478,6 +480,7 @@ class WorldView:
 
         # If no opponents are seen, no one is offside
         if len(opponents) < 1:
+            debug_msg("free_forward_team_mates={0}".format(free_forward_team_mates), "OFFSIDE")
             return free_forward_team_mates
 
         reverse = True if side == "l" else False
@@ -533,6 +536,9 @@ class WorldView:
             "OFFSIDE")
 
         free_team_mates = []
+
+        if len(opponents) < 1:
+            return team_mates
 
         for team_mate in team_mates:
             for opponent in opponents:
