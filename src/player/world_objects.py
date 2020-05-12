@@ -97,7 +97,10 @@ class Ball:
         super().__init__()
         self.distance = distance
         self.direction = direction
+        self.global_dir = global_dir
         self.coord: Coordinate = coord
+        self.dist_change = dist_change
+        self.dir_change = dir_change
 
         self.position_history = pos_history
         self.dist_history = dist_history
@@ -325,12 +328,22 @@ class Ball:
         if dist_change == 0:
             return Vector2D(0, 0)  # TODO dist_change = zero does not imply no motion
         rel_velocity_x = dist_change
-        rel_velocity_y = math.radians(dir_change) * self.distance
+        rel_velocity_y = (-math.radians(dir_change)) * self.distance
         relative_velocity_vector = Vector2D(rel_velocity_x, rel_velocity_y)
+        rel_speed = relative_velocity_vector.magnitude()
 
         # Rotate to match our coordinate system
-        rotation = math.radians(360 - global_dir)
-        relative_velocity_vector = relative_velocity_vector.rotated(rotation)
+        velocity_angle = (math.radians(inverse_y_axis(global_dir)) + math.atan2(rel_velocity_y, rel_velocity_x))
+        rel_velocity_x = rel_speed * math.cos(velocity_angle)
+        rel_velocity_y = rel_speed * math.sin(velocity_angle)
+        return Vector2D(rel_velocity_x, rel_velocity_y)
+        #rotation = (rotation + 180) % 360
+        #relative_velocity_vector = Vector2D.velocity_to_xy(velocity=rel_speed, degrees=rotation)
+        #print("Global ball direction: ", inverse_y_axis(global_dir), "Ball velocity direction:", rotation, "vector: ", relative_velocity_vector)
+
+
+        #rotation = math.radians(360 - global_dir)
+        #relative_velocity_vector = relative_velocity_vector.rotated(rotation)
 
         """x2 = math.cos(rotation) * rel_velocity_x - math.sin(rotation) * rel_velocity_y
         y2 = math.sin(rotation) * rel_velocity_x + math.cos(rotation) * rel_velocity_y
@@ -355,10 +368,14 @@ class Ball:
         avg_direction_delta = 0
         total_weight = 1.4
         previous_time = now
+        points_used = 0
 
         for i, velocity_and_time in enumerate(self.velocity_history.list):
             velocity = velocity_and_time[0]
             time = velocity_and_time[1]
+
+            if velocity.magnitude() < 0.05:
+                break
 
             weight = max(1.0, (1.4 - (i + 1) * 0.1))
             time_delta = previous_time - time
@@ -367,24 +384,34 @@ class Ball:
             angle_delta = smallest_angle_difference(from_angle=current_velocity.direction(),
                                                     to_angle=projected_velocity.direction())
             speed_delta = projected_velocity.magnitude() - current_velocity.magnitude()
-            MAX_ANGLE_DELTA = 10
-            MAX_SPEED_DELTA = 0.2
-            MAX_TIME_DELTA = 5
+            MAX_ANGLE_DELTA = 8
+            MAX_SPEED_DELTA = 0.3
+            MAX_TIME_DELTA = 7
 
             if abs(angle_delta) > MAX_ANGLE_DELTA or abs(speed_delta) > MAX_SPEED_DELTA or time_delta > MAX_TIME_DELTA:
-                self.velocity_history.list.clear()
+                ##print("DELTA TOO BIG. Angle: ", angle_delta, "| Speed:", speed_delta, "time delta", time_delta)
                 break
 
             avg_magnitude += projected_velocity.magnitude() * weight
             avg_direction_delta += angle_delta * weight
             total_weight += weight
+            points_used += 1
 
         avg_magnitude /= total_weight
         avg_direction_delta /= total_weight
         avg_direction = (current_velocity.direction() + avg_direction_delta) % 360
+        final_projection = Vector2D.velocity_to_xy(velocity=avg_magnitude, degrees=avg_direction)
 
-        final_projection = Vector2D.velocity_to_xy(velocity=avg_magnitude, direction=avg_direction)
+        """print("HISTORY (used {0}): ".format(points_used), list(map(lambda v: v[0].world_direction(), self.velocity_history.list)))
+        print("HISTORY (used {0}): ".format(points_used), list(map(lambda v: v[0].magnitude(), self.velocity_history.list)))
+        print("AVERAGE vector:", final_projection, "| angle: ", final_projection.world_direction(), "| speed:", final_projection.magnitude())
+"""
         return final_projection
+
+    def relative_ball_position_vector(self):
+        rel_x = self.distance * math.cos(math.radians(self.global_dir))
+        rel_y = self.distance * math.sin(math.radians(self.global_dir))
+        return Vector2D(rel_x, -rel_y)
 
 
 class Goal:

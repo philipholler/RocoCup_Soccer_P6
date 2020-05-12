@@ -161,9 +161,9 @@ class Vector2D:
         self.y = float(y)
 
     @staticmethod
-    def velocity_to_xy(velocity, direction):
-        x = math.cos(math.radians(direction)) * velocity
-        y = math.sin(math.radians(direction)) * velocity
+    def velocity_to_xy(velocity, degrees):
+        x = math.cos(math.radians(degrees)) * velocity
+        y = math.sin(math.radians(degrees)) * velocity
         return Vector2D(x, y)
 
     def direction(self):
@@ -185,6 +185,16 @@ class Vector2D:
     def decayed(self, decay_rate, ticks=1):
         total_decay = decay_rate ** ticks
         return Vector2D(self.x * total_decay, self.y * total_decay)
+
+    def distance_from(self, other):
+        return math.sqrt(((self.x - other.x) ** 2) + ((self.y - other.y) ** 2))
+
+    def extend_length_to(self, new_length):
+        factor = new_length / self.magnitude()
+        return self * factor
+
+    def coord(self):
+        return Coordinate(self.x, self.y)
 
     def __add__(self, other):
         return Vector2D(self.x + other.x, self.y + other.y)

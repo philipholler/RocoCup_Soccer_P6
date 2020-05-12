@@ -94,7 +94,7 @@ class Thinker(threading.Thread):
 
         commands = self.player_state.current_objective.get_next_commands(self.player_state)
         if self.player_state.is_test_player():
-            debug_msg(str(self.player_state.now()) + " Sending commands : " + str(commands), "ACTIONS")
+            debug_msg(str(self.player_state.now()) + " Sending commands : " + str(commands), "SENT_COMMANDS")
             debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "
                                                      "TurnInProgress : {4}".format(
                 self.player_state.position.get_value(), self.player_state.body_state.speed,

@@ -15,7 +15,7 @@ DEBUG_DICT = {
     "MESSAGES": False,
     "STATUS": False,
     "MODE": False,
-    "GOALIE": True,
+    "GOALIE": False,
     "PASS_TARGET": False,
     "DRIBBLE": False,
     "BALL": False,
@@ -23,8 +23,8 @@ DEBUG_DICT = {
     "OFFSIDE": False,
     "QUANTIZATION": False,
     "VELOCITY": False,
-    "BIPTEST": True,
-    "STAMINA_STRAT": True
+    "BIPTEST": False,
+    "STAMINA_STRAT": False
 }
 
 

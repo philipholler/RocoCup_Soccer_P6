@@ -271,7 +271,6 @@ def determine_objective_field_default(state: PlayerState):
     if state.mode is POSSESSION_MODE:
         return _pass_objective(state)
 
-    last_see_update = state.action_history.last_see_update
     # If position known, but ball not -> Locate ball
     if _ball_unknown(state):
         return _locate_ball_objective(state)
@@ -281,18 +280,12 @@ def determine_objective_field_default(state: PlayerState):
         state.mode = DRIBBLING_MODE
         return _dribble_objective(state)
 
-    # If ball coming towards us -> Intercept
-    intercept_point, tick = state.ball_interception()
-    if intercept_point is not None and state.world_view.ball.get_value().distance > 1.0 and state.is_nearest_ball(1):
-        state.mode = INTERCEPT_MODE
-        if intercept_point.euclidean_distance_from(state.position.get_value()) > KICKABLE_MARGIN:
-            return Objective(state, lambda: actions.intercept(state, intercept_point), lambda: state.is_near_ball())
-        else:
-            return Objective(state, lambda: actions.receive_ball(state), lambda: state.is_near_ball())
-
-    # If closest to ball of team -> rush to ball
     if state.is_nearest_ball(1):
-        return _rush_to_ball_objective(state)
+        intercept_actions = actions.intercept_2(state)
+        if intercept_actions is not None:
+            return Objective(state, lambda: intercept_actions)
+        else:
+            return _rush_to_ball_objective(state)
 
     # If ball not incoming -> Position optimally while looking at ball
     if not state.ball_incoming():
@@ -532,6 +525,13 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     """
 
     side = state.world_view.side
+
+    """ # TODO : TESTING ONLY ----------------------------------------------------------
+    teammates = state.world_view.get_teammates(state.team_name, 2)
+    if len(teammates) is not 0:
+        return choice(teammates)
+    # todo -------------------------------------------------------------------------- """
+
     am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 
     # If free targets forward -> Pass forward
