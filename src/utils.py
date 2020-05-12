@@ -23,6 +23,7 @@ DEBUG_DICT = {
     "OFFSIDE": False,
     "QUANTIZATION": False,
     "VELOCITY": False,
+    "SENT_COMMANDS": False,
     "BIPTEST": False,
     "STAMINA_STRAT": False
 }

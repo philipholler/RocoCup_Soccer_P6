@@ -401,9 +401,9 @@ class BodyState:
         self.charged = 0
         self.card = ""
         self.fov = 90
-        self.max_dash_power = 80
-        self.jog_dash_power = 80 * 0.6
-        self.dribble_dash_power = 80 * 0.65
+        self.max_dash_power = 100
+        self.jog_dash_power = 100 * 0.6
+        self.dribble_dash_power = 100 * 0.65
 
 
 class WorldView:

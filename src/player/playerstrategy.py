@@ -302,9 +302,14 @@ def determine_objective_biptest(state: PlayerState):
     if _lost_orientation(state):
         return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
 
+    # If ball unknown -> locate ball
+    if _ball_unknown(state):
+        return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
+
     if state.position.is_value_known():
-        lower_goal: Coordinate = Coordinate(-25, -33)
-        upper_goal: Coordinate = Coordinate(-25, 33)
+        side: int = 1 if state.world_view.side == "l" else -1
+        lower_goal: Coordinate = Coordinate(-25 * side, -33)
+        upper_goal: Coordinate = Coordinate(-25 * side, 33)
         if not state.is_near(upper_goal, 2):
             debug_msg("Going to left goal", "BIPTEST")
             return Objective(state, lambda : actions.rush_to(state, upper_goal), lambda: state.is_near(upper_goal, 0.5), 1000)

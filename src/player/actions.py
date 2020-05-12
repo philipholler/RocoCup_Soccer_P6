@@ -1,9 +1,9 @@
 import math
 import geometry
 
-from constants import PLAYER_JOG_POWER, PLAYER_RUSH_POWER, KICK_POWER_RATE, BALL_DECAY, \
+from constants import KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
-    WARNING_PREFIX, DRIBBLE_KICK_POWER, DRIBBLE_DASH_POWER
+    WARNING_PREFIX, DRIBBLE_KICK_POWER
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 from geometry import Vector2D
 from player.player import PlayerState
