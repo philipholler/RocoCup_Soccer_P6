@@ -251,7 +251,7 @@ def parse_kick_action(txt, game: Game):
 
     # if ball has moved, then kick was success
     stage = game.show_time[int(matched.group(1))]
-    last_stage = game.show_time[game.show_time.index(stage - 1)]
+    last_stage = game.show_time[game.show_time.index(stage) - 1]
     if abs(stage.ball.x_coord) > abs(last_stage.ball.x_coord) or \
             abs(stage.ball.y_coord) > abs(last_stage.ball.y_coord):
         game.last_kicker = player
