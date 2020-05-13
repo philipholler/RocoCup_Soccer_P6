@@ -304,6 +304,12 @@ def determine_objective_biptest(state: PlayerState):
             debug_msg("Going to left goal", "BIPTEST")
             return Objective(state, lambda : actions.rush_to(state, upper_goal), lambda: state.is_near(upper_goal, 0.5), 1000)
         else:
+            if state.world_view.side == "l":
+                global __BIP_TEST_L
+                __BIP_TEST_L += 1
+            elif state.world_view.side == "r":
+                global __BIP_TEST_R
+                __BIP_TEST_R += 1
             debug_msg("Going to right goal", "BIPTEST")
             return Objective(state, lambda : actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5), 1000)
 
