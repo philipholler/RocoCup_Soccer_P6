@@ -27,6 +27,8 @@ class Team:
         self.goals = 0
         self.stamina_under = 0
         self.stamina_over = 0
+        self.number_of_players = 0
+
 
 
 class Stage:

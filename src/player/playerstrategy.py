@@ -11,6 +11,9 @@ from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE,
 from player.world_objects import Coordinate, Ball
 from utils import clamp, debug_msg
 
+__BIP_TEST_L = -1
+__BIP_TEST_R = -1
+
 
 class Objective:
     def __init__(self, state: PlayerState, command_generator, completion_criteria=lambda: True,
@@ -153,14 +156,18 @@ def determine_objective_goalie_default(state: PlayerState):
             or state.world_view.game_state == "kick_in_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "offside_{0}".format(opponent_side):
-        debug_msg(str(state.now()) + " | free_kick, corner_kick, kick_in, kick_off, goal_kick, offside -> go to ball or position optimally", "GOALIE")
+        debug_msg(str(
+            state.now()) + " | free_kick, corner_kick, kick_in, kick_off, goal_kick, offside -> go to ball or position optimally",
+                  "GOALIE")
         if _ball_unknown(state):
             return _locate_ball_objective(state)
         if state.is_near_ball(KICKABLE_MARGIN):
             if state.world_view.sim_time - state.action_history.last_look_for_pass_targets > 2:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
             if _choose_pass_target(state, must_pass=True) is not None:
-                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 1)
+                return Objective(state,
+                                 lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)),
+                                 lambda: True, 1)
             else:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
         elif state.is_nearest_ball(1):
@@ -205,7 +212,8 @@ def determine_objective_goalie_default(state: PlayerState):
     # If ball within 7 meters, run to it
     if state.is_near_ball(7) and state.is_inside_own_box():
         debug_msg(str(state.now()) + " | Ball within 7 meters -> run to ball", "GOALIE")
-        return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
+        return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True,
+                         1)
 
     # If position not alligned with ball y-position -> Adjust y-position
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
@@ -248,7 +256,9 @@ def determine_objective_field_default(state: PlayerState):
             if state.world_view.sim_time - state.action_history.last_look_for_pass_targets > 2:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
             if _choose_pass_target(state, must_pass=True) is not None:
-                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 1)
+                return Objective(state,
+                                 lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)),
+                                 lambda: True, 1)
             else:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
         elif state.is_nearest_ball(1):
@@ -312,10 +322,18 @@ def determine_objective_biptest(state: PlayerState):
         upper_goal: Coordinate = Coordinate(-25 * side, 33)
         if not state.is_near(upper_goal, 2):
             debug_msg("Going to left goal", "BIPTEST")
-            return Objective(state, lambda : actions.rush_to(state, upper_goal), lambda: state.is_near(upper_goal, 0.5), 1000)
+            return Objective(state, lambda: actions.rush_to(state, upper_goal), lambda: state.is_near(upper_goal, 0.5),
+                             1000)
         else:
             debug_msg("Going to right goal", "BIPTEST")
-            return Objective(state, lambda : actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5), 1000)
+            if state.world_view.side == "l":
+                global __BIP_TEST_L
+                __BIP_TEST_L += 1
+            elif state.world_view.side == "r":
+                global __BIP_TEST_R
+                __BIP_TEST_R += 1
+            return Objective(state, lambda: actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5),
+                             1000)
 
 
 def determine_objective(state: PlayerState):
@@ -332,6 +350,7 @@ def determine_objective(state: PlayerState):
         return Objective(state, lambda: [], lambda: True, 1)
     else:
         raise Exception("Unknown objective behaviour pattern: " + state.objective_behaviour)
+
 
 def _ball_unknown(state):
     seen_recently = state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago)
@@ -388,6 +407,7 @@ def _intercept_objective(state):
 def _rush_to_ball_objective(state):
     return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 1)
 
+
 def _jog_to_ball_objective(state):
     return Objective(state, lambda: actions.jog_to_ball(state), lambda: state.is_near_ball(), 1)
 
@@ -398,6 +418,7 @@ def _optimal_goalie_pos(state):
     y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
 
     return Coordinate(state.get_global_start_pos().pos_x, y_value)
+
 
 def _position_optimally_objective(state: PlayerState):
     if "kick_off" in state.world_view.game_state:

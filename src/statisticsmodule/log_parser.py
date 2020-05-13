@@ -9,13 +9,13 @@ from statisticsmodule.statistics import Game, Team, Stage, Player, Ball
 from statisticsmodule import statistics
 from parsing import _ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX, _REAL_NUM_REGEX
 from geometry import get_distance_between_coords, Coordinate
-
+from player import playerstrategy
 
 SERVER_LOG_PATTERN = '*.rcg'
 ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
 
-_LOWEST_STAMINA = 3000
+_LOWEST_STAMINA = 1000
 
 
 # Main method
@@ -41,6 +41,8 @@ def parse_logs():
             else:
                 continue
 
+    calculate_number_of_players(game)
+
     calculate_possession(game)
     calculate_stamina(game)
 
@@ -56,30 +58,23 @@ def parse_logs():
     file_l_goalie_kicks = open(os.path.join(log_directory, "%s_left_goalie_kicks.txt" % game.teams[0].name), "w")
     file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
     file_l_stamina = open(os.path.join(log_directory, "%s_left_stamina.txt" % game.teams[0].name), "w")
-    file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[0].name), "w")
+    file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[1].name), "w")
+    file_l_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[0].name), "w")
+    file_r_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[1].name), "w")
+
+    files = [file_left, file_l_goalie_kicks, file_right, file_r_goalie_kicks, file_l_stamina, file_r_stamina,
+             file_l_biptest, file_r_biptest]
 
     write_possession_file(game)
 
-    files = [file_left, file_l_goalie_kicks, file_right, file_r_goalie_kicks, file_l_stamina, file_r_stamina]
+    file_l_biptest.write(str(playerstrategy.__BIP_TEST_L))
+    file_r_biptest.write(str(playerstrategy.__BIP_TEST_R))
 
     for t in game.teams:
         if t.side == "l":
-            file_l_stamina.write("Time in ticks where stamina is under " + str(_LOWEST_STAMINA) + ": "
-                                 + str(t.stamina_under) + "\nTime in ticks where stamina is over "
-                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over) + "\n"
-                                 + "Player with highest tick count under " + str(_LOWEST_STAMINA) + ": "
-                                 + str(highest_stamina_under(game, "l")) + "\n"
-                                 + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
-                                 + str(highest_stamina_over(game, "l")))
-
+            file_l_stamina.write(write_stamina_file(game, t))
         if t.side == "r":
-            file_r_stamina.write("Time in ticks where stamina is under " + str(_LOWEST_STAMINA) + ": "
-                                 + str(t.stamina_under) + "\nTime in ticks where stamina is over "
-                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over) + "\n"
-                                 + "Player with highest tick count under " + str(_LOWEST_STAMINA) + ": "
-                                 + str(highest_stamina_under(game, "r")) + "\n"
-                                 + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
-                                 + str(highest_stamina_over(game, "r")))
+            file_r_stamina.write(write_stamina_file(game, t))
 
     for stage in game.show_time:
         file_left.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_l_kicks) + "\n")
@@ -95,14 +90,35 @@ def parse_logs():
         file.close()
 
 
-def calculate_highest_stamina(game: Game):
+def write_stamina_file(game: Game, t: Team):
+    return str("Time in ticks where stamina is under " + str(_LOWEST_STAMINA) + ": "
+               + str(t.stamina_under) + " average: " + str(t.stamina_under / t.number_of_players)
+               + "\nTime in ticks where stamina is over "
+               + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over) + " average: "
+               + str(t.stamina_over / t.number_of_players) + "\n"
+               + "Player with highest tick count under " + str(_LOWEST_STAMINA) + ": "
+               + str(highest_stamina_under(game, t.side)) + "\n"
+               + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
+               + str(highest_stamina_over(game, t.side)))
 
-    # TODO: my brain cant comprehend how to dynamically find range, or implement lists
-    for x in range(11):
-        game.player_l_stamina_over.append(0)
-        game.player_l_stamina_under.append(0)
-        game.player_r_stamina_over.append(0)
-        game.player_r_stamina_under.append(0)
+
+def calculate_number_of_players(game: Game):
+    for player in game.show_time[1].players:
+        for team in game.teams:
+            if team.side == player.side:
+                team.number_of_players += 1
+
+
+def calculate_highest_stamina(game: Game):
+    for team in game.teams:
+        if team.side == "l":
+            for x in range(team.number_of_players):
+                game.player_l_stamina_over.append(0)
+                game.player_l_stamina_under.append(0)
+        if team.side == "r":
+            for x in range(team.number_of_players):
+                game.player_r_stamina_over.append(0)
+                game.player_r_stamina_under.append(0)
 
     for stage in game.show_time:
         for player in stage.players:
@@ -116,10 +132,8 @@ def calculate_highest_stamina(game: Game):
 
 def highest_stamina_over(game: Game, side: str):
     if side == "l":
-        print(game.player_l_stamina_over)
         return max(game.player_l_stamina_over)
     if side == "r":
-        print(game.player_r_stamina_over)
         return max(game.player_r_stamina_over)
 
 
@@ -235,8 +249,13 @@ def parse_kick_action(txt, game: Game):
         if matched.group(2) == team.name:
             player.side = team.side
 
-    game.last_kicker = player
-    game.last_kicker_tick = int(matched.group(1))
+    # if ball has moved, then kick was success
+    stage = game.show_time[int(matched.group(1))]
+    last_stage = game.show_time[game.show_time.index(stage - 1)]
+    if abs(stage.ball.x_coord) > abs(last_stage.ball.x_coord) or \
+            abs(stage.ball.y_coord) > abs(last_stage.ball.y_coord):
+        game.last_kicker = player
+        game.last_kicker_tick = int(matched.group(1))
 
 
 def parse_goal_action(txt, game: Game):
