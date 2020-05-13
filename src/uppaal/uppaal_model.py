@@ -282,22 +282,29 @@ class UppaalModel:
         # Extract all declarations from the lines
         decls = []
         i = 0
+
         while i < len(code_lines):
             line = code_lines[i]
-
             if line.endswith("{"): # extract function string
                 function_string = line
-                while not code_lines[i+1].startswith("}"):
+                opened_brackets = 0
+                next_line = code_lines[i+1]
+                while ("}" not in next_line) or opened_brackets > 0:
+                    if "{" in next_line:
+                        opened_brackets += 1
+                    if "}" in next_line:
+                        opened_brackets -= 1
                     i += 1
                     line = code_lines[i]
                     function_string += "\n" + line
+                    next_line = code_lines[i + 1]
                 function_string += "\n}"
                 i += 1
                 decls.append(GlobalDeclaration.single_string_decl(function_string))
             elif "typedef" in line:
                 decls.append(GlobalDeclaration.single_string_decl(line))
             elif "=" in line:
-                matches = re.match(r'((?:(?:const|hybrid) )?[^ ]*) ([^ ]*(?:\[.*\])?) = (.*);', line)
+                matches = re.match(r'\s*((?:(?:const|hybrid) )?[^ ]*) ([^ ]*(?:\[.*\])?) = (.*);', line)
                 decls.append(GlobalDeclaration(matches.group(1), matches.group(2), matches.group(3)))
             else:
                 matches = re.match(r'([^ ]*) ([^ ]*(?:\[.*\])?);', line)

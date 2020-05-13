@@ -1193,7 +1193,6 @@ def _approx_angle_lines(state: PlayerState, lines):
         lines = sorted(state.world_view.lines, key=lambda x: x.distance, reverse=True)
 
     if len(lines) == 0:
-        print("ANGLE NOT FOUND")
         debug_msg(str(state.now()) + "Could not get angle. Outside field facing out", "POSITIONAL")
         return
     line = lines[0]
@@ -1204,7 +1203,7 @@ def _approx_angle_lines(state: PlayerState, lines):
     elif face_dir < 0:
         face_dir += 90
     else:
-        print(WARNING_PREFIX + " PARRALLEL TO LINE. SHOULD NOT HAPPEN")
+        debug_msg(str(state.now()) + " PARRALLEL TO LINE. SHOULD NOT HAPPEN", "POSITIONAL")
 
     if line.line_side is 'l':
         face_dir = 180 - face_dir

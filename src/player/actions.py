@@ -3,7 +3,7 @@ import geometry
 
 from constants import KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
-    WARNING_PREFIX, DRIBBLE_KICK_POWER
+    WARNING_PREFIX, DRIBBLE_KICK_POWER, CATCHABLE_MARGIN
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 from geometry import Vector2D
 from player.player import PlayerState
@@ -88,8 +88,8 @@ class CommandBuilder:
         self._append_action("(dash {0})".format(power), urgent)
         self.current_command().add_function(lambda: project_dash(state, power))
 
-    def append_catch_action(self, state, ball_pos_1_tick: Coordinate, urgent=False):
-        self._append_action("(catch {0})".format(int(_calculate_relative_angle(state, ball_pos_1_tick))), urgent)
+    def append_catch_action(self, state, ball_pos: Coordinate, urgent=False):
+        self._append_action("(catch {0})".format(int(_calculate_relative_angle(state, ball_pos))), urgent)
 
     def append_function(self, f):
         self.current_command().add_function(f)
@@ -241,7 +241,7 @@ def intercept(state: PlayerState, intercept_point: Coordinate):
     return command_builder.command_list
 
 
-def _gen_intercept_actions(state, target: geometry.Vector2D, arrival_tick, ball_velocity_at_impact: Vector2D):
+def _gen_intercept_actions(state, target: geometry.Vector2D, arrival_tick, ball_velocity_at_impact: Vector2D, stop_action="kick"):
     def advance(pos, vel):
         return pos + vel, vel.decayed(PLAYER_SPEED_DECAY, 1)
 
@@ -251,7 +251,12 @@ def _gen_intercept_actions(state, target: geometry.Vector2D, arrival_tick, ball_
     dist = target.magnitude()
     player_rotation = state.body_angle.get_value()
 
-    if dist < KICKABLE_MARGIN and arrival_tick == 1:
+    if stop_action == "catch" and dist < CATCHABLE_MARGIN and arrival_tick == 1:
+        urgent_catch = True
+        append_catch(state, target.coord(), urgent_catch, command_builder)
+        return Interception(target, command_builder.command_list, 0, arrival_tick)
+
+    if stop_action == "kick" and dist < KICKABLE_MARGIN and arrival_tick == 1:
         urgent_Stop_kick = True
         append_stop_kick(state, player_pos, target, ball_velocity_at_impact, urgent_Stop_kick, player_rotation, command_builder)
         append_neck_turn_to(state, player_rotation, player_pos, target, command_builder)
@@ -324,12 +329,20 @@ def _gen_intercept_actions(state, target: geometry.Vector2D, arrival_tick, ball_
     while command_builder.ticks < arrival_tick - 1:
         command_builder.next_tick()
 
-    if command_builder.ticks == arrival_tick - 1:
+    if stop_action == "kick" and command_builder.ticks == arrival_tick - 1:
         urgent_Stop_kick = True if arrival_tick <= 3 else False
         append_stop_kick(state, player_pos, target, ball_velocity_at_impact, urgent_Stop_kick, player_rotation, command_builder)
         append_neck_turn_to(state, player_rotation, player_pos, target, command_builder)
+    if stop_action == "catch" and command_builder.ticks == arrival_tick - 1:
+        urgent_catch = True if arrival_tick <= 3 else False
+        append_catch(state, target.coord(), urgent_catch, command_builder)
+        return Interception(target, command_builder.command_list, 0, arrival_tick)
 
     return Interception(target, command_builder.command_list, extra_ticks, arrival_tick)
+
+
+def append_catch(state, ball_pos, urgent_catch, command_builder):
+    command_builder.append_catch_action(state, ball_pos, urgent_catch)
 
 
 def append_stop_kick(state, player_pos, ball_pos, ball_velocity_at_impact, urgent, player_rotation, command_builder):
@@ -366,7 +379,7 @@ class Interception:
             .format(self.position, self.extra_ticks, self.deadline, self.actions)
 
 
-def intercept_2(state: PlayerState):
+def intercept_2(state: PlayerState, stop_action="kick"):
     ball = state.world_view.ball.get_value()
     if state.get_y_north_velocity_vector() is None or ball is None or ball.absolute_velocity is None or ball.distance > 20:
         return None
@@ -386,7 +399,7 @@ def intercept_2(state: PlayerState):
     interceptions: [Interception] = []
     for i, relative_pos in enumerate(rel_ball_positions):
         tick_limit = i + 1
-        new_intercept = _gen_intercept_actions(state, relative_pos, tick_limit, ball.absolute_velocity.decayed(BALL_DECAY, tick_limit))
+        new_intercept = _gen_intercept_actions(state, relative_pos, tick_limit, ball.absolute_velocity.decayed(BALL_DECAY, tick_limit), stop_action)
         if new_intercept is not None:
             interceptions.append(new_intercept)
             if new_intercept.extra_ticks > 3:
@@ -538,8 +551,6 @@ def rush_to_ball(state: PlayerState):
             ball_vel = ball_vel.decayed(BALL_DECAY, 1)
 
         return command_builder.command_list
-
-
 
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
 
