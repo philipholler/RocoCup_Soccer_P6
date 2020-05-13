@@ -71,7 +71,7 @@ class Thinker(threading.Thread):
                     self.move_back_to_start_pos()
 
             # look for strat:
-            if strategy.has_applicable_strat_player(self.player_state):
+            if strategy.has_applicable_strat_player(self.player_state) and self.player_state.team_name == "Team1":
                 strat = strategy.generate_strategy_player(self.player_state)
                 debug_msg("Has applicable strat: {0}".format(strat), "STAMINA_STRAT")
                 parsing.parse_strat_player(self.player_state, strat)

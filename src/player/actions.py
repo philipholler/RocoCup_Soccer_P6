@@ -552,8 +552,6 @@ def rush_to_ball(state: PlayerState):
 
         return command_builder.command_list
 
-
-
     locations = ball.project_ball_position(5, state.now() - state.world_view.ball.last_updated_time)
 
     if locations is not None and False:

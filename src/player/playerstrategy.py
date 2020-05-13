@@ -11,6 +11,9 @@ from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE,
 from player.world_objects import Coordinate, Ball
 from utils import clamp, debug_msg
 
+__BIP_TEST_L = -1
+__BIP_TEST_R = -1
+
 
 class Objective:
     def __init__(self, state: PlayerState, command_generator, completion_criteria=lambda: True,
@@ -312,8 +315,6 @@ def determine_objective(state: PlayerState):
         if state.player_type == "goalie":
             return determine_objective_goalie_default(state)
         else:
-            if state.team_name == "Team1":
-                return Objective(state, lambda: [], lambda: True, 1)
             return determine_objective_field_default(state)
     elif state.objective_behaviour == "idle_orientation":
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
@@ -321,6 +322,7 @@ def determine_objective(state: PlayerState):
         return Objective(state, lambda: [], lambda: True, 1)
     else:
         raise Exception("Unknown objective behaviour pattern: " + state.objective_behaviour)
+
 
 def _ball_unknown(state):
     seen_recently = state.world_view.ball.is_value_known(state.action_history.three_see_updates_ago)
