@@ -10,6 +10,7 @@ from statisticsmodule import statistics
 from parsing import _ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX, _REAL_NUM_REGEX
 from geometry import get_distance_between_coords, Coordinate
 
+
 SERVER_LOG_PATTERN = '*.rcg'
 ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
@@ -65,15 +66,22 @@ def parse_logs():
         if t.side == "l":
             file_l_stamina.write("Time in ticks where stamina is under " + str(_LOWEST_STAMINA) + ": "
                                  + str(t.stamina_under) + "\nTime in ticks where stamina is over "
-                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over))
+                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over) + "\n"
+                                 + "Player with highest tick count under " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_under(game, "l")) + "\n"
+                                 + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_over(game, "l")))
+
         if t.side == "r":
             file_r_stamina.write("Time in ticks where stamina is under " + str(_LOWEST_STAMINA) + ": "
                                  + str(t.stamina_under) + "\nTime in ticks where stamina is over "
-                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over))
+                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over) + "\n"
+                                 + "Player with highest tick count under " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_under(game, "r")) + "\n"
+                                 + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_over(game, "r")))
 
     for stage in game.show_time:
-        # print(game.show_time.index(stage))
-        # print(stage.print_stage())
         file_left.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_l_kicks) + "\n")
         file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
         for player in stage.players:
@@ -87,6 +95,41 @@ def parse_logs():
         file.close()
 
 
+def calculate_highest_stamina(game: Game):
+
+    # TODO: my brain cant comprehend how to dynamically find range, or implement lists
+    for x in range(11):
+        game.player_l_stamina_over.append(0)
+        game.player_l_stamina_under.append(0)
+        game.player_r_stamina_over.append(0)
+        game.player_r_stamina_under.append(0)
+
+    for stage in game.show_time:
+        for player in stage.players:
+            if player.side == "l":
+                game.player_l_stamina_under[player.no - 1] += player.stamina_under
+                game.player_l_stamina_over[player.no - 1] += player.stamina_over
+            if player.side == "r":
+                game.player_r_stamina_under[player.no - 1] += player.stamina_under
+                game.player_r_stamina_over[player.no - 1] += player.stamina_over
+
+
+def highest_stamina_over(game: Game, side: str):
+    if side == "l":
+        print(game.player_l_stamina_over)
+        return max(game.player_l_stamina_over)
+    if side == "r":
+        print(game.player_r_stamina_over)
+        return max(game.player_r_stamina_over)
+
+
+def highest_stamina_under(game: Game, side: str):
+    if side == "l":
+        return max(game.player_l_stamina_under)
+    if side == "r":
+        return max(game.player_r_stamina_under)
+
+
 def calculate_stamina(game: Game):
     # for every tick in log file
     for stage in game.show_time:
@@ -98,8 +141,12 @@ def calculate_stamina(game: Game):
                 if p.side == t.side:
                     if p.stamina < _LOWEST_STAMINA:
                         t.stamina_under += 1
+                        p.stamina_under += 1
                     elif p.stamina > _LOWEST_STAMINA:
                         t.stamina_over += 1
+                        p.stamina_over += 1
+
+    calculate_highest_stamina(game)
 
 
 def calculate_possession(game: Game):

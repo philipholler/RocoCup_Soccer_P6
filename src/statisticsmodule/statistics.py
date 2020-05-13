@@ -1,5 +1,6 @@
 import math
 
+
 class Game:
 
     def __init__(self):
@@ -9,6 +10,10 @@ class Game:
         self.gameID = ""
         self.teams = []
         self.possession_length = 0
+        self.player_l_stamina_under = []
+        self.player_l_stamina_over = []
+        self.player_r_stamina_under = []
+        self.player_r_stamina_over = []
 
         # The stage at tick 40, is in place 40 in the array
         self.show_time = []
@@ -64,7 +69,6 @@ class Ball:
               "\nball deltas: " + str(self.delta_x) + " " + str(self.delta_y))
 
 
-
 class Player:
 
     def __init__(self):
@@ -75,6 +79,8 @@ class Player:
         self.kicks = 0
         self.distance_to_ball = 1000
         self.stamina = 0
+        self.stamina_under = 0
+        self.stamina_over = 0
 
     def print_player(self):
         print("player side: " + self.side + " no: " + str(self.no) +
