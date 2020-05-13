@@ -2,7 +2,7 @@ import math
 import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
-from constants import SECONDS_BETWEEN_STAMINA_STRAT
+from constants import SECONDS_BETWEEN_STAMINA_STRAT, USING_STAMINA_MODEL
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
 from player.player import WorldView, PlayerState
 
@@ -63,7 +63,7 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2:
+    if state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 5 and USING_STAMINA_MODEL:
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
                                   _update_stamina3_model, _extract_stamina3_solution)
     return None

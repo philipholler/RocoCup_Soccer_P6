@@ -3,12 +3,12 @@
 /*
 
 */
-strategy safe = control: A[] not (final_stamina_interval < 3 and player.dash)
+strategy safe = control: A[] not (final_stamina_interval < 2)
 
 /*
 
 */
-strategy opt_power = maxE(new_dash_power) [<=100]: <> player.dash
+strategy opt_power = maxE(new_dash_power) [<=1000]: <> player.dash under safe
 
 /*
 
