@@ -20,6 +20,8 @@ class Team:
         self.side = ""
         self.name = ""
         self.goals = 0
+        self.stamina_under = 0
+        self.stamina_over = 0
 
 
 class Stage:
@@ -72,6 +74,7 @@ class Player:
         self.y_coord = 0
         self.kicks = 0
         self.distance_to_ball = 1000
+        self.stamina = 0
 
     def print_player(self):
         print("player side: " + self.side + " no: " + str(self.no) +

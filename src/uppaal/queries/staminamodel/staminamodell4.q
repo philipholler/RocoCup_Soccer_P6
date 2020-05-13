@@ -13,6 +13,6 @@ strategy opt_power = maxE(new_dash_power) [<=100]: <> player.dash
 /*
 
 */
-saveStrategy("/home/philipholler/PycharmProjects/RocoCup_Soccer_P6/src/uppaal/outputdir/staminamodel/staminamodell4", opt_power)
+saveStrategy("/home/lockeyhannah/PycharmProjects/RocoCup_Soccer_P6/src/uppaal/outputdir/staminamodel/staminamodell4", opt_power)
 
 
