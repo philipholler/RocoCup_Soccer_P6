@@ -180,32 +180,23 @@ def determine_objective_goalie_default(state: PlayerState):
         debug_msg(str(state.now()) + " | in possession, pass target not found -> look for pass target", "GOALIE")
         return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
 
-    # If ball coming to goalie inside box -> Catch ball
+    """# If ball coming to goalie inside box -> Catch ball
     positions = ball.project_ball_position(2, 0)
-    position, direction, speed = ball.approximate_position_direction_speed(4)
-    if positions is not None and speed is not None and speed > 0.2 and state.is_inside_own_box():
+    if positions is not None and state.is_inside_own_box():
         debug_msg(str(state.now()) + " | Ball incoming inside box -> Catch ball", "GOALIE")
         ball_pos_1_tick: Coordinate = positions[0]
         if ball_pos_1_tick.euclidean_distance_from(state.position.get_value()) < CATCHABLE_MARGIN:
-            return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)
+            return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)"""
 
-    # If ball coming towards us -> Intercept
-    intercept_point, ticks = state.ball_interception()
-    if intercept_point is not None and state.world_view.ball.get_value().distance > 0.5:
-        debug_msg(str(state.now()) + " | Ball incoming -> Intercept", "GOALIE")
-        return _intercept_objective_goalie(state)
+    # If ball coming towards us or ball will hit goal soon -> Intercept
+    if ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box()):
+        debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
+        intercept_actions = actions.intercept_2(state, "catch")
+        if intercept_actions is not None:
+            return Objective(state, lambda: intercept_actions)
+        else:
+            return _rush_to_ball_objective(state)
 
-    # If ball will hit goal soon -> rush to position
-    if ball.will_hit_goal_within(5):
-        positions = ball.project_ball_position(2, 0)
-        debug_msg(str(state.now()) + " | Ball will hit goal soon -> rush to impact point", "GOALIE")
-        if positions is not None:
-            return Objective(state, lambda: actions.rush_to(state, positions[1]), lambda: True, 1)
-
-    # If ball within 7 meters, run to it
-    if state.is_near_ball(7) and state.is_inside_own_box():
-        debug_msg(str(state.now()) + " | Ball within 7 meters -> run to ball", "GOALIE")
-        return Objective(state, lambda: actions.rush_to(state, state.world_view.ball.get_value().coord), lambda: True, 1)
 
     # If position not alligned with ball y-position -> Adjust y-position
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
@@ -258,10 +249,6 @@ def determine_objective_field_default(state: PlayerState):
 
     if state.is_test_player():
         debug_msg(str(state.now()) + " Mode : " + str(state.mode), "MODE")
-
-    # If in intercept mode -> Intercept
-    if state.mode is INTERCEPT_MODE:
-        return _intercept_objective(state)
 
     # If in dribbling mode -> Dribble
     if state.mode is DRIBBLING_MODE:
@@ -325,6 +312,8 @@ def determine_objective(state: PlayerState):
         if state.player_type == "goalie":
             return determine_objective_goalie_default(state)
         else:
+            if state.team_name == "Team1":
+                return Objective(state, lambda: [], lambda: True, 1)
             return determine_objective_field_default(state)
     elif state.objective_behaviour == "idle_orientation":
         return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)

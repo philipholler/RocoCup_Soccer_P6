@@ -142,7 +142,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 2 and self.team_name == "Team1"
+        return self.num == 1 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -295,6 +295,22 @@ class PlayerState:
 
     def is_inside_own_box(self) -> bool:
         pos: Coordinate = self.position.get_value()
+
+        result = True
+        if self.world_view.side == "l":
+            if pos.pos_x > -36 or (pos.pos_y < -20 or pos.pos_y > 20):
+                result = False
+        else:
+            if pos.pos_x < 36 or (pos.pos_y < -20 or pos.pos_y > 20):
+                result = False
+
+        if self.is_test_player():
+            debug_msg("is_inside_own_box={0}, Pos={1}".format(result, pos), "GOALIE")
+
+        return result
+
+    def is_ball_inside_own_box(self) -> bool:
+        pos: Coordinate = self.world_view.ball.get_value().coord
 
         result = True
         if self.world_view.side == "l":
