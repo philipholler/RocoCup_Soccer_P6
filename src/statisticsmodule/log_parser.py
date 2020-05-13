@@ -10,9 +10,12 @@ from statisticsmodule import statistics
 from parsing import _ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX, _REAL_NUM_REGEX
 from geometry import get_distance_between_coords, Coordinate
 
+
 SERVER_LOG_PATTERN = '*.rcg'
 ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
+
+_LOWEST_STAMINA = 3000
 
 
 # Main method
@@ -39,6 +42,7 @@ def parse_logs():
                 continue
 
     calculate_possession(game)
+    calculate_stamina(game)
 
     log_directory = Path(__file__).parent.parent / game.gameID
     os.makedirs(log_directory)
@@ -48,26 +52,101 @@ def parse_logs():
             file.write(goal + "\n")
 
     file_left = open(os.path.join(log_directory, "%s_leftkicks.txt" % game.teams[0].name), "w")
-    # file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
+    file_right = open(os.path.join(log_directory, "%s_rightkicks.txt" % game.teams[1].name), "w")
     file_l_goalie_kicks = open(os.path.join(log_directory, "%s_left_goalie_kicks.txt" % game.teams[0].name), "w")
-    # file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
+    file_r_goalie_kicks = open(os.path.join(log_directory, "%s_right_goalie_kicks.txt" % game.teams[1].name), "w")
+    file_l_stamina = open(os.path.join(log_directory, "%s_left_stamina.txt" % game.teams[0].name), "w")
+    file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[0].name), "w")
 
     write_possession_file(game)
 
-    files = [file_left, file_l_goalie_kicks]
+    files = [file_left, file_l_goalie_kicks, file_right, file_r_goalie_kicks, file_l_stamina, file_r_stamina]
+
+    for t in game.teams:
+        if t.side == "l":
+            file_l_stamina.write("Time in ticks where stamina is under " + str(_LOWEST_STAMINA) + ": "
+                                 + str(t.stamina_under) + "\nTime in ticks where stamina is over "
+                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over) + "\n"
+                                 + "Player with highest tick count under " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_under(game, "l")) + "\n"
+                                 + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_over(game, "l")))
+
+        if t.side == "r":
+            file_r_stamina.write("Time in ticks where stamina is under " + str(_LOWEST_STAMINA) + ": "
+                                 + str(t.stamina_under) + "\nTime in ticks where stamina is over "
+                                 + str(_LOWEST_STAMINA) + ": " + str(t.stamina_over) + "\n"
+                                 + "Player with highest tick count under " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_under(game, "r")) + "\n"
+                                 + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
+                                 + str(highest_stamina_over(game, "r")))
 
     for stage in game.show_time:
-        # print(game.show_time.index(stage))
-        # print(stage.print_stage())
         file_left.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_l_kicks) + "\n")
-        # file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
+        file_right.write(str(game.show_time.index(stage) + 1) + " " + str(stage.team_r_kicks) + "\n")
         for player in stage.players:
             if player.no == 1:
                 if player.side == "l":
                     file_l_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
+                if player.side == "r":
+                    file_r_goalie_kicks.write(str(game.show_time.index(stage) + 1) + " " + str(player.kicks) + "\n")
 
     for file in files:
         file.close()
+
+
+def calculate_highest_stamina(game: Game):
+
+    # TODO: my brain cant comprehend how to dynamically find range, or implement lists
+    for x in range(11):
+        game.player_l_stamina_over.append(0)
+        game.player_l_stamina_under.append(0)
+        game.player_r_stamina_over.append(0)
+        game.player_r_stamina_under.append(0)
+
+    for stage in game.show_time:
+        for player in stage.players:
+            if player.side == "l":
+                game.player_l_stamina_under[player.no - 1] += player.stamina_under
+                game.player_l_stamina_over[player.no - 1] += player.stamina_over
+            if player.side == "r":
+                game.player_r_stamina_under[player.no - 1] += player.stamina_under
+                game.player_r_stamina_over[player.no - 1] += player.stamina_over
+
+
+def highest_stamina_over(game: Game, side: str):
+    if side == "l":
+        print(game.player_l_stamina_over)
+        return max(game.player_l_stamina_over)
+    if side == "r":
+        print(game.player_r_stamina_over)
+        return max(game.player_r_stamina_over)
+
+
+def highest_stamina_under(game: Game, side: str):
+    if side == "l":
+        return max(game.player_l_stamina_under)
+    if side == "r":
+        return max(game.player_r_stamina_under)
+
+
+def calculate_stamina(game: Game):
+    # for every tick in log file
+    for stage in game.show_time:
+        # for every player in the tick
+        for p in stage.players:
+            # for every team in tick
+            for t in game.teams:
+                # if players side is same as teams side.
+                if p.side == t.side:
+                    if p.stamina < _LOWEST_STAMINA:
+                        t.stamina_under += 1
+                        p.stamina_under += 1
+                    elif p.stamina > _LOWEST_STAMINA:
+                        t.stamina_over += 1
+                        p.stamina_over += 1
+
+    calculate_highest_stamina(game)
 
 
 def calculate_possession(game: Game):
@@ -259,7 +338,7 @@ def insert_kicks(stage: Stage):
 # Parses a player from show msg
 def parse_player(txt, stage: Stage):
     regex_string = "\\(\\((l|r) ({0})\\) ({0}) ({2}|0) ({1}) ({1}) ({1}) ({1}) ({1}) ({1}) \\(v [h|l] {0}\\) \\(s " \
-                   "{1} {1} {1} {1}\\) \\(c ({0}) ".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX, __HEX_REGEX)
+                   "({1}) {1} {1} {1}\\) \\(c ({0}) ".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX, __HEX_REGEX)
     regular_expression = re.compile(regex_string)
     matched = regular_expression.match(txt)
 
@@ -268,6 +347,7 @@ def parse_player(txt, stage: Stage):
     player.no = int(matched.group(2))
     player.x_coord = float(matched.group(5))
     player.y_coord = float(matched.group(6))
-    player.kicks = int(matched.group(11))
+    player.stamina = float(matched.group(11))
+    player.kicks = int(matched.group(12))
 
     stage.players.append(player)
