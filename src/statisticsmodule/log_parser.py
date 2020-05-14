@@ -25,6 +25,15 @@ def parse_logs():
     action_log_name = get_newest_action_log()
     parse_log_name(server_log_name, game)
 
+    # init number of players
+    with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
+        for line in file:
+            if "init" in line and "Coach" not in line:
+                parse_init_action(line, game)
+            else:
+                continue
+
+    # parsing server log file
     with open(Path(__file__).parent.parent / server_log_name, 'r') as file:
         for line in file:
             if line.startswith("(show "):
@@ -32,6 +41,7 @@ def parse_logs():
             else:
                 continue
 
+    # parsing action log
     with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
         for line in file:
             if "kick " in line:
@@ -40,8 +50,6 @@ def parse_logs():
                 parse_goal_action(line, game)
             else:
                 continue
-
-    calculate_number_of_players(game)
 
     calculate_possession(game)
     calculate_stamina(game)
@@ -100,13 +108,6 @@ def write_stamina_file(game: Game, t: Team):
                + str(highest_stamina_under(game, t.side)) + "\n"
                + "Player with highest tick count over " + str(_LOWEST_STAMINA) + ": "
                + str(highest_stamina_over(game, t.side)))
-
-
-def calculate_number_of_players(game: Game):
-    for player in game.show_time[1].players:
-        for team in game.teams:
-            if team.side == player.side:
-                team.number_of_players += 1
 
 
 def calculate_highest_stamina(game: Game):
@@ -198,7 +199,7 @@ def calculate_possession(game: Game):
 
 # Calculates the difference between the length to the goal from first possession to length of goal from last possession
 def calculate_possession_length(start_ball: Ball, last_ball: Ball):
-    # TODO very hard code
+    # TODO very hard code of goal coords
     goal_x = 52.5
     goal_y = 0
     goal_coord = Coordinate(goal_x, goal_y)
@@ -236,6 +237,16 @@ def get_newest_action_log():
     action_logs = fnmatch.filter(actions_log_path, ACTION_LOG_PATTERN)
     action_logs.sort(reverse=True)
     return action_logs[0]
+
+
+def parse_init_action(txt, game: Game):
+    init_regex = "{0},{0}\tRecv (.*)_{0}:".format(_SIGNED_INT_REGEX)
+    init_re = re.compile(init_regex)
+    matched = init_re.match(txt)
+
+    for team in game.teams:
+        if team.name == matched.group(1):
+            team.number_of_players += 1
 
 
 def parse_kick_action(txt, game: Game):
@@ -276,6 +287,10 @@ def parse_log_name(log_name, game: Game):
     regular_expression = re.compile(id_regex)
     matched = regular_expression.match(log_name)
 
+    team2_regex = "({0})\\_({1})".format(_ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX)
+    team2_re = re.compile(team2_regex)
+    team2_matched = team2_re.match(matched.group(4))
+
     team1 = Team()
     team2 = Team()
 
@@ -289,8 +304,8 @@ def parse_log_name(log_name, game: Game):
     if matched.group(4) == "null":
         team2.name = "null"
     else:
-        team2.name = matched.group(4)
-        team2.goals = matched.group(5)
+        team2.name = team2_matched.group(1)
+        team2.goals = team2_matched.group(2)
 
     game.teams.append(team1)
     game.teams.append(team2)
@@ -310,9 +325,14 @@ def parse_show_line(txt, game: Game):
     ball_txt = matched.group(2)
     parse_ball(ball_txt, stage)
 
+    # log file always has 22 players, even the ones not initiated
     players = re.findall(r'\(\([^)]*\)[^)]*\)[^)]*\)[^)]*\)', matched.group(3))
-    for player in players:
-        parse_player(player, stage)
+    for p in players:
+        player = parse_player(p)
+        # check if the parsed player is initiated
+        for team in game.teams:
+            if player.side == team.side and player.no in range(team.number_of_players + 1):
+                stage.players.append(player)
 
     distance_to_ball(stage)
     insert_kicks(stage)
@@ -342,9 +362,7 @@ def distance_to_ball(stage: Stage):
 def insert_kicks(stage: Stage):
     for player in stage.players:
         if player.side == "l" and player.kicks != 0:
-            # print(str(stage.team_l_kicks) + " + " + str(player.kicks))
             stage.team_l_kicks = stage.team_l_kicks + player.kicks
-            # print(str(stage.team_l_kicks))
 
 
 # Examples:
@@ -355,7 +373,7 @@ def insert_kicks(stage: Stage):
 # ((r 10) 0 0 30 -37 0 0 0 0 (v h 90) (s 8000 1 1 130600) (c 0 0 0 0 0 0 0 0 0 0 0))
 
 # Parses a player from show msg
-def parse_player(txt, stage: Stage):
+def parse_player(txt):
     regex_string = "\\(\\((l|r) ({0})\\) ({0}) ({2}|0) ({1}) ({1}) ({1}) ({1}) ({1}) ({1}) \\(v [h|l] {0}\\) \\(s " \
                    "({1}) {1} {1} {1}\\) \\(c ({0}) ".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX, __HEX_REGEX)
     regular_expression = re.compile(regex_string)
@@ -369,4 +387,4 @@ def parse_player(txt, stage: Stage):
     player.stamina = float(matched.group(11))
     player.kicks = int(matched.group(12))
 
-    stage.players.append(player)
+    return player
