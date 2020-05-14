@@ -69,14 +69,21 @@ def parse_logs():
     file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[1].name), "w")
     file_l_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[0].name), "w")
     file_r_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[1].name), "w")
+    file_l_lowest_stam_tick = open(os.path.join(log_directory, "%s_lowest_stam_tick.txt" % game.teams[0].name), "w")
+    file_r_lowest_stam_tick = open(os.path.join(log_directory, "%s_lowest_stam_tick.txt" % game.teams[1].name), "w")
 
     files = [file_left, file_l_goalie_kicks, file_right, file_r_goalie_kicks, file_l_stamina, file_r_stamina,
-             file_l_biptest, file_r_biptest]
+             file_l_biptest, file_r_biptest, file_l_lowest_stam_tick, file_r_lowest_stam_tick]
 
     write_possession_file(game)
 
     file_l_biptest.write(str(playerstrategy.__BIP_TEST_L))
     file_r_biptest.write(str(playerstrategy.__BIP_TEST_R))
+
+    stam_dict = calculate_lowest_stamina_pr_tick(game)
+
+    write_lowest_stam_file(file_l_lowest_stam_tick, "l", stam_dict)
+    write_lowest_stam_file(file_r_lowest_stam_tick, "r", stam_dict)
 
     for t in game.teams:
         if t.side == "l":
@@ -96,6 +103,33 @@ def parse_logs():
 
     for file in files:
         file.close()
+
+
+def write_lowest_stam_file(file, side, stam_dict):
+
+    for s in stam_dict:
+        if side == s[1]:
+            file.write(str(s[0]) + " " + str(stam_dict[s]) + "\n")
+
+def calculate_lowest_stamina_pr_tick(game: Game):
+    lowest_stam_dict = {}
+    team1 = Player()
+    team1.stamina = 9999
+    team2 = Player()
+    team2.stamina = 9999
+    for stage in game.show_time:
+        for player in stage.players:
+            if player.side == "l":
+                if player.stamina < team1.stamina:
+                    team1 = player
+            if player.side == "r":
+                if player.stamina < team2.stamina:
+                    team2 = player
+
+        lowest_stam_dict[(game.show_time.index(stage) + 1, team1.side)] = team1.stamina
+        lowest_stam_dict[(game.show_time.index(stage) + 1, team2.side)] = team2.stamina
+
+    return lowest_stam_dict
 
 
 def write_stamina_file(game: Game, t: Team):
