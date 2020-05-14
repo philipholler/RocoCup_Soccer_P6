@@ -43,6 +43,10 @@ class PlayerState:
         self.face_dir = PrecariousData(0, 0)
         self.should_reset_to_start_position = False
         self.objective_behaviour = "idle"
+
+
+        self.is_generating_strategy = False
+        self.strategy_result_list: [] = []
         super().__init__()
 
     def get_y_north_velocity_vector(self):
