@@ -98,7 +98,7 @@ def _pass_objective(state, must_pass: bool = False):
     pass_target = _choose_pass_target(state, must_pass)
     if pass_target is not None:
         state.mode = DEFAULT_MODE
-        return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state)), lambda: True, 1)
+        return Objective(state, lambda: actions.pass_to_player(state, pass_target), lambda: True, 1)
 
     # No suitable pass target
     return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
@@ -285,7 +285,6 @@ def determine_objective_field_default(state: PlayerState):
 
     debug_msg(str(state.now()) + " Idle orientation!", "ACTIONS")
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
-
 
 def determine_objective_biptest(state: PlayerState):
     # If lost orientation -> blind orient

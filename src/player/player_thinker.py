@@ -77,7 +77,7 @@ class Thinker(threading.Thread):
                 self.player_state.is_generating_strategy = True
                 threading.Thread(target=generate_strategy, args=(self.player_state, )).start()
             # If some result of a strategy generation has been returned to the result var
-            if len(self.player_state.strategy_result_list):
+            if len(self.player_state.strategy_result_list) > 0:
                 parsing.parse_strat_player(self.player_state)
                 self.player_state.strategy_result = None
 
