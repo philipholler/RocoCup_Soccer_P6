@@ -7,6 +7,7 @@ from constants import PLAYER_SPEED_DECAY
 from geometry import calculate_full_origin_angle_radians
 from player import player
 import client_connection
+from player.player import PlayerState
 from player.playerstrategy import Objective
 import time
 import parsing
@@ -22,7 +23,7 @@ class Thinker(threading.Thread):
     def __init__(self, team_name: str, player_type: str):
         super().__init__()
         self._stop_event = threading.Event()
-        self.player_state = player.PlayerState()
+        self.player_state: PlayerState = player.PlayerState()
         self.player_state.team_name = team_name
         self.player_state.player_type = player_type
         # Connection with the server
@@ -71,10 +72,14 @@ class Thinker(threading.Thread):
                     self.move_back_to_start_pos()
 
             # look for strat:
-            if strategy.has_applicable_strat_player(self.player_state) and self.player_state.team_name == "Team1":
-                strat = strategy.generate_strategy_player(self.player_state)
-                debug_msg("Has applicable strat: {0}".format(strat), "STAMINA_STRAT")
-                parsing.parse_strat_player(self.player_state, strat)
+            if not self.player_state.is_generating_strategy and strategy.has_applicable_strat_player(self.player_state)\
+                    and self.player_state.team_name == "Team1":
+                self.player_state.is_generating_strategy = True
+                threading.Thread(target=generate_strategy, args=(self.player_state, )).start()
+            # If some result of a strategy generation has been returned to the result var
+            if len(self.player_state.strategy_result_list):
+                parsing.parse_strat_player(self.player_state)
+                self.player_state.strategy_result = None
 
             current_time = time.time()
             time_since_action += current_time - last_time
@@ -166,3 +171,8 @@ class Thinker(threading.Thread):
         else:
             raise Exception("Could not assign position. Unum unknown. Expected unum between 1-11, got: "
                             + str(self.player_state.num) + " for player " + str(self.player_state))
+
+
+def generate_strategy(state: PlayerState):
+    state.strategy_result_list.append(strategy.generate_strategy_player(state))
+    state.is_generating_strategy = False

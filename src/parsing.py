@@ -1304,10 +1304,13 @@ def _emergency_approximation(state, flags):
     return avg_coord(positions)
 
 
-def parse_strat_player(state: PlayerState, strat: str):
-    if "(dash_power" in strat:
-        dash_power: int = int(strat[strat.find("r") + 1: strat.find(")")])
-        state.body_state.max_dash_power = dash_power
-        state.body_state.jog_dash_power = dash_power * 0.6
-        state.body_state.dribble_dash_power = dash_power * 0.65
-        state.action_history.last_stamina_strat_generated = state.now()
+def parse_strat_player(state: PlayerState):
+    for strat in state.strategy_result_list:
+        if "(dash_power" in strat:
+            dash_power: int = int(strat[strat.find("r") + 1: strat.find(")")])
+            state.body_state.max_dash_power = dash_power
+            state.body_state.jog_dash_power = dash_power * 0.6
+            state.body_state.dribble_dash_power = dash_power * 0.65
+            state.action_history.last_stamina_strat_generated = state.now()
+
+    state.strategy_result_list.clear()
