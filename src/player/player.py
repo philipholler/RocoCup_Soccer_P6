@@ -43,6 +43,10 @@ class PlayerState:
         self.face_dir = PrecariousData(0, 0)
         self.should_reset_to_start_position = False
         self.objective_behaviour = "idle"
+
+
+        self.is_generating_strategy = False
+        self.strategy_result_list: [] = []
         super().__init__()
 
     def get_y_north_velocity_vector(self):
@@ -142,7 +146,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 1 and self.team_name == "Team1"
+        return self.num == 8 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -325,6 +329,34 @@ class PlayerState:
 
         return result
 
+
+    def get_closest_free_position(self, opt_coord: Coordinate, max_delta_from_org_coord=5, min_delta_from_opp=7):
+        init_x: int = int(opt_coord.pos_x)
+        init_y: int = int(opt_coord.pos_y)
+
+        free_cords: [Coordinate] = []
+
+        for x in range(init_x, init_x + max_delta_from_org_coord):
+            for y in range(init_y, init_y + max_delta_from_org_coord):
+                c: Coordinate = Coordinate(x, y)
+                if self.is_coord_free(c, min_delta_from_opp):
+                    free_cords.append(c)
+
+        debug_msg("Opt_coord={0}, free_coords={1}".format(opt_coord, free_cords), "FREE_POSITION")
+        if len(free_cords) > 0:
+            return sorted(free_cords, key=lambda c: c.euclidean_distance_from(opt_coord), reverse=False)[0]
+
+        return None
+
+    def is_coord_free(self, coord: Coordinate, min_delta_from_opp=1):
+        players: [ObservedPlayer] = self.world_view.get_all_known_players(self.team_name, max_data_age=3)
+
+        for p in players:
+            dist = p.coord.euclidean_distance_from(coord)
+            if dist <= min_delta_from_opp:
+                return False
+
+        return True
 
 class ActionHistory:
     def __init__(self) -> None:
