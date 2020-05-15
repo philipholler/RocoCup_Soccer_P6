@@ -27,6 +27,20 @@ class UppaalStrategy:
         self.location_to_id: {} = self._extract_location_ids(self.strategy_text)
         self.regressors: [] = self._extract_regressors(self.strategy_text, self.statevar_to_index)
 
+    def get_regressor_with_statevar_values(self, values: [int]):
+        if len(values) != len(self.statevar_to_index.keys()):
+            raise Exception("Cannot find regressor from statevar values since they have different lengths: "
+                            "values_len={0}, state_var_len={1}".format(len(values), len(self.statevar_to_index)))
+
+        for r in self.regressors:
+            state_var_values = r.state_var_values
+            correct = True
+            for i in range(0, len(values)):
+                if int(state_var_values[i]) != values[i]:
+                    correct = False
+            if correct:
+                return r
+
     def _extract_location_ids(self, strategy: str):
         location_name_to_id = {}
         all_template_pattern = r'"locationnames":\{(.*)\},"r'

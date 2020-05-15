@@ -4,10 +4,10 @@ const int TIME_LIMIT = 3;
 const int MOVE_SPEED = 1;
 const double BALL_SPEED = 3.0;
 const double GOAL_X = 52.5;
-clock op_pos_x = 36.5;
-clock op_pos_y = 3.5;
-clock play_pos_x = 47.5;
-clock play_pos_y = 0.5;
+clock op_pos_x = 49.5;
+clock op_pos_y = 19.5;
+clock play_pos_x = 52.5;
+clock play_pos_y = 8.5;
 clock T = 0.0;
 double goal_chance = 0.0;
 double goal_chance_targeted(double goalie_x, double goalie_y, double ox, double oy, double target_x, double target_y){
@@ -29,6 +29,9 @@ double goal_chance_targeted(double goalie_x, double goalie_y, double ox, double 
     ball_travel_time = ball_travel_dist / BALL_SPEED;
     goalie_travel_dist = sqrt(pow(col_x - goalie_x, 2) + pow(goalie_y - col_y, 2));
     goalie_travel_time = goalie_travel_dist / MOVE_SPEED;
+	if(ball_travel_time == 0){
+		ball_travel_time = 0.1;
+	}
     return goalie_travel_time / ball_travel_time;
 }
 double calc_goal_chance(double goalie_x, double goalie_y, double ox, double oy){

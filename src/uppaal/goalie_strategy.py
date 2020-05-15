@@ -28,53 +28,58 @@ def _synthesise_move_direction(goalie_position, striker_position):
     # Extract synthesized strategy
     strategy = UppaalStrategy("/" + GOALIE_STRAT_NAME)
 
-    state_var_names: [str] = []
-    for name in state_var_names:
-        state_var_names.append(name)
+    # Initial statevar values
+    state_var_values: [] = [0, 0, 0, 0, 0, 0]
 
-    # Get (0,0,0,0,0,0) regressors
-    zero_reg: Regressor = None
-    for r in strategy.regressors:
-        if all(int(i) == 0 for i in r.state_var_values):
-            if zero_reg == None:
-                zero_reg = r
-            else:
-                raise Exception("(0,0,0,0,0,0) regressor is being overwritten. Must have been present twice!")
+    # Get value of statevar when both play and opponent are in x
+    player_choose_x_state_index = strategy.location_to_id["player.location.choose_x"]
+    opponent_choose_x_state_index = strategy.location_to_id["opponent.location.choose_x"]
+    state_var_values[strategy.statevar_to_index["player.location"]] = int(player_choose_x_state_index)
+    state_var_values[strategy.statevar_to_index["opponent.location"]] = int(opponent_choose_x_state_index)
 
-    # Get min regressor
-    min_reg = zero_reg.get_lowest_val_trans()
+    init_regressor: Regressor = strategy.get_regressor_with_statevar_values(state_var_values)
 
+    # Get min regressor for to get decision
+    min_reg_zero_reg = init_regressor.get_lowest_val_trans()
     # Get minimum value regressor transition
-    min_reg_trans: str = strategy.index_to_transition.get(min_reg[0])
+    min_reg_trans_zero_reg: str = strategy.index_to_transition.get(min_reg_zero_reg[0])
 
-    """
-    Possibilities:
-    "0":"player.choose_y->player._id1 { speed_y == 0, tau, speed_y := speed_y + MOVE_SPEED }",
-    "1":"player.choose_y->player._id1 { speed_y == 0, tau, speed_y := speed_y - MOVE_SPEED }",
-    "2":"player.choose_x->player.choose_y { 1, tau, 1 }",
-    "3":"player.choose_y->player._id1 { 1, tau, 1 }",
-    "4":"player.choose_x->player.choose_y { speed_x == 0, tau, speed_x := speed_x - MOVE_SPEED }",
-    "5":"player.choose_x->player.choose_y { speed_x == 0, tau, speed_x := speed_x + MOVE_SPEED }",
-    "6":"WAIT"
-    """
-    # Extract data from transition
-    # If moving up
-    if "speed_y +" in min_reg_trans:
-        return 270
-    # Moving down
-    elif "speed_y -" in min_reg_trans:
-        return 90
     # Moving toward the right (inside goal)
-    elif "speed_x +" in min_reg_trans:
-        return 0
+    if "speed_x +" in min_reg_trans_zero_reg:
+        x_movement = 1
     # Moving to the left (out from the goal)
-    elif "speed_x -" in min_reg_trans:
-        return 180
-    # If should wait
-    elif "WAIT" not in min_reg_trans:
-        return None
+    elif "speed_x -" in min_reg_trans_zero_reg:
+        x_movement = -1
     else:
-        raise Exception("Could not find movement direction from regressors: " + strategy.regressors)
+        x_movement = 0
+
+    if x_movement == 1:
+        state_var_values[strategy.statevar_to_index["player.speed_x"]] = 1
+    elif x_movement == -1:
+        state_var_values[strategy.statevar_to_index["player.speed_x"]] = -1
+
+    # Change player location state var
+    player_choose_y_state_index = strategy.location_to_id["player.location.choose_y"]
+    state_var_values[strategy.statevar_to_index["player.location"]] = int(player_choose_y_state_index)
+
+    # Now that the statevars are updated according to the decision made, we can the regressor from the new state
+    # Get the new regressor according to the new statevar values
+    after_1_decision_reg: Regressor = strategy.get_regressor_with_statevar_values(state_var_values)
+
+    # Get min regressor for to get decision
+    min_reg_zero_reg = after_1_decision_reg.get_lowest_val_trans()
+    # Get minimum value regressor transition
+    min_reg_trans_zero_reg: str = strategy.index_to_transition.get(min_reg_zero_reg[0])
+
+    if "speed_y +" in min_reg_trans_zero_reg:
+        y_movement = 1
+    # Moving to the left (out from the goal)
+    elif "speed_y -" in min_reg_trans_zero_reg:
+        y_movement = -1
+    else:
+        y_movement = 0
+
+    return x_movement, y_movement
 
 
 def _generate_positions(bound: (Coordinate, Coordinate), steps_per_meter):
@@ -115,17 +120,18 @@ if __name__ == "__main__":
     before = int(time.time())
     i = 0
     combinations = len(player_positions) * len(goalie_positions)
-    for player_position in player_positions:
-        for goalie_position in goalie_positions:
-            result = _synthesise_move_direction(goalie_position, player_position)
-            pos_to_act_dict[str(str(player_position) + "," + str(goalie_position))] = result
+    for player_pos in range(0, len(player_positions)):
+        for goalie_pos in range(0, len(goalie_positions)):
+            result = _synthesise_move_direction(goalie_positions[goalie_pos], player_positions[player_pos])
+            print("With goalie={0} and player={1}".format(goalie_positions[goalie_pos], player_positions[player_pos]))
+            pos_to_act_dict[str(str(goalie_coord_keys[goalie_pos]) + "," + str(player_coord_keys[player_pos]))] = result
             i += 1
             print("Doing {0} of {1}".format(str(i), str(combinations)))
         with open(str(STATIC_MODEL_RESULTS) + '/GoaliePositioning.json', 'w') as fp:
             json.dump(pos_to_act_dict, fp)
     after = int(time.time())
-
     print("Time elapsed in seconds: {}".format(str(after - before)))
+
 
     with open(str(STATIC_MODEL_RESULTS) + '/GoaliePositioning.json', 'w') as fp:
         json.dump(pos_to_act_dict, fp)
