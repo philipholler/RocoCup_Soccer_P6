@@ -286,6 +286,18 @@ def determine_objective_field_default(state: PlayerState):
     debug_msg(str(state.now()) + " Idle orientation!", "ACTIONS")
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
+
+def determine_objective_position_only(state: PlayerState):
+    # If lost orientation -> blind orient
+    if _lost_orientation(state):
+        return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
+
+    # If ball unknown -> locate ball
+    if _ball_unknown(state):
+        return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
+
+    return _position_optimally_objective(state)
+
 def determine_objective_biptest(state: PlayerState):
     # If lost orientation -> blind orient
     if _lost_orientation(state):
@@ -314,6 +326,8 @@ def determine_objective_biptest(state: PlayerState):
 
 
 def determine_objective(state: PlayerState):
+    if state.objective_behaviour == "position_optimally":
+        return determine_objective_position_only(state)
     if state.objective_behaviour == "biptest":
         return determine_objective_biptest(state)
     if state.objective_behaviour == "default":
@@ -443,7 +457,11 @@ def _optimal_striker_pos(state: PlayerState) -> Coordinate:
         optimal_y = clamp(play_position.pos_y + ball.pos_y * 0.2 + ball_delta_y * 0.4, -30, 30) * y_goal_factor
 
         if state.world_view.team_has_ball(state.team_name, max_data_age=4):
-            return Coordinate(optimal_x + (10 * side), optimal_y)
+            opt_coord = Coordinate(optimal_x + (10 * side), optimal_y)
+            free_pos = state.get_closest_free_position(opt_coord)
+            if state.is_test_player():
+                debug_msg("Free position:{0}".format(free_pos), "FREE_POSITION")
+            return opt_coord if free_pos is None else free_pos
 
         return Coordinate(optimal_x, optimal_y)
     else:
@@ -452,7 +470,11 @@ def _optimal_striker_pos(state: PlayerState) -> Coordinate:
         optimal_y = state.get_global_play_pos().pos_y + ball_delta_y * 0.2
 
         if state.world_view.team_has_ball(state.team_name, max_data_age=4):
-            return Coordinate(optimal_x + (10 * side), optimal_y)
+            opt_coord = Coordinate(optimal_x + (10 * side), optimal_y)
+            free_pos = state.get_closest_free_position(opt_coord)
+            if state.is_test_player():
+                debug_msg("Free position:{0}".format(free_pos), "FREE_POSITION")
+            return opt_coord if free_pos is None else free_pos
 
         return Coordinate(optimal_x, optimal_y)
 
@@ -479,7 +501,11 @@ def _optimal_midfielder_pos(state) -> Coordinate:
     optimal_y = clamp(play_position.pos_y + ball_delta_y * 0.2 + ball.pos_y * 0.2, -25, 25) * y_goal_factor
 
     if state.world_view.team_has_ball(state.team_name, max_data_age=4):
-        return Coordinate(optimal_x + (10 * side), optimal_y)
+        opt_coord = Coordinate(optimal_x + (10 * side), optimal_y)
+        free_pos = state.get_closest_free_position(opt_coord)
+        if state.is_test_player():
+            debug_msg("Free position:{0}".format(free_pos), "FREE_POSITION")
+        return opt_coord if free_pos is None else free_pos
 
     return Coordinate(optimal_x, optimal_y)
 

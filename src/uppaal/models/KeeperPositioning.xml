@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+const int decision_interval = 1;
+const int TIME_LIMIT = 3;
+
+const int MOVE_SPEED = 4;
+const double BALL_SPEED = 12.0;
+
+const double GOAL_X = 52.5;
+
+clock op_pos_x = 50.0;
+clock op_pos_y = -25.0;
+
+clock play_pos_x = 52.0;
+clock play_pos_y = 6.0;
+
+clock T = 0.0;
+
+double goal_chance = 0.0;
+
+
+double goal_chance_targeted(double goalie_x, double goalie_y, double ox, double oy, double target_x, double target_y){
+    double b = -(target_x - ox);
+    double a = target_y - oy;
+    double c = target_x*oy - target_y*ox;
+    
+    double distance = fabs((target_y - oy) * goalie_x - (target_x - ox) * goalie_y + target_x * oy - target_y * ox) / sqrt(pow(target_y - oy, 2)+pow((target_x-ox),2));
+
+    double ball_travel_dist;
+    double ball_travel_time;
+    
+    double goalie_travel_dist;
+    double goalie_travel_time;
+
+    double col_x = (b * (b * goalie_x - a * goalie_y) - a*c) / (pow(a, 2) + pow(b, 2));
+    double col_y = (a * (-b * goalie_x + a * goalie_y) - b*c) / (pow(a, 2) + pow(b, 2));
+    
+    if (col_x &gt; 52.5) {
+        col_x = 52.5;
+        col_y = (a*col_x + c) / (-b);
+    }
+
+    ball_travel_dist = sqrt(pow(col_x - ox, 2) + pow(col_y - oy, 2));
+    ball_travel_time = ball_travel_dist / BALL_SPEED;
+    
+    goalie_travel_dist = sqrt(pow(col_x - goalie_x, 2) + pow(goalie_y - col_y, 2));
+    goalie_travel_time = goalie_travel_dist / MOVE_SPEED;
+    
+    return goalie_travel_time / ball_travel_time;
+}
+
+double calc_goal_chance(double goalie_x, double goalie_y, double ox, double oy){
+    const double target_1_x = GOAL_X;
+    const double target_1_y = 6.5;
+    
+    const double target_2_x = GOAL_X;
+    const double target_2_y = -6.5;
+
+    double chance_1 = goal_chance_targeted(goalie_x, goalie_y, ox, oy, target_1_x, target_1_y);
+    double chance_2 = goal_chance_targeted(goalie_x, goalie_y, ox, oy, target_2_x, target_2_y);
+    
+    // Limit opponent to not be able to shoot when beyond the field lines
+    if (ox &gt; 52.5) {
+        return 0;
+    }
+
+    if (chance_1 &gt;= chance_2){
+        return chance_1 * chance_1;
+    }
+    return chance_2 * chance_2;
+}
+</declaration>
+	<template>
+		<name x="5" y="5">Player</name>
+		<declaration>// Place local declarations here.
+clock X = 0.0;
+int speed_x = 0;
+int speed_y = 0;</declaration>
+		<location id="id0" x="8" y="-170">
+			<name x="25" y="-178">choose_y</name>
+			<committed/>
+		</location>
+		<location id="id1" x="8" y="-17">
+			<label kind="invariant" x="-205" y="-17">X &lt;= decision_interval &amp;&amp; 
+play_pos_x'==speed_x &amp;&amp;
+play_pos_y'==speed_y &amp;&amp;
+T &lt;= TIME_LIMIT</label>
+		</location>
+		<location id="id2" x="8" y="-340">
+			<name x="-8" y="-374">choose_x</name>
+			<committed/>
+		</location>
+		<location id="id3" x="8" y="153">
+			<name x="25" y="144">end</name>
+		</location>
+		<init ref="id2"/>
+		<transition controllable="false">
+			<source ref="id1"/>
+			<target ref="id3"/>
+			<label kind="guard" x="17" y="76">T==TIME_LIMIT</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-145" y="-119">speed_y == 0</label>
+			<label kind="assignment" x="-187" y="-102">speed_y = speed_y 
++ MOVE_SPEED</label>
+			<nail x="-35" y="-94"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="guard" x="67" y="-119">speed_y == 0</label>
+			<label kind="assignment" x="67" y="-102">speed_y = speed_y 
+- MOVE_SPEED</label>
+			<nail x="59" y="-94"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="51" y="-8">X == decision_interval 
+&amp;&amp; T &lt;= TIME_LIMIT - 1</label>
+			<label kind="assignment" x="110" y="25">X = 0</label>
+			<nail x="246" y="-17"/>
+			<nail x="246" y="-340"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0"/>
+			<target ref="id1"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="guard" x="59" y="-280">speed_x == 0</label>
+			<label kind="assignment" x="59" y="-263">speed_x = speed_x 
+- MOVE_SPEED</label>
+			<nail x="51" y="-264"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-145" y="-280">speed_x == 0</label>
+			<label kind="assignment" x="-187" y="-263">speed_x = speed_x 
++MOVE_SPEED</label>
+			<nail x="-34" y="-264"/>
+		</transition>
+	</template>
+	<template>
+		<name>Opponent</name>
+		<declaration>clock X = 0.0;
+int speed_x = 0;
+int speed_y = 0;
+
+
+
+</declaration>
+		<location id="id4" x="-1351" y="-255">
+			<name x="-1334" y="-289">choose_x</name>
+			<committed/>
+		</location>
+		<location id="id5" x="-1351" y="-85">
+			<name x="-1334" y="-93">choose_y</name>
+			<committed/>
+		</location>
+		<location id="id6" x="-1351" y="68">
+			<label kind="invariant" x="-1564" y="68">X &lt;= decision_interval &amp;&amp; 
+op_pos_x'==speed_x &amp;&amp;
+op_pos_y'==speed_y</label>
+		</location>
+		<location id="id7" x="-1351" y="263">
+			<name x="-1377" y="280">ball_shot</name>
+		</location>
+		<init ref="id4"/>
+		<transition controllable="false">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-1343" y="153">X == decision_interval</label>
+			<label kind="assignment" x="-1343" y="170">goal_chance = calc_goal_chance
+(play_pos_x, play_pos_y, 
+op_pos_x, op_pos_y)</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-1504" y="-34">speed_y == 0</label>
+			<label kind="assignment" x="-1547" y="-17">speed_y = speed_y 
++ MOVE_SPEED</label>
+			<nail x="-1394" y="-9"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-1292" y="-34">speed_y == 0</label>
+			<label kind="assignment" x="-1292" y="-17">speed_y = speed_y 
+- MOVE_SPEED</label>
+			<nail x="-1300" y="-9"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4"/>
+			<target ref="id5"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id6"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-1292" y="76">X == decision_interval 
+&amp;&amp; T &lt;= TIME_LIMIT - 1</label>
+			<label kind="assignment" x="-1232" y="110">X = 0</label>
+			<nail x="-1122" y="68"/>
+			<nail x="-1113" y="-255"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id5"/>
+			<target ref="id6"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id5"/>
+			<target ref="id6"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-1300" y="-195">speed_x == 0</label>
+			<label kind="assignment" x="-1300" y="-178">speed_x = speed_x 
+- MOVE_SPEED</label>
+			<nail x="-1308" y="-179"/>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="-1504" y="-195">speed_x == 0</label>
+			<label kind="assignment" x="-1547" y="-178">speed_x = speed_x 
++ MOVE_SPEED</label>
+			<nail x="-1393" y="-179"/>
+		</transition>
+	</template>
+	<system>// Template instantiations
+opponent = Opponent();
+player = Player();
+
+// Processes to be composed into a system.
+system opponent, player;
+    </system>
+	<queries>
+		<query>
+			<formula>strategy BestChoices = minE(goal_chance) [T&lt;=TIME_LIMIT]: &lt;&gt; opponent.ball_shot</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>saveStrategy("/home/albot/Desktop/bestchoices",BestChoices)</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
