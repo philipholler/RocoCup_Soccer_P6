@@ -1309,6 +1309,7 @@ def parse_strat_player(state: PlayerState):
         if strat is not None:
             if "(dash_power" in strat:
                 dash_power: int = int(strat[strat.find("r") + 1: strat.find(")")])
+                state.body_state.dribble_kick_power = (dash_power / 100) * 40
                 state.body_state.max_dash_power = dash_power
                 state.body_state.jog_dash_power = dash_power * 0.6
                 state.body_state.dribble_dash_power = dash_power * 0.65

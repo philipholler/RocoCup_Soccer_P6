@@ -2,7 +2,6 @@ import atexit
 import random
 import time
 
-import constants
 from coaches.trainer import scenarios
 from coaches.world_objects_coach import WorldViewCoach
 from soccer_sim import SoccerSim
@@ -25,7 +24,7 @@ UDP_IP = "127.0.0.1"
 UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
 
 # Add teams and players here
-team_names = ["Team1", "Team2"]
+team_names = ["Poop1", "Poop2"]
 num_players = 11
 
 # Enable for more runs. Trainer is always enabled for multiple runs
