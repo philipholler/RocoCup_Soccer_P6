@@ -19,7 +19,7 @@ PASSED_MODE = "PASSED"
 CATCH_MODE = "CATCH"
 
 
-class PlayerState:
+class   PlayerState:
 
     def __init__(self):
         self.mode = DEFAULT_MODE
@@ -359,6 +359,17 @@ class PlayerState:
                 return False
 
         return True
+
+    def get_ball_possessor(self, max_data_age=2, poss_min_dist=2):
+        if self.world_view.ball.is_value_known(max_data_age):
+            other_players = self.world_view.get_all_known_players(self.team_name, max_data_age)
+            if len(other_players) < 1:
+                return None
+            possessor: [ObservedPlayer] = list(sorted(other_players, key=lambda p: p.coord.euclidean_distance_from(self.world_view.ball.get_value().coord), reverse=False))[0]
+            if possessor.coord.euclidean_distance_from(self.world_view.ball.get_value().coord) < poss_min_dist:
+                return possessor
+        return None
+
 
 class ActionHistory:
     def __init__(self) -> None:

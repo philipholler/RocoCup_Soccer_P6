@@ -3,6 +3,7 @@ import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
 from constants import SECONDS_BETWEEN_STAMINA_STRAT, USING_STAMINA_MODEL, USING_GOALIE_POSITION_MODEL
+from uppaal import goalie_strategy
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
 from player.player import WorldView, PlayerState
 
@@ -15,6 +16,10 @@ def generate_strategy_player(state: PlayerState):
     strategy_generator = _find_applicable_strat_player(state)
     if strategy_generator is None:
         return
+
+    # For static strategies, that simply return a string
+    if isinstance(strategy_generator, str):
+        return strategy_generator
 
     return strategy_generator.generate_strategy(state)
 
@@ -68,7 +73,20 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
                                   _update_stamina_model_simple, _extract_stamina_solution_simple)
     # Goalie strats
     if USING_GOALIE_POSITION_MODEL and state.player_type == "goalie":
-        # todo check if positional strat can be utilised
+        ball_possessor = state.get_ball_possessor()
+        # Use goaliePositioning strategy
+        if ball_possessor is not None and ball_possessor.coord is not None:
+            steps_per_meter = goalie_strategy.STEPS_PER_METER
+            # Convert coordinate to fit the squares from the strategy
+            possessor_new_x = math.floor(ball_possessor.coord.pos_x / steps_per_meter) * steps_per_meter
+            possessor_new_y = math.floor(ball_possessor.coord.pos_y / steps_per_meter) * steps_per_meter
+            goalie_new_x = math.floor(state.position.get_value().pos_x / steps_per_meter) * steps_per_meter
+            goalie_new_y = math.floor(state.position.get_value().pos_y / steps_per_meter) * steps_per_meter
+            # Example: "(36.5, -19.5),(47.5, -8.5)" -> "(goalie_x, goalie_y),(player_x, player_y)"
+            key = "({0}, {1}),({2}, {3})".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x), str(possessor_new_y))
+            if key in state.goalie_position_dict.keys():
+                print("KEY FOUND! key={0}, value={1}".format(key, state.goalie_position_dict[key]))
+                return "(head {0})".format(state.goalie_position_dict[key])
         pass
     return None
 

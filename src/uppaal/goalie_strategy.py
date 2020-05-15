@@ -120,10 +120,9 @@ if __name__ == "__main__":
             result = _synthesise_move_direction(goalie_position, player_position)
             pos_to_act_dict[str(str(player_position) + "," + str(goalie_position))] = result
             i += 1
-            if i == 10:
-                break
             print("Doing {0} of {1}".format(str(i), str(combinations)))
-        break
+        with open(str(STATIC_MODEL_RESULTS) + '/GoaliePositioning.json', 'w') as fp:
+            json.dump(pos_to_act_dict, fp)
     after = int(time.time())
 
     print("Time elapsed in seconds: {}".format(str(after - before)))
