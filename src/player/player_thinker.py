@@ -3,7 +3,7 @@ import re
 import threading
 import queue
 
-from constants import PLAYER_SPEED_DECAY
+from constants import PLAYER_SPEED_DECAY, USING_GOALIE_POSITION_MODEL
 from geometry import calculate_full_origin_angle_radians
 from player import player
 import client_connection
@@ -14,7 +14,7 @@ import parsing
 from player.playerstrategy import determine_objective
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
-from uppaal import strategy
+from uppaal import strategy, goalie_strategy
 from utils import debug_msg
 
 
@@ -50,6 +50,10 @@ class Thinker(threading.Thread):
         time.sleep(1.5)
         # Set accepted coach language versions
         self.player_conn.action_queue.put("(clang (ver 8 8))")
+
+        if USING_GOALIE_POSITION_MODEL and self.player_state.player_type == "goalie":
+            self.player_state.goalie_position_dict = goalie_strategy.get_result_dict()
+
         self.think()
 
     def stop(self) -> None:

@@ -47,6 +47,8 @@ class PlayerState:
 
         self.is_generating_strategy = False
         self.strategy_result_list: [] = []
+
+        self.goalie_position_dict = None
         super().__init__()
 
     def get_y_north_velocity_vector(self):
