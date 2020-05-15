@@ -97,7 +97,7 @@ class UppaalStrategy:
             matches = re.findall(r'"[^\"]*"', l, re.DOTALL)
             index = str(matches[0]).replace('"', "")
             value = str(matches[1]).replace('"', "")
-            trans_dict[index] = value
+            trans_dict[int(index)] = value
 
         return trans_dict
 
@@ -171,6 +171,8 @@ class GlobalDeclaration:
         if self.is_ident_only:
             return self.ident  # See function_decl method
         if self.val is not None:
+            if self.typ in ["clock", "double", "hybrid clock"]:
+                return "{0} {1} = {2};".format(self.typ, self.ident, str("%.1f" % float(self.val)))
             return "{0} {1} = {2};".format(self.typ, self.ident, self.val)
         else:
             return "{0} {1};".format(self.typ, self.ident)
@@ -432,6 +434,17 @@ def execute_verifyta(model: UppaalModel):
     while verifyta.poll() is None:
         time.sleep(0.001)
 
-# model = UPPAAL_MODEL(xml_model_file="MV_mini_projekt_2.xml")
-# model.set_arguments("SeqGirl(const girl_id_t id)", ["id", "true", "true", "true"])
-# model.save_xml_file("newFile.xml")
+
+def execute_verifyta_and_poll(model: UppaalModel):
+    model.save_xml_file()
+    _update_queries_write_path(model)
+    # verifyta_path --print-strategies outputdir xml_path queries_dir learning-method?
+    command = "{0} {1} {2}".format(VERIFYTA_PATH, model.path
+                                   , model.queries_path)
+
+    # Run uppaal verifyta command line tool
+    verifyta = subprocess.Popen(command, shell=True)
+
+    # Wait for uppaal to finish generating and printing strategy
+    while verifyta.poll() is None:
+        time.sleep(0.001)

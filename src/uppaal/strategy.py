@@ -63,9 +63,9 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 5 and USING_STAMINA_MODEL:
+    if USING_STAMINA_MODEL and state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 5:
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
-                                  _update_stamina3_model, _extract_stamina3_solution)
+                                  _update_stamina_model_simple, _extract_stamina_solution_simple)
     return None
 
 
@@ -81,7 +81,7 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
 
     return None
 
-def _update_stamina3_model(state: PlayerState, model: UppaalModel):
+def _update_stamina_model_simple(state: PlayerState, model: UppaalModel):
     dashes_since_last_strat = state.body_state.dash_count - state.action_history.dashes_last_stamina_strat
     state.action_history.dashes_last_stamina_strat = state.body_state.dash_count
 
@@ -91,7 +91,7 @@ def _update_stamina3_model(state: PlayerState, model: UppaalModel):
 
     return state.body_state.stamina
 
-def _extract_stamina3_solution(strategy: UppaalStrategy, current_stamina: int):
+def _extract_stamina_solution_simple(strategy: UppaalStrategy, current_stamina: int):
     current_stamina_interval: int = math.floor(current_stamina / 1000)
 
     for r in strategy.regressors:
@@ -128,7 +128,7 @@ def _extract_actions(strategy: UppaalStrategy, team_members):
     actions = []
 
     for r in strategy.regressors:
-        if "Passing" in str(strategy.index_to_transition[str(r.get_highest_val_trans()[0])]):
+        if "Passing" in str(strategy.index_to_transition[r.get_highest_val_trans()[0]]):
             from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
             to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
             actions.append("(" + str(from_player.num) + " pass " + str(to_player.num) + ")")

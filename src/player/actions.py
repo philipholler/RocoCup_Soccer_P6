@@ -3,7 +3,7 @@ import geometry
 
 from constants import KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
-    WARNING_PREFIX, DRIBBLE_KICK_POWER, CATCHABLE_MARGIN
+    WARNING_PREFIX, CATCHABLE_MARGIN
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 from geometry import Vector2D
 from player.player import PlayerState
@@ -943,7 +943,7 @@ def positional_adjustment(state, adjustment: Coordinate):
 def dribble(state: PlayerState, dir: int):
     command_builder = CommandBuilder()
     dribble_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=dir)
-    command_builder.append_kick(state, DRIBBLE_KICK_POWER, dribble_dir)
+    command_builder.append_kick(state, state.body_state.dribble_kick_power, dribble_dir)
     command_builder.next_tick()
     command_builder.append_turn_action(state, _calculate_turn_moment(state.body_state.speed, dribble_dir))
     command_builder.next_tick()
