@@ -97,7 +97,7 @@ class UppaalStrategy:
             matches = re.findall(r'"[^\"]*"', l, re.DOTALL)
             index = str(matches[0]).replace('"', "")
             value = str(matches[1]).replace('"', "")
-            trans_dict[index] = value
+            trans_dict[int(index)] = value
 
         return trans_dict
 
@@ -171,6 +171,8 @@ class GlobalDeclaration:
         if self.is_ident_only:
             return self.ident  # See function_decl method
         if self.val is not None:
+            if self.typ in ["clock", "double", "hybrid clock"]:
+                return "{0} {1} = {2};".format(self.typ, self.ident, str("%.1f" % float(self.val)))
             return "{0} {1} = {2};".format(self.typ, self.ident, self.val)
         else:
             return "{0} {1};".format(self.typ, self.ident)

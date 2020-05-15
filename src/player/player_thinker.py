@@ -73,7 +73,7 @@ class Thinker(threading.Thread):
 
             # look for strat:
             if not self.player_state.is_generating_strategy and strategy.has_applicable_strat_player(self.player_state)\
-                    and self.player_state.team_name == "Team1":
+                    and self.player_state.team_name == "Poop2":
                 self.player_state.is_generating_strategy = True
                 threading.Thread(target=generate_strategy, args=(self.player_state, )).start()
             # If some result of a strategy generation has been returned to the result var
