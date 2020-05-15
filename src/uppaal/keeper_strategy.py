@@ -32,8 +32,8 @@ def _generate_positions(bound: (Coordinate, Coordinate), steps_per_meter):
     height = bound[1].pos_y - bound[0].pos_y
     positions = []
 
-    for x in range(width * steps_per_meter):
-        for y in range(height * steps_per_meter):
+    for x in range(round(width * steps_per_meter)):
+        for y in range(round(height * steps_per_meter)):
             positions.append((bound[0].pos_x + x * 1 / steps_per_meter, bound[0].pos_y + y * 1 / steps_per_meter))
 
     return positions
