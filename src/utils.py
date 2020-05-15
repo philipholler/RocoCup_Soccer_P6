@@ -25,7 +25,8 @@ DEBUG_DICT = {
     "VELOCITY": False,
     "SENT_COMMANDS": False,
     "BIPTEST": False,
-    "STAMINA_STRAT": False
+    "STAMINA_STRAT": False,
+    "FREE_POSITION": False
 }
 
 

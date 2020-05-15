@@ -51,7 +51,7 @@ def parse_logs():
             else:
                 continue
 
-    print("last tick:" + str(game.show_time.index(game.show_time[-1])))
+    # print("last tick:" + str(game.show_time.index(game.show_time[-1]) + 1))
 
     calculate_possession(game)
     calculate_stamina(game)
@@ -65,6 +65,8 @@ def parse_logs():
 
     file_kicks = open(os.path.join(log_directory, "kicks.csv"), "w")
     file_real_kicks = open(os.path.join(log_directory, "kicks_successes.csv"), "w")
+    file_step_kicks = open(os.path.join(log_directory, "step_kicks.csv"), "w")
+    file_step_real_kicks = open(os.path.join(log_directory, "step_kicks_successes.csv"), "w")
     file_goalie_kicks = open(os.path.join(log_directory, "goalie_kicks.csv"), "w")
     file_l_stamina = open(os.path.join(log_directory, "%s_left_stamina.txt" % game.teams[0].name), "w")
     file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[1].name), "w")
@@ -74,9 +76,11 @@ def parse_logs():
     file_highest_stam_tick = open(os.path.join(log_directory, "highest_stam_tick.csv"), "w")
 
     files = [file_kicks, file_goalie_kicks, file_l_stamina, file_r_stamina,
-             file_l_biptest, file_r_biptest, file_lowest_stam_tick, file_highest_stam_tick, file_real_kicks]
+             file_l_biptest, file_r_biptest, file_lowest_stam_tick, file_highest_stam_tick, file_real_kicks,
+             file_step_real_kicks, file_step_kicks]
 
-    csv_files = [file_lowest_stam_tick, file_highest_stam_tick, file_goalie_kicks, file_kicks, file_real_kicks]
+    csv_files = [file_lowest_stam_tick, file_highest_stam_tick, file_goalie_kicks, file_kicks, file_real_kicks,
+                 file_step_real_kicks, file_step_kicks]
 
     for file in csv_files:
         write_file_title(file, game)
@@ -98,13 +102,22 @@ def parse_logs():
         if t.side == "r":
             file_r_stamina.write(write_stamina_file(game, t))
 
-    for stage in game.show_time:
+    make_kick_dict(game)
 
+    # file, game, real_kicks, steps
+    write_kick_file(file_kicks, game, False, False)
+    write_kick_file(file_real_kicks, game, True, False)
+    write_kick_file(file_step_kicks, game, False, True)
+    write_kick_file(file_step_real_kicks, game, True, True)
+
+    for stage in game.show_time:
+        '''
         file_kicks.write(str(game.show_time.index(stage) + 1) + ", " + str(stage.team_l_kicks) + ", ")
         file_kicks.write(str(stage.team_r_kicks) + "\n")
 
         file_real_kicks.write(str(game.show_time.index(stage) + 1) + ", " + str(stage.team_l_real_kicks) + ", ")
         file_real_kicks.write(str(stage.team_r_real_kicks) + "\n")
+        '''
 
         for player in stage.players:
             if player.no == 1:
@@ -117,8 +130,60 @@ def parse_logs():
         file.close()
 
 
+def make_kick_dict(game: Game):
+    for stage in game.show_time:
+        if (game.show_time.index(stage) - 1, "l") in game.kick_dict:
+            game.kick_dict[(game.show_time.index(stage), "l")] = stage.team_l_kicks - game.kick_dict.get(
+                (game.show_time.index(stage) - 1, "l"))
+        else:
+            game.kick_dict[(game.show_time.index(stage), "l")] = stage.team_l_kicks
+
+        if (game.show_time.index(stage) - 1, "r") in game.kick_dict:
+            game.kick_dict[(game.show_time.index(stage), "r")] = stage.team_r_kicks - game.kick_dict.get(
+                (game.show_time.index(stage) - 1, "r"))
+        else:
+            game.kick_dict[(game.show_time.index(stage), "r")] = stage.team_r_kicks
+
+    # print(game.kick_dict)
+
+
 def write_file_title(file, game: Game):
     file.write("Tick, " + game.teams[0].name + ", " + game.teams[1].name + "\n")
+
+
+def write_kick_file(file, game: Game, real: bool, steps: bool):
+    if real:
+        kick_dict = game.real_kick_dict
+    else:
+        kick_dict = game.kick_dict
+
+    for x in range(1, len(game.show_time) + 1):
+        # print("stage: " + str(x))
+        if (x, "l") not in kick_dict:
+            kick_dict[(x, "l")] = 0
+        if (x, "r") not in kick_dict:
+            kick_dict[(x, "r")] = 0
+
+    for x in sorted(kick_dict.keys()):
+        # print(x[0])
+
+        if steps:
+            last_tick = x[0] - 1
+            if x[1] == "l" and (last_tick, x[1]) in kick_dict:
+                kick_dict[x] += int(kick_dict.get((last_tick, x[1])))
+            if x[1] == "r" and (last_tick, x[1]) in kick_dict:
+                kick_dict[x] += int(kick_dict.get((last_tick, x[1])))
+
+        if x[1] == "l":
+            file.write(str(x[0]) + ", " + str(kick_dict[x]) + ", ")
+        if x[1] == "r":
+            file.write(str(kick_dict[x]) + "\n")
+
+        '''
+        if (x[0], "l") in kick_dict and (x[0], "r") in kick_dict:
+            file.write(str(x[0]) + ", " + str(kick_dict[(x[0], "l")])
+                       + ", " + str(kick_dict[(x[0], "r")]) + "\n")
+        '''
 
 
 def write_stam_file(file, stam_dict):
@@ -321,32 +386,38 @@ def parse_kick_action(txt, game: Game):
     matched = kick_re.match(txt)
 
     player = Player()
+    tick = int(matched.group(1))
+    team_name = matched.group(2)
 
     for team in game.teams:
-        if matched.group(2) == team.name:
+        if team_name == team.name:
             player.side = team.side
 
-    print("matched: " + str(matched.group(1)))
-
-    # if ball has moved, then kick was success
-
-    if int(matched.group(1)) > game.show_time.index(game.show_time[-1]):
+    # if the kick was after game ended then return
+    if tick > game.show_time.index(game.show_time[-1]):
         return
 
-    stage = game.show_time[int(matched.group(1))]
-    print("index: " + str(game.show_time.index(stage)))
+    stage = game.show_time[tick]
     last_stage = game.show_time[game.show_time.index(stage) - 1]
 
+    # add kick
+    '''
+    if (tick, player.side) in game.kick_dict:
+        game.kick_dict[(tick, player.side)] += 1
+    else:
+        game.kick_dict[(tick, player.side)] = 1
+    '''
+
+    # if ball has moved, then kick was success
     if abs(stage.ball.delta_x) > abs(last_stage.ball.delta_x) or \
             abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y):
         game.last_kicker = player
-        game.last_kicker_tick = int(matched.group(1))
+        game.last_kicker_tick = tick
 
-        if player.side == "l":
-            stage.team_l_real_kicks += stage.team_l_real_kicks + 1
-        if player.side == "r":
-            stage.team_r_real_kicks += stage.team_r_real_kicks + 1
-
+        if (tick, player.side) in game.real_kick_dict:
+            game.real_kick_dict[(tick, player.side)] += 1
+        else:
+            game.real_kick_dict[(tick, player.side)] = 1
 
 
 def parse_goal_action(txt, game: Game):
@@ -448,16 +519,11 @@ def distance_to_ball(stage: Stage):
 
 
 def insert_kicks(stage: Stage):
-    new_l_kick = 0
-    new_r_kick = 0
     for player in stage.players:
         if player.side == "l" and player.kicks != 0:
-            new_l_kick = new_l_kick + player.kicks
+            stage.team_l_kicks += player.kicks
         if player.side == "r" and player.kicks != 0:
-            new_r_kick = new_r_kick + player.kicks
-
-    stage.team_l_kicks = new_l_kick - stage.team_l_kicks
-    stage.team_r_kicks = new_r_kick - stage.team_r_kicks
+            stage.team_r_kicks += player.kicks
 
 
 # Examples:

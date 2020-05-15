@@ -14,6 +14,8 @@ class Game:
         self.player_l_stamina_over = []
         self.player_r_stamina_under = []
         self.player_r_stamina_over = []
+        self.kick_dict = {}
+        self.real_kick_dict = {}
 
         # The stage at tick 40, is in place 40 in the array
         self.show_time = []
@@ -28,7 +30,6 @@ class Team:
         self.stamina_under = 0
         self.stamina_over = 0
         self.number_of_players = 0
-
 
 
 class Stage:
