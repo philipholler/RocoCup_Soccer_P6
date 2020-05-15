@@ -89,10 +89,10 @@ def _generate_positions(bound: (Coordinate, Coordinate), steps_per_meter):
     return positions
 
 
-def _convert_coordinate(coord: Coordinate, steps_per_meter):
-    new_x = floor(coord.pos_x / steps_per_meter) * steps_per_meter
-    new_y = floor(coord.pos_y / steps_per_meter) * steps_per_meter
-    return Coordinate(new_x, new_y)
+def _convert_coordinate(x, y, steps_per_meter):
+    new_x = floor(x / steps_per_meter) * steps_per_meter
+    new_y = floor(y / steps_per_meter) * steps_per_meter
+    return new_x, new_y
 
 
 def get_result_dict() -> {}:
@@ -112,20 +112,33 @@ if __name__ == "__main__":
         map(lambda key: (key[0] + STEPS_PER_METER / 2, key[1] + STEPS_PER_METER / 2), goalie_coord_keys))
 
     pos_to_act_dict = {}
-    before = int(time.time())
+    """before = int(time.time())
     i = 0
     combinations = len(player_positions) * len(goalie_positions)
     for player_position in player_positions:
         for goalie_position in goalie_positions:
             result = _synthesise_move_direction(goalie_position, player_position)
-            pos_to_act_dict[str(str(player_position) + "," + str(goalie_position))] = result
+            pos_to_act_dict[str(str(goalie_position) + "," + str(player_position))] = result
+            i += 1
+            print("Doing {0} of {1}".format(str(i), str(combinations)))
+        with open(str(STATIC_MODEL_RESULTS) + '/GoaliePositioning.json', 'w') as fp:
+            json.dump(pos_to_act_dict, fp)
+    after = int(time.time())"""
+
+    before = int(time.time())
+    i = 0
+    combinations = len(player_positions) * len(goalie_positions)
+    for player_pos in range(0, len(player_positions)):
+        for goalie_pos in range(0, len(goalie_positions)):
+            result = _synthesise_move_direction(player_positions[player_pos], goalie_positions[goalie_pos])
+            pos_to_act_dict[str(str(goalie_coord_keys[goalie_pos]) + "," + str(player_coord_keys[player_pos]))] = result
             i += 1
             print("Doing {0} of {1}".format(str(i), str(combinations)))
         with open(str(STATIC_MODEL_RESULTS) + '/GoaliePositioning.json', 'w') as fp:
             json.dump(pos_to_act_dict, fp)
     after = int(time.time())
-
     print("Time elapsed in seconds: {}".format(str(after - before)))
+
 
     with open(str(STATIC_MODEL_RESULTS) + '/GoaliePositioning.json', 'w') as fp:
         json.dump(pos_to_act_dict, fp)

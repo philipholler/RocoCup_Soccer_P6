@@ -25,7 +25,7 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
 
 # Add teams and players here
 team_names = ["Poop1", "Poop2"]
-num_players = 11
+num_players = 2
 
 # Enable for more runs. Trainer is always enabled for multiple runs
 MORE_SCENARIOS_MODE = False
@@ -39,7 +39,7 @@ DEBUG_DICT["ALL"] = False
 COACHES_ENABLED = True
 
 # Enable trainer for a single run
-TRAINER_SINGLE_RUN_ENABLED = False
+TRAINER_SINGLE_RUN_ENABLED = True
 
 try:
     # Run multiple games sequentially
