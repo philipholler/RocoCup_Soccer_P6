@@ -16,6 +16,12 @@ ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
 
 _LOWEST_STAMINA = 1000
+_HIGHEST_DIST_GOALIE = 0.3
+
+_GOALIE_DEFENCE_STAT = False
+_LIST_OF_TICKLISTS = []
+
+_GAME_NUMBER = 1
 
 
 # Main method
@@ -24,6 +30,18 @@ def parse_logs():
     server_log_name = get_newest_server_log()
     action_log_name = get_newest_action_log()
     parse_log_name(server_log_name, game)
+
+    game_number_path = Path(__file__).parent.parent / "game_number"
+
+    if game_number_path.exists():
+        with open(game_number_path, "r+") as file:
+            global _GAME_NUMBER
+            _GAME_NUMBER = int(file.readline())
+            file.truncate(0)
+            file.write(str(_GAME_NUMBER + 1))
+    else:
+        with open(game_number_path, "w") as file:
+            file.write(str(_GAME_NUMBER))
 
     # init number of players
     with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
@@ -128,6 +146,38 @@ def parse_logs():
 
     for file in files:
         file.close()
+
+    if _GOALIE_DEFENCE_STAT:
+        goalie_defence_dir = Path(__file__).parent.parent / "goalie_defence"
+        if not goalie_defence_dir.exists():
+            os.makedirs(goalie_defence_dir)
+
+        with open(os.path.join(goalie_defence_dir, "goalie_defence.csv"), "w") as file:
+            for x in _LIST_OF_TICKLISTS:
+                file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _LIST_OF_TICKLISTS[x])) + "\n")
+
+
+def if_goalie_defence(on: bool, list_of_ticklists: []):
+    if on:
+        global _GOALIE_DEFENCE_STAT
+        _GOALIE_DEFENCE_STAT = True
+        global _LIST_OF_TICKLISTS
+        _LIST_OF_TICKLISTS = list_of_ticklists
+
+
+def is_goalie_near_ball(game: Game, ticks: []):
+    goalie = None
+    for x in ticks:
+        stage = game.show_time[ticks[x]]
+        for player in stage:
+            if player.side == "r" and player.no == "1":
+                goalie = player
+            if goalie is None:
+                return False
+        if get_distance_between_coords(Coordinate(stage.ball.x_coord, stage.ball.y_coord),
+                                           Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
+            return True
+    return False
 
 
 def make_kick_dict(game: Game):
@@ -348,10 +398,10 @@ def write_possession_file(game: Game):
     if not possession_dir.exists():
         os.makedirs(possession_dir)
 
-    now = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = "possession_" + now
+    # now = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_name = "possession"
     file_possession = open(possession_dir / file_name, "w")
-    file_possession.write(str(game.possession_length))
+    file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_length) + "\n")
 
 
 # Gets the newest server log ".rcg"
