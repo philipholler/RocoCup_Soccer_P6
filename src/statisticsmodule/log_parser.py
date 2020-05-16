@@ -16,6 +16,10 @@ ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
 
 _LOWEST_STAMINA = 1000
+_HIGHEST_DIST_GOALIE = 0.3
+
+_GOALIE_DEFENCE_STAT = False
+_LIST_OF_TICKLISTS = []
 
 
 # Main method
@@ -128,6 +132,34 @@ def parse_logs():
 
     for file in files:
         file.close()
+
+    if _GOALIE_DEFENCE_STAT:
+        with open(os.path.join(log_directory, "goalie_defence.csv"), "w") as file:
+            for x in _LIST_OF_TICKLISTS:
+                file.write(str(is_goalie_near_ball(game, _LIST_OF_TICKLISTS[x])) + "\n")
+
+
+def if_goalie_defence(on: bool, list_of_ticklists: []):
+    if on:
+        global _GOALIE_DEFENCE_STAT
+        _GOALIE_DEFENCE_STAT = True
+        global _LIST_OF_TICKLISTS
+        _LIST_OF_TICKLISTS = list_of_ticklists
+
+
+def is_goalie_near_ball(game: Game, ticks: []):
+    goalie = None
+    for x in ticks:
+        stage = game.show_time[ticks[x]]
+        for player in stage:
+            if player.side == "r" and player.no == "1":
+                goalie = player
+            if goalie is None:
+                return False
+        if get_distance_between_coords(Coordinate(stage.ball.x_coord, stage.ball.y_coord),
+                                           Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
+            return True
+    return False
 
 
 def make_kick_dict(game: Game):
