@@ -26,7 +26,8 @@ DEBUG_DICT = {
     "SENT_COMMANDS": False,
     "BIPTEST": False,
     "STAMINA_STRAT": False,
-    "FREE_POSITION": False
+    "FREE_POSITION": False,
+    "DRIBBLE_PASS_MODEL": True
 }
 
 

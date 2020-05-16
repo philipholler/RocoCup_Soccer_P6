@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'><nta>
+	<declaration>const int OPPONENTS = 1;
+const int TEAM_MATES = 2;
+const double opponent_pos[OPPONENTS][2] = {{33.0760, -7.5490}};
+const double team_pos[TEAM_MATES][2] = {{-24.9982, -7.3670},{-36.4193, 5.8074}};
+const double possessor[2] = {-39.9067, -17.8061};
+const double DRIBBLE_DIST = 7.0;
+const double DIST_REWARD_FACTOR = 0.5;
+const double INTERCEPT_CHANCE = 0.5;
+const double BALL_SPEED = 2.0;
+const double PLAYER_SPEED = 0.6;
+const double POSSESSION_REWARD = 10.0;
+typedef int[0, TEAM_MATES - 1] teammate_id_t;
+int receiver = -1;
+double reward = 0.0;
+clock T = 0.0;
+double distance_between(double x1, double y1, double x2, double y2){
+    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
+}
+double pass_chance(teammate_id_t target){
+    double prob = 1.0;
+    double value = 0.0;
+    double pass_time = distance_between(possessor[0], possessor[1], team_pos[target][0], team_pos[target][1]) / BALL_SPEED;
+    int i = 0;
+    while(i &lt; OPPONENTS){
+        double dist = distance_between(team_pos[target][0], team_pos[target][1], opponent_pos[i][0], opponent_pos[i][1]);
+        double opponent_time_to_reach = 1 + dist / PLAYER_SPEED;
+        double time_within_reach = pass_time - opponent_time_to_reach;
+        if(time_within_reach &gt; 0){
+            double t_factor = 0.15 + 0.15 * time_within_reach;
+            t_factor = fmin(t_factor, 0.7);
+            prob = prob * (1 - t_factor);
+        }
+        i++;
+    }
+    return prob;
+}
+double pass_reward(teammate_id_t target){
+    double pass_chance = pass_chance(target);
+    double dist_increase = team_pos[target][0] - possessor[0];
+    double dist_reward = 0.0;
+    if (dist_increase &gt; 0) {
+        dist_reward = dist_increase * DIST_REWARD_FACTOR;
+    }
+    return (POSSESSION_REWARD + dist_reward) * pass_chance;
+}
+double dribble_prob(){
+    double drib_prob = 1.0;
+    int i = 0;
+    while(i &lt; OPPONENTS){
+        double dist = distance_between(possessor[0], possessor[1], opponent_pos[i][0], opponent_pos[i][1]);
+        if(dist &lt; 10 &amp;&amp; opponent_pos[i][0] &gt; possessor[0]){
+            double dist_factor = 1.0 - (1.0 / (dist));
+            drib_prob = drib_prob * dist_factor;
+        }
+        i++;
+    }
+    return drib_prob;
+}
+double dribble_reward(){
+    return (POSSESSION_REWARD + (DRIBBLE_DIST * DIST_REWARD_FACTOR)) * dribble_prob();
+}
+</declaration>
+	<template>
+		<name x="5" y="5">Possessor</name>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="493" y="76">
+			<name x="467" y="34">Dribble</name>
+			<label kind="invariant" x="467" y="102">T &lt;= 2</label>
+		</location>
+		<location id="id1" x="493" y="-93">
+			<name x="483" y="-127">Pass</name>
+			<label kind="invariant" x="467" y="-68">T &lt;= 2</label>
+		</location>
+		<location id="id2" x="340" y="-8">
+			<name x="264" y="-17">Choice</name>
+			<committed />
+		</location>
+		<location id="id3" x="595" y="-8">
+			<name x="585" y="-42">End</name>
+		</location>
+		<init ref="id2" />
+		<transition controllable="false">
+			<source ref="id1" />
+			<target ref="id3" />
+			<label kind="guard" x="544" y="-76">T == 2</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id0" />
+			<target ref="id3" />
+			<label kind="guard" x="552" y="34">T == 2</label>
+		</transition>
+		<transition>
+			<source ref="id2" />
+			<target ref="id0" />
+			<label kind="assignment" x="255" y="51">reward = dribble_reward()</label>
+		</transition>
+		<transition>
+			<source ref="id2" />
+			<target ref="id1" />
+			<label kind="select" x="280" y="-93">target: teammate_id_t</label>
+			<label kind="assignment" x="297" y="-76">receiver = target</label>
+		</transition>
+	</template>
+	<template>
+		<name>Teammate</name>
+		<parameter>teammate_id_t self</parameter>
+		<declaration>clock X = 0.0;</declaration>
+		<location id="id4" x="-561" y="-76">
+			<name x="-544" y="-85">Dribble</name>
+			<committed />
+		</location>
+		<location id="id5" x="-561" y="59">
+			<name x="-544" y="51">End</name>
+		</location>
+		<location id="id6" x="-561" y="-195">
+			<name x="-544" y="-203">WaitForBall</name>
+			<label kind="invariant" x="-629" y="-203">X &lt;= 1</label>
+		</location>
+		<init ref="id6" />
+		<transition controllable="false">
+			<source ref="id6" />
+			<target ref="id5" />
+			<label kind="guard" x="-501" y="-144">receiver != self 
+&amp;&amp; X==1</label>
+			<nail x="-476" y="-76" />
+		</transition>
+		<transition controllable="false">
+			<source ref="id6" />
+			<target ref="id4" />
+			<label kind="guard" x="-680" y="-161">receiver == self 
+&amp;&amp; X == 1</label>
+			<label kind="assignment" x="-756" y="-127">reward = pass_reward(self)</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id4" />
+			<target ref="id5" />
+		</transition>
+	</template>
+	<system>system Possessor, Teammate;</system>
+	<queries>
+		<query>
+			<formula>strategy DribbleOrPass = maxE(reward) [T&lt;=2]: &lt;&gt; Possessor.End</formula>
+			<comment />
+		</query>
+		<query>
+			<formula>saveStrategy("/home/albot/Desktop/dribbleorpass",DribbleOrPass)</formula>
+			<comment />
+		</query>
+	</queries>
+</nta>

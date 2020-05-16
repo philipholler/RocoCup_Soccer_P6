@@ -19,7 +19,7 @@ PASSED_MODE = "PASSED"
 CATCH_MODE = "CATCH"
 
 
-class   PlayerState:
+class PlayerState:
 
     def __init__(self):
         self.mode = DEFAULT_MODE
@@ -44,11 +44,14 @@ class   PlayerState:
         self.should_reset_to_start_position = False
         self.objective_behaviour = "idle"
 
-
         self.is_generating_strategy = False
         self.strategy_result_list: [] = []
 
+        self.dribble_or_pass_strat = PrecariousData.unknown()
+        self.last_dribble_pass_strat = -9999
+
         self.goalie_position_dict = None
+
         super().__init__()
 
     def get_y_north_velocity_vector(self):
@@ -57,6 +60,13 @@ class   PlayerState:
     def __str__(self) -> str:
         return "side: {0}, team_name: {1}, player_num: {2}, position: {3}".format(self.world_view.side, self.team_name
                                                                                   , self.num, self.position)
+
+    def needs_dribble_or_pass_strat(self):
+        if self.mode is not DRIBBLING_MODE or self.now() - self.last_dribble_pass_strat < 4:
+            return False
+        return len(self.world_view.get_opponents(self.team_name, 10)) > 0 \
+            and len(self.world_view.get_teammates(self.team_name, 10, 5)) > 0
+
 
     def is_inside_field(self):
         position: Coordinate = self.position.get_value()
@@ -148,7 +158,7 @@ class   PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 8 and self.team_name == "Team1"
+        return self.num == 2 and self.world_view.side == 'l'
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -331,7 +341,6 @@ class   PlayerState:
 
         return result
 
-
     def get_closest_free_position(self, opt_coord: Coordinate, max_delta_from_org_coord=5, min_delta_from_opp=7):
         init_x: int = int(opt_coord.pos_x)
         init_y: int = int(opt_coord.pos_y)
@@ -365,10 +374,27 @@ class   PlayerState:
             other_players = self.world_view.get_all_known_players(self.team_name, max_data_age)
             if len(other_players) < 1:
                 return None
-            possessor: [ObservedPlayer] = list(sorted(other_players, key=lambda p: p.coord.euclidean_distance_from(self.world_view.ball.get_value().coord), reverse=False))[0]
+            possessor: [ObservedPlayer] = list(sorted(other_players, key=lambda p: p.coord.euclidean_distance_from(
+                self.world_view.ball.get_value().coord), reverse=False))[0]
             if possessor.coord.euclidean_distance_from(self.world_view.ball.get_value().coord) < poss_min_dist:
                 return possessor
         return None
+
+    def is_dribbling(self):
+        return self.mode == DRIBBLING_MODE
+
+    def find_teammate_closest_to(self, coord: Coordinate, max_distance_delta=200):
+        closest_teammate = None
+        team_mates: [ObservedPlayer] = self.world_view.get_teammates(self.team_name, max_data_age=10)
+        for tm in team_mates:
+            tm : ObservedPlayer
+            if closest_teammate is None or \
+                    closest_teammate.coord.euclidean_distance_from(coord) > tm.coord.euclidean_distance_from(coord):
+                closest_teammate = tm
+
+        if closest_teammate is None or closest_teammate.coord.euclidean_distance_from(coord) > max_distance_delta:
+            return None
+        return closest_teammate
 
 
 class ActionHistory:
@@ -517,7 +543,6 @@ class WorldView:
         debug_msg("{0} has ball".format("Team2"), "HAS_BALL")
         return False
 
-
     def get_all_known_players(self, team, max_data_age):
         all_players: [ObservedPlayer] = []
         all_players.extend(self.get_teammates(team, max_data_age))
@@ -553,7 +578,7 @@ class WorldView:
 
         reverse = True if side == "l" else False
         furthest_behind_opponent: ObservedPlayer = \
-        list(sorted(opponents, key=lambda p: p.coord.pos_x, reverse=reverse))[0]
+            list(sorted(opponents, key=lambda p: p.coord.pos_x, reverse=reverse))[0]
         furthest_opp_x_pos = furthest_behind_opponent.coord.pos_x
         if side == "l":
             non_offside_players = list(filter(lambda p: (p.coord.pos_x < furthest_opp_x_pos
@@ -585,15 +610,23 @@ class WorldView:
 
         return free_behind_team_mates
 
-    def get_teammates(self, team, max_data_age):
+    def get_teammates_precarious(self, team, max_data_age, min_dist=0):
         precarious_filtered = filter(lambda x: (x.is_value_known(self.sim_time - max_data_age)
-                                                and x.get_value().team == team), self.other_players)
-        return list(map(lambda x: x.get_value(), precarious_filtered))
+                                                and x.get_value().team == team) and x.get_value().distance >= min_dist
+                                     , self.other_players)
+        return list(precarious_filtered)
 
-    def get_opponents(self, team, max_data_age):
+    def get_opponents_precarious(self, team, max_data_age, min_dist=0):
         precarious_filtered = filter(lambda x: (x.is_value_known(self.sim_time - max_data_age)
-                                                and x.get_value().team != team), self.other_players)
-        return list(map(lambda x: x.get_value(), precarious_filtered))
+                                                and x.get_value().team != team) and x.get_value().distance >= min_dist
+                                     , self.other_players)
+        return list(precarious_filtered)
+
+    def get_teammates(self, team, max_data_age, min_dist=0):
+        return list(map(lambda x: x.get_value(), self.get_teammates_precarious(team, max_data_age, min_dist)))
+
+    def get_opponents(self, team, max_data_age, min_dist=0):
+        return list(map(lambda x: x.get_value(), self.get_opponents_precarious(team, max_data_age, min_dist)))
 
     def get_free_team_mates(self, team, max_data_age, min_distance=2) -> [ObservedPlayer]:
         team_mates: [ObservedPlayer] = self.get_teammates(team, max_data_age=max_data_age)

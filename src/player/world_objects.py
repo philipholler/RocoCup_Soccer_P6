@@ -6,7 +6,7 @@ from math import sqrt, atan, degrees, exp
 from constants import BALL_DECAY, KICKABLE_MARGIN
 from geometry import is_angle_in_range, find_mean_angle, Coordinate, \
     calculate_full_origin_angle_radians, get_xy_vector, Vector2D, smallest_angle_difference, \
-    inverse_y_axis
+    inverse_y_axis, calculate_absolute_velocity
 from utils import debug_msg
 
 
@@ -50,7 +50,7 @@ class PrecariousData:
 # ((player team? num?) Distance Direction DistChng? DirChng? BodyDir? HeadDir?)
 class ObservedPlayer:
     def __init__(self, team, num, distance, direction, dist_chng, dir_chng, body_dir, head_dir, is_goalie,
-                 coord) -> None:
+                 coord, global_dir=None, observer_velocity: Vector2D = None) -> None:
         super().__init__()
         self.team = team
         self.num = num
@@ -61,7 +61,8 @@ class ObservedPlayer:
         self.body_dir = body_dir
         self.head_dir = head_dir
         self.is_goalie = is_goalie
-        self.coord = coord
+        self.coord: Coordinate = coord
+        self.velocity = calculate_absolute_velocity(observer_velocity, distance, global_dir, dist_chng, dir_chng)
 
     def __repr__(self) -> str:
         return "(team=" + str(self.team) + ", num=" + str(self.num) + ", distance=" + str(
@@ -69,6 +70,12 @@ class ObservedPlayer:
                + str(self.direction) + ", dist_chng=" + str(self.dist_chng) + ", dir_chng=" + str(self.dir_chng) \
                + ", body_dir=" + str(self.body_dir) + ", head_dir=" + str(self.head_dir) + ", is_goalie=" \
                + str(self.is_goalie) + ", coord=" + str(self.coord) + ")"
+
+    def forecasted_position(self, ticks):
+        if ticks == 0 or self.velocity is None or self.velocity.magnitude() <= 0.1:
+            return self.coord
+
+        return (self.coord.vector() + (self.velocity * ticks)).coord()
 
 
 LOWER_FIELD_BOUND = Coordinate(-60, -40)
@@ -106,8 +113,8 @@ class Ball:
         self.dist_history = dist_history
         self.velocity_history = velocity_history
 
-        self.relative_velocity: Vector2D = self._get_relative_velocity(dist_change, dir_change, global_dir)
-        self.absolute_velocity: Vector2D = self._get_absolute_velocity(observer_velocity, now)
+        calculated_vel = calculate_absolute_velocity(observer_velocity, distance, global_dir, dist_change, dir_change)
+        self.absolute_velocity: Vector2D = self._get_average_absolute_velocity(calculated_vel, now)
         self.projection = None
 
         # Register current position, distance and velocity vector in history list
@@ -116,17 +123,6 @@ class Ball:
 
         if self.absolute_velocity is not None:
             self.velocity_history.add_data_point(self.absolute_velocity, now)
-
-        # Debug
-        """  if self.absolute_velocity is not None:
-            pos, direct, vel = self.approximate_position_direction_speed(2)
-            old_method_text = "None"
-            if direct is not None:
-                old_method_text = str(Vector2D.velocity_to_xy(vel, direct))
-            debug_msg(str(now) + " | Global Angle:" + str(global_dir) + " | Ball velocity: "
-                      + str(self.absolute_velocity) + "| Player velocity: " + str(observer_velocity) +
-                      " | Dist_change: " + str(dist_change) + "| Dir_change: " + str(dir_change)
-                      + "| Old velocity method: " + old_method_text, "VELOCITY")"""
 
     def approximate_position_direction_speed(self, minimum_data_points_used) -> (Coordinate, int, int):
         if self.projection is not None:
@@ -322,42 +318,11 @@ class Ball:
 
         return self.dist_history.list[0][0] < self.dist_history.list[1][0]
 
-    def _get_relative_velocity(self, dist_change, dir_change, global_dir):
-        if dir_change is None or dist_change is None:
-            return None
-        if dist_change == 0:
-            return Vector2D(0, 0)  # TODO dist_change = zero does not imply no motion
-        rel_velocity_x = dist_change
-        rel_velocity_y = (-math.radians(dir_change)) * self.distance
-        relative_velocity_vector = Vector2D(rel_velocity_x, rel_velocity_y)
-        rel_speed = relative_velocity_vector.magnitude()
-
-        # Rotate to match our coordinate system
-        velocity_angle = (math.radians(inverse_y_axis(global_dir)) + math.atan2(rel_velocity_y, rel_velocity_x))
-        rel_velocity_x = rel_speed * math.cos(velocity_angle)
-        rel_velocity_y = rel_speed * math.sin(velocity_angle)
-        return Vector2D(rel_velocity_x, rel_velocity_y)
-        #rotation = (rotation + 180) % 360
-        #relative_velocity_vector = Vector2D.velocity_to_xy(velocity=rel_speed, degrees=rotation)
-        #print("Global ball direction: ", inverse_y_axis(global_dir), "Ball velocity direction:", rotation, "vector: ", relative_velocity_vector)
-
-
-        #rotation = math.radians(360 - global_dir)
-        #relative_velocity_vector = relative_velocity_vector.rotated(rotation)
-
-        """x2 = math.cos(rotation) * rel_velocity_x - math.sin(rotation) * rel_velocity_y
-        y2 = math.sin(rotation) * rel_velocity_x + math.cos(rotation) * rel_velocity_y
-        rel_speed = sqrt((rel_velocity_x ** 2) + (rel_velocity_y ** 2))
-        rotated_angle = math.atan2(rel_velocity_y, rel_velocity_x) + math.radians(-global_dir)
-        rel_velocity_x = rel_speed * math.cos(rotated_angle)
-        rel_velocity_y = rel_speed * math.sin(rotated_angle)"""
-        return relative_velocity_vector
-
-    def _get_absolute_velocity(self, observer_velocity: Vector2D, now):
-        if observer_velocity is None or self.relative_velocity is None:
+    def _get_average_absolute_velocity(self, calculated_velocity, now):
+        if calculated_velocity is None:
             return None
 
-        current_velocity = self.relative_velocity + observer_velocity
+        current_velocity = calculated_velocity
         if current_velocity.magnitude() < 0.09:
             return Vector2D(0, 0)
 

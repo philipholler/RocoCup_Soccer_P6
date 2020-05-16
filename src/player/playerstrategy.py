@@ -1,8 +1,9 @@
 import math
 import random
+import re
 from random import choice
 
-from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS
+from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS, DRIBBLE_INDICATOR, PASS_INDICATOR
 from geometry import calculate_full_origin_angle_radians
 from player import actions
 from player.actions import Command, _calculate_relative_angle
@@ -156,14 +157,18 @@ def determine_objective_goalie_default(state: PlayerState):
             or state.world_view.game_state == "kick_in_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "goal_kick_{0}".format(state.world_view.side) \
             or state.world_view.game_state == "offside_{0}".format(opponent_side):
-        debug_msg(str(state.now()) + " | free_kick, corner_kick, kick_in, kick_off, goal_kick, offside -> go to ball or position optimally", "GOALIE")
+        debug_msg(str(
+            state.now()) + " | free_kick, corner_kick, kick_in, kick_off, goal_kick, offside -> go to ball or position optimally",
+                  "GOALIE")
         if _ball_unknown(state):
             return _locate_ball_objective(state)
         if state.is_near_ball(KICKABLE_MARGIN):
             if state.world_view.sim_time - state.action_history.last_look_for_pass_targets > 2:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
             if _choose_pass_target(state, must_pass=True) is not None:
-                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 1)
+                return Objective(state,
+                                 lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)),
+                                 lambda: True, 1)
             else:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
         elif state.is_nearest_ball(1):
@@ -193,13 +198,13 @@ def determine_objective_goalie_default(state: PlayerState):
 
     # If ball coming towards us or ball will hit goal soon -> Intercept
     if ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box()):
-        debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
+        debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!",
+                  "GOALIE")
         intercept_actions = actions.intercept_2(state, "catch")
         if intercept_actions is not None:
             return Objective(state, lambda: intercept_actions)
         else:
             return _rush_to_ball_objective(state)
-
 
     # If position not alligned with ball y-position -> Adjust y-position
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
@@ -242,7 +247,9 @@ def determine_objective_field_default(state: PlayerState):
             if state.world_view.sim_time - state.action_history.last_look_for_pass_targets > 2:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
             if _choose_pass_target(state, must_pass=True) is not None:
-                return Objective(state, lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)), lambda: True, 1)
+                return Objective(state,
+                                 lambda: actions.pass_to_player(state, _choose_pass_target(state, must_pass=True)),
+                                 lambda: True, 1)
             else:
                 return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 2)
         elif state.is_nearest_ball(1):
@@ -298,6 +305,7 @@ def determine_objective_position_only(state: PlayerState):
 
     return _position_optimally_objective(state)
 
+
 def determine_objective_biptest(state: PlayerState):
     # If lost orientation -> blind orient
     if _lost_orientation(state):
@@ -313,7 +321,8 @@ def determine_objective_biptest(state: PlayerState):
         upper_goal: Coordinate = Coordinate(-25 * side, 33)
         if not state.is_near(upper_goal, 2):
             debug_msg("Going to left goal", "BIPTEST")
-            return Objective(state, lambda : actions.rush_to(state, upper_goal), lambda: state.is_near(upper_goal, 0.5), 1000)
+            return Objective(state, lambda: actions.rush_to(state, upper_goal), lambda: state.is_near(upper_goal, 0.5),
+                             1000)
         else:
             if state.world_view.side == "l":
                 global __BIP_TEST_L
@@ -322,7 +331,8 @@ def determine_objective_biptest(state: PlayerState):
                 global __BIP_TEST_R
                 __BIP_TEST_R += 1
             debug_msg("Going to right goal", "BIPTEST")
-            return Objective(state, lambda : actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5), 1000)
+            return Objective(state, lambda: actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5),
+                             1000)
 
 
 def determine_objective(state: PlayerState):
@@ -398,6 +408,7 @@ def _intercept_objective(state):
 def _rush_to_ball_objective(state):
     return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 1)
 
+
 def _jog_to_ball_objective(state):
     return Objective(state, lambda: actions.jog_to_ball(state), lambda: state.is_near_ball(), 1)
 
@@ -408,6 +419,7 @@ def _optimal_goalie_pos(state):
     y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
 
     return Coordinate(state.get_global_start_pos().pos_x, y_value)
+
 
 def _position_optimally_objective(state: PlayerState):
     if "kick_off" in state.world_view.game_state:
@@ -535,7 +547,7 @@ def _optimal_defender_pos(state) -> Coordinate:
 
 
 def _find_player(state, player_num):
-    team_players = state.world_view.get_teammates(state.team_name, max_data_age=4)
+    team_players = state.world_view.get_player_observations(state.team_name, max_data_age=4)
     for p in team_players:
         if p.num is not None and int(p.num) == int(player_num):
             return p
@@ -544,12 +556,35 @@ def _find_player(state, player_num):
 
 def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     """
+    If uppaal has been generated recently -> Follow strat if applicable
     If free targets forward -> Pass forward
     If no free targets forward, but i am not marked -> dribble forward
     If no free targets forward, but free targets behind, and i am marked -> Pass back
     If no free targets and i am marked -> Try to dribble anyway
     :return: Parse target or None, if dribble
     """
+    debug_msg(str(state.now()) + "Choosing pass target", "DRIBBLE_PASS_MODEL")
+    # Act according to Possession model
+    if state.dribble_or_pass_strat.is_value_known(state.now() - 8):
+        debug_msg("Following uppaal DribbleOrPass strategy :" + str(state.dribble_or_pass_strat.get_value())
+                  , "DRIBBLE_PASS_MODEL")
+        strat = state.dribble_or_pass_strat.get_value()
+        if DRIBBLE_INDICATOR in strat:
+            if not must_pass:
+                debug_msg(str(state.now()) + " Dribble!", "DRIBBLE_PASS_MODEL")
+                return None
+        else:
+            match = re.match(r'.*\(([^,]*), ([^)]*)\)', strat)
+            x = float(match.group(1))
+            y = float(match.group(2))
+            target = state.find_teammate_closest_to(Coordinate(x, y), max_distance_delta=3.0)
+            if target is not None:
+                debug_msg(str(state.now()) + " DRIBBLE_PASS_MODEL : Playing to :" + str(Coordinate(x, y)), "DRIBBLE_PASS_MODEL")
+                return target
+            else:
+                debug_msg(str(state.now()) + "No teammate matched :" + str(
+                    Coordinate(x, y) + " Visible: " + str(state.world_view.get_teammates(state.team_name, 10)))
+                          , "DRIBBLE_PASS_MODEL")
 
     side = state.world_view.side
 
@@ -577,7 +612,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     if len(forward_team_mates) < 1 and not am_i_marked:
         debug_msg("No free targets forward -> Dribble!", "PASS_TARGET")
         if must_pass:
-            tms = state.world_view.get_teammates(state.team_name, 3)
+            tms = state.world_view.get_player_observations(state.team_name, 3)
             if len(tms) > 0:
                 return random.choice(tms)
         return None
@@ -597,7 +632,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     # If no free targets and i am marked -> Try to dribble anyway
     debug_msg("No free targets forward and i am marked -> Dribble anyway!", "PASS_TARGET")
     if must_pass:
-        tms = state.world_view.get_teammates(state.team_name, 3)
+        tms = state.world_view.get_player_observations(state.team_name, 3)
         if len(tms) > 0:
             return random.choice(tms)
     return None
@@ -612,3 +647,4 @@ def team_has_corner_kick(state):
             return True
 
     return False
+

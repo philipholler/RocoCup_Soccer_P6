@@ -35,6 +35,9 @@ class Coordinate:
     def euclidean_distance_from(self, other):
         return math.sqrt((self.pos_x - other.pos_x) ** 2 + (self.pos_y - other.pos_y) ** 2)
 
+    def vector(self):
+        return Vector2D(self.pos_x, self.pos_y)
+
 
 def angle_between(c1, c2, c3):
     angle = atan2(c3.pos_y - c1.pos_y, c3.pos_x - c1.pos_x) - atan2(c2.pos_y - c1.pos_y, c2.pos_x - c1.pos_x)
@@ -211,3 +214,22 @@ class Vector2D:
 
 def inverse_y_axis(degrees):
     return (360 - degrees) % 360
+
+
+def calculate_absolute_velocity(observer_velocity: Vector2D, distance, global_dir, dist_change, dir_change):
+    if dir_change is None or dist_change is None or observer_velocity is None:
+        return None
+
+    # First calculate relative velocity
+    rel_velocity_x = dist_change
+    rel_velocity_y = (-math.radians(dir_change)) * distance
+    relative_velocity_vector = Vector2D(rel_velocity_x, rel_velocity_y)
+    rel_speed = relative_velocity_vector.magnitude()
+
+    # Rotate to match our coordinate system
+    velocity_angle = (math.radians(inverse_y_axis(global_dir)) + math.atan2(rel_velocity_y, rel_velocity_x))
+    rel_velocity_x = rel_speed * math.cos(velocity_angle)
+    rel_velocity_y = rel_speed * math.sin(velocity_angle)
+
+    # Add observer velocity to relative velocity to get absolute velocity
+    return observer_velocity + Vector2D(rel_velocity_x, rel_velocity_y)

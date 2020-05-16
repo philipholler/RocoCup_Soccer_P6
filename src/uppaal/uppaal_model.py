@@ -270,7 +270,7 @@ class UppaalModel:
             if decl.ident == decl_name:
                 decl.val = new_value
                 return
-        raise NameError(new_value)
+        raise NameError(decl_name)
 
     def set_system_decl_arguments(self, identity: str, arguments: [str]):
         for sys_decl in self.system_decls:

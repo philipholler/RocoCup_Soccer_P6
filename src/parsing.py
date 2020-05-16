@@ -6,7 +6,7 @@ from time import time
 from shapely.geometry import Polygon
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
-from constants import WARNING_PREFIX, QUANTIZE_STEP_LANDMARKS
+from constants import WARNING_PREFIX, QUANTIZE_STEP_LANDMARKS, DRIBBLE_OR_PASS_STRAT_PREFIX
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
     calculate_full_origin_angle_radians, smallest_angle_difference, find_mean_angle
 from player import player, world_objects
@@ -760,14 +760,14 @@ def _parse_players(players: [], ps: player.PlayerState):
         elif len(split_by_whitespaces) == 4:
             distance = float(split_by_whitespaces[0])
             direction = float(split_by_whitespaces[1])
-            dist_chng = split_by_whitespaces[2]
-            dir_chng = split_by_whitespaces[3]
+            dist_chng = float(split_by_whitespaces[2])
+            dir_chng = float(split_by_whitespaces[3])
         # If Distance Direction DistChange DirChange BodyFacingDir HeadFacingDir [PointDir]
         elif len(split_by_whitespaces) >= 6:
             distance = float(split_by_whitespaces[0])
             direction = float(split_by_whitespaces[1])
-            dist_chng = split_by_whitespaces[2]
-            dir_chng = split_by_whitespaces[3]
+            dist_chng = float(split_by_whitespaces[2])
+            dir_chng = float(split_by_whitespaces[3])
             body_dir = float(split_by_whitespaces[4])
             head_dir = float(split_by_whitespaces[5])
 
@@ -775,7 +775,7 @@ def _parse_players(players: [], ps: player.PlayerState):
         other_player_coord = PrecariousData.unknown()
 
         direction += ps.body_state.neck_angle  # Accommodates non-zero neck-angles
-
+        global_dir = None if ps.face_dir.get_value() is None else ps.face_dir.get_value() + direction
         if ps.position.is_value_known():
             other_player_coord = get_object_position(object_rel_angle=direction, dist_to_obj=distance,
                                                      my_x=my_pos.pos_x, my_y=my_pos.pos_y,
@@ -783,7 +783,8 @@ def _parse_players(players: [], ps: player.PlayerState):
 
         new_player = ObservedPlayer(team=team, num=num, distance=distance, direction=direction, dist_chng=dist_chng
                                     , dir_chng=dir_chng, body_dir=body_dir, head_dir=head_dir, is_goalie=is_goalie
-                                    , coord=other_player_coord)
+                                    , coord=other_player_coord, global_dir=global_dir,
+                                    observer_velocity=ps.get_y_north_velocity_vector())
 
         ps.world_view.update_player_view(new_player)
 
@@ -1314,5 +1315,9 @@ def parse_strat_player(state: PlayerState):
                 state.body_state.jog_dash_power = dash_power * 0.6
                 state.body_state.dribble_dash_power = dash_power * 0.65
                 state.action_history.last_stamina_strat_generated = state.now()
+            if DRIBBLE_OR_PASS_STRAT_PREFIX in strat:
+                state.last_dribble_pass_strat = state.now()
+                state.dribble_or_pass_strat.set_value(strat, state.now())
+                debug_msg(str(state.now()) + " DribbleOrPass result: " + strat, "DRIBBLE_PASS_MODEL")
 
     state.strategy_result_list.clear()
