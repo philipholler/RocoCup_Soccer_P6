@@ -34,14 +34,12 @@ def parse_logs():
 
     game_number_path = Path(__file__).parent.parent / "Statistics" / "game_number.txt"
 
-    if game_number_path.exists():
-        with open(game_number_path, "r+") as file:
+    try:
+        with open(game_number_path, "r") as file:
             global _GAME_NUMBER
             _GAME_NUMBER = int(file.readline())
-
-    else:
-        with open(game_number_path, "w") as file:
-            file.write(str(_GAME_NUMBER))
+    except:
+        print("number not in file")
 
     # init number of players
     with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
@@ -120,6 +118,14 @@ def parse_logs():
         if t.side == "r":
             file_r_stamina.write(write_stamina_file(game, t))
 
+    if _GOALIE_DEFENCE_STAT:
+        goalie_defence_dir = Path(__file__).parent.parent / "Statistics" / "goalie_defence"
+        if not goalie_defence_dir.exists():
+            os.makedirs(goalie_defence_dir)
+
+        with open(os.path.join(goalie_defence_dir, "goalie_defence.csv"), "a") as file:
+            file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _START_TICK, _END_TICK)) + "\n")
+
     make_kick_dict(game)
 
     # file, game, real_kicks, steps
@@ -147,14 +153,6 @@ def parse_logs():
     for file in files:
         file.close()
 
-    if _GOALIE_DEFENCE_STAT:
-        goalie_defence_dir = Path(__file__).parent.parent / "Statistics" / "goalie_defence"
-        if not goalie_defence_dir.exists():
-            os.makedirs(goalie_defence_dir)
-
-        with open(os.path.join(goalie_defence_dir, "goalie_defence.csv"), "w") as file:
-            file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _START_TICK, _END_TICK)) + "\n")
-
 
 def if_goalie_defence(on: bool, start_tick, end_tick):
     if on:
@@ -168,15 +166,16 @@ def if_goalie_defence(on: bool, start_tick, end_tick):
 
 def is_goalie_near_ball(game: Game, start_tick, end_tick):
     goalie = None
-    for x in range(start_tick, end_tick):
+    for x in range(start_tick, end_tick + 1):
         stage = game.show_time[x]
-        for player in stage.players:
-            if player.side == "r" and player.no == "1":
-                goalie = player
-            if goalie is None:
-                return False
+        for g in stage.goalies:
+            if g.side == "r":
+                goalie = g
+        if goalie is None:
+            print("goalie is none!!")
+            return False
         if get_distance_between_coords(Coordinate(stage.ball.x_coord, stage.ball.y_coord),
-                                           Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
+                                       Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
             return True
     return False
 
@@ -401,7 +400,7 @@ def write_possession_file(game: Game):
 
     # now = datetime.now().strftime("%Y%m%d%H%M%S")
     file_name = "possession.csv"
-    file_possession = open(possession_dir / file_name, "w")
+    file_possession = open(possession_dir / file_name, "a")
     file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_length) + "\n")
 
 
@@ -425,6 +424,8 @@ def parse_init_action(txt, game: Game):
     init_regex = "{0},{0}\tRecv (.*)_{0}:".format(_SIGNED_INT_REGEX)
     init_re = re.compile(init_regex)
     matched = init_re.match(txt)
+
+    # print(str(matched.group(1)) + " team name")
 
     for team in game.teams:
         if team.name == matched.group(1):
@@ -540,9 +541,13 @@ def parse_show_line(txt, game: Game):
     for p in players:
         player = parse_player(p)
         # check if the parsed player is initiated
+
         for team in game.teams:
-            if player.side == team.side and player.no in range(team.number_of_players + 1):
+            if team.side == player.side and player.no in range(1, team.number_of_players + 1):
                 stage.players.append(player)
+                if player.no == 1:
+                    #player.print_player()
+                    stage.goalies.append(player)
 
     distance_to_ball(stage)
     insert_kicks(stage)

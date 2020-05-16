@@ -41,6 +41,7 @@ class Stage:
         self.team_r_kicks = 0
         self.team_l_real_kicks = 0
         self.team_r_real_kicks = 0
+        self.goalies = []
 
     def print_stage(self):
 

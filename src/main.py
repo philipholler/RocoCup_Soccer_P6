@@ -95,8 +95,8 @@ try:
                 pass
 
             try:
-                with open(game_number_path) as file:
-                    file.truncate(0)
+                with open(game_number_path, "w") as file:
+                    print(str(game_number_path))
                     file.write(str(game_number))
                     game_number += 1
             except Exception:
@@ -121,7 +121,7 @@ try:
         soccersim.start()
 
         with open(game_number_path) as file:
-            file.truncate(0)
+            file.truncate()
             file.write(str(game_number))
             game_number += 1
 
