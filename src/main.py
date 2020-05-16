@@ -1,6 +1,8 @@
 import atexit
+import os
 import random
 import time
+from pathlib import Path
 
 from coaches.trainer import scenarios
 from coaches.world_objects_coach import WorldViewCoach
@@ -40,6 +42,10 @@ COACHES_ENABLED = True
 
 # Enable trainer for a single run
 TRAINER_SINGLE_RUN_ENABLED = True
+
+# game_number file path
+game_number_path = Path(__file__).parent.parent / "Statistics" / "game_number.txt"
+game_number = 1
 
 try:
     # Run multiple games sequentially
@@ -89,6 +95,11 @@ try:
             while trainer.think.world_view.sim_time < TICKS_PER_RUN:
                 pass
 
+            with open(game_number_path) as file:
+                file.truncate(0)
+                file.write(str(game_number))
+                game_number += 1
+
             soccersim.stop()
             soccersim.join()
             print('_' * 200)
@@ -106,6 +117,12 @@ try:
                                          udp_ip=UDP_IP)
 
         soccersim.start()
+
+        with open(game_number_path) as file:
+            file.truncate(0)
+            file.write(str(game_number))
+            game_number += 1
+
 
 except KeyboardInterrupt:
     shut_down_gracefully()

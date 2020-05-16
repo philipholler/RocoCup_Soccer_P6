@@ -32,14 +32,13 @@ def parse_logs():
     action_log_name = get_newest_action_log()
     parse_log_name(server_log_name, game)
 
-    game_number_path = Path(__file__).parent.parent / "game_number"
+    game_number_path = Path(__file__).parent.parent / "Statistics" / "game_number.txt"
 
     if game_number_path.exists():
         with open(game_number_path, "r+") as file:
             global _GAME_NUMBER
             _GAME_NUMBER = int(file.readline())
-            file.truncate(0)
-            file.write(str(_GAME_NUMBER + 1))
+
     else:
         with open(game_number_path, "w") as file:
             file.write(str(_GAME_NUMBER))
@@ -75,7 +74,7 @@ def parse_logs():
     calculate_possession(game)
     calculate_stamina(game)
 
-    log_directory = Path(__file__).parent.parent / game.gameID
+    log_directory = Path(__file__).parent.parent / "Statistics" / game.gameID
     os.makedirs(log_directory)
 
     with open(os.path.join(log_directory, "game_goals.txt"), "w") as file:
@@ -149,7 +148,7 @@ def parse_logs():
         file.close()
 
     if _GOALIE_DEFENCE_STAT:
-        goalie_defence_dir = Path(__file__).parent.parent / "goalie_defence"
+        goalie_defence_dir = Path(__file__).parent.parent / "Statistics" / "goalie_defence"
         if not goalie_defence_dir.exists():
             os.makedirs(goalie_defence_dir)
 
@@ -171,7 +170,7 @@ def is_goalie_near_ball(game: Game, start_tick, end_tick):
     goalie = None
     for x in range(start_tick, end_tick):
         stage = game.show_time[x]
-        for player in stage:
+        for player in stage.players:
             if player.side == "r" and player.no == "1":
                 goalie = player
             if goalie is None:
@@ -396,12 +395,12 @@ def calculate_possession_length(start_ball: Ball, last_ball: Ball):
 
 
 def write_possession_file(game: Game):
-    possession_dir = Path(__file__).parent.parent / "possessions"
+    possession_dir = Path(__file__).parent.parent / "Statistics" / "possessions"
     if not possession_dir.exists():
         os.makedirs(possession_dir)
 
     # now = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = "possession"
+    file_name = "possession.csv"
     file_possession = open(possession_dir / file_name, "w")
     file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_length) + "\n")
 
