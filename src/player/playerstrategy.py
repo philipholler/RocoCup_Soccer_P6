@@ -345,7 +345,6 @@ def determine_objective_goalie_positioning_striker(state: PlayerState):
         return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
 
     side = 1 if state.world_view.side == "l" else -1
-    print(state.goalie_position_strat_have_dribbled)
     if state.world_view.sim_time > 75 and len(state.coach_commands) > 0:
         # First check for dribble, and dribble if needed
         dribble_in_commands: bool = False

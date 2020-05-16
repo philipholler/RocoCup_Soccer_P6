@@ -30,9 +30,9 @@ team_names = ["Team1", "Team2"]
 num_players = 2
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_MODE = False
-NUM_SIMULATIONS = 3
-TICKS_PER_RUN = 150
+MORE_SCENARIOS_MODE = True
+NUM_SIMULATIONS = 10
+TICKS_PER_RUN = 125
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
 DEBUG_DICT["ALL"] = False
@@ -43,8 +43,8 @@ COACHES_ENABLED = True
 # Enable trainer for a single run
 TRAINER_SINGLE_RUN_ENABLED = True
 
-# game_number file path
-game_number_path = Path(__file__).parent.parent / "Statistics" / "game_number.txt"
+# Logparser stuffs
+game_number_path = Path(__file__).parent / "Statistics" / "game_number.txt"
 game_number = 1
 
 try:
@@ -52,7 +52,6 @@ try:
     if MORE_SCENARIOS_MODE:
         random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
-
             # Generate passing strat
             """commands, coach_msg = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
                                                                                      wv=WorldViewCoach(0, "Team1"))"""
@@ -95,10 +94,13 @@ try:
             while trainer.think.world_view.sim_time < TICKS_PER_RUN:
                 pass
 
-            with open(game_number_path) as file:
-                file.truncate(0)
-                file.write(str(game_number))
-                game_number += 1
+            try:
+                with open(game_number_path) as file:
+                    file.truncate(0)
+                    file.write(str(game_number))
+                    game_number += 1
+            except Exception:
+                print("Log parser failed")
 
             soccersim.stop()
             soccersim.join()

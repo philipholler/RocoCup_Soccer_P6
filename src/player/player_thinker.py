@@ -75,13 +75,13 @@ class Thinker(threading.Thread):
                 if self.player_state.should_reset_to_start_position:
                     self.move_back_to_start_pos()
 
+            # If some result of a strategy generation has been returned to the result var
+            if len(self.player_state.strategy_result_list) > 0:
+                parsing.parse_strat_player(self.player_state)
             # look for strat:
             if not self.player_state.is_generating_strategy and strategy.has_applicable_strat_player(self.player_state):
                 self.player_state.is_generating_strategy = True
                 threading.Thread(target=generate_strategy, args=(self.player_state, )).start()
-            # If some result of a strategy generation has been returned to the result var
-            if len(self.player_state.strategy_result_list) > 0:
-                parsing.parse_strat_player(self.player_state)
 
             current_time = time.time()
             time_since_action += current_time - last_time
