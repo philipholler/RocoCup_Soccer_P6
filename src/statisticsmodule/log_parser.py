@@ -19,7 +19,8 @@ _LOWEST_STAMINA = 1000
 _HIGHEST_DIST_GOALIE = 0.3
 
 _GOALIE_DEFENCE_STAT = False
-_LIST_OF_TICKLISTS = []
+_START_TICK = 0
+_END_TICK = 0
 
 _GAME_NUMBER = 1
 
@@ -153,22 +154,23 @@ def parse_logs():
             os.makedirs(goalie_defence_dir)
 
         with open(os.path.join(goalie_defence_dir, "goalie_defence.csv"), "w") as file:
-            for x in _LIST_OF_TICKLISTS:
-                file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _LIST_OF_TICKLISTS[x])) + "\n")
+            file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _START_TICK, _END_TICK)) + "\n")
 
 
-def if_goalie_defence(on: bool, list_of_ticklists: []):
+def if_goalie_defence(on: bool, start_tick, end_tick):
     if on:
         global _GOALIE_DEFENCE_STAT
         _GOALIE_DEFENCE_STAT = True
-        global _LIST_OF_TICKLISTS
-        _LIST_OF_TICKLISTS = list_of_ticklists
+        global _START_TICK
+        _START_TICK = start_tick
+        global _END_TICK
+        _END_TICK = end_tick
 
 
-def is_goalie_near_ball(game: Game, ticks: []):
+def is_goalie_near_ball(game: Game, start_tick, end_tick):
     goalie = None
-    for x in ticks:
-        stage = game.show_time[ticks[x]]
+    for x in range(start_tick, end_tick):
+        stage = game.show_time[x]
         for player in stage:
             if player.side == "r" and player.no == "1":
                 goalie = player
