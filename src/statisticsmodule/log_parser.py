@@ -21,6 +21,8 @@ _HIGHEST_DIST_GOALIE = 0.3
 _GOALIE_DEFENCE_STAT = False
 _LIST_OF_TICKLISTS = []
 
+_GAME_NUMBER = 1
+
 
 # Main method
 def parse_logs():
@@ -28,6 +30,18 @@ def parse_logs():
     server_log_name = get_newest_server_log()
     action_log_name = get_newest_action_log()
     parse_log_name(server_log_name, game)
+
+    game_number_path = Path(__file__).parent.parent / "game_number"
+
+    if game_number_path.exists():
+        with open(game_number_path, "r+") as file:
+            global _GAME_NUMBER
+            _GAME_NUMBER = int(file.readline())
+            file.truncate(0)
+            file.write(str(_GAME_NUMBER + 1))
+    else:
+        with open(game_number_path, "w") as file:
+            file.write(str(_GAME_NUMBER))
 
     # init number of players
     with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
@@ -134,9 +148,13 @@ def parse_logs():
         file.close()
 
     if _GOALIE_DEFENCE_STAT:
-        with open(os.path.join(log_directory, "goalie_defence.csv"), "w") as file:
+        goalie_defence_dir = Path(__file__).parent.parent / "goalie_defence"
+        if not goalie_defence_dir.exists():
+            os.makedirs(goalie_defence_dir)
+
+        with open(os.path.join(goalie_defence_dir, "goalie_defence.csv"), "w") as file:
             for x in _LIST_OF_TICKLISTS:
-                file.write(str(is_goalie_near_ball(game, _LIST_OF_TICKLISTS[x])) + "\n")
+                file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _LIST_OF_TICKLISTS[x])) + "\n")
 
 
 def if_goalie_defence(on: bool, list_of_ticklists: []):
@@ -380,10 +398,10 @@ def write_possession_file(game: Game):
     if not possession_dir.exists():
         os.makedirs(possession_dir)
 
-    now = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = "possession_" + now
+    # now = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_name = "possession"
     file_possession = open(possession_dir / file_name, "w")
-    file_possession.write(str(game.possession_length))
+    file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_length) + "\n")
 
 
 # Gets the newest server log ".rcg"
