@@ -83,7 +83,8 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
             goalie_new_x = math.floor(state.position.get_value().pos_x / steps_per_meter) * steps_per_meter
             goalie_new_y = math.floor(state.position.get_value().pos_y / steps_per_meter) * steps_per_meter
             # Example: "(36.5, -19.5),(47.5, -8.5)" -> "(goalie_x, goalie_y),(player_x, player_y)"
-            key = "({0}, {1}),({2}, {3})".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x), str(possessor_new_y))
+            key = "({0}.0, {1}.0),({2}.0, {3}.0)".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x), str(possessor_new_y))
+            print("looking with key: ", key)
             if key in state.goalie_position_dict.keys():
                 print("KEY FOUND! key={0}, value={1}".format(key, state.goalie_position_dict[key]))
                 return "(head {0})".format(state.goalie_position_dict[key])

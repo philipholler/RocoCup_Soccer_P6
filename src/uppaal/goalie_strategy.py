@@ -94,10 +94,10 @@ def _generate_positions(bound: (Coordinate, Coordinate), steps_per_meter):
     return positions
 
 
-def _convert_coordinate(coord: Coordinate, steps_per_meter):
-    new_x = floor(coord.pos_x / steps_per_meter) * steps_per_meter
-    new_y = floor(coord.pos_y / steps_per_meter) * steps_per_meter
-    return Coordinate(new_x, new_y)
+def _convert_coordinate(x, y, steps_per_meter):
+    new_x = floor(x / steps_per_meter) * steps_per_meter
+    new_y = floor(y / steps_per_meter) * steps_per_meter
+    return new_x, new_y
 
 
 def get_result_dict() -> {}:
@@ -130,6 +130,7 @@ if __name__ == "__main__":
         with open(str(STATIC_MODEL_RESULTS) + '/GoaliePositioning.json', 'w') as fp:
             json.dump(pos_to_act_dict, fp)
     after = int(time.time())
+
     print("Time elapsed in seconds: {}".format(str(after - before)))
 
 
