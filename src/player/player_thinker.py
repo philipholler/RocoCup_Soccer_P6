@@ -82,7 +82,6 @@ class Thinker(threading.Thread):
             # If some result of a strategy generation has been returned to the result var
             if len(self.player_state.strategy_result_list) > 0:
                 parsing.parse_strat_player(self.player_state)
-                self.player_state.strategy_result = None
 
             current_time = time.time()
             time_since_action += current_time - last_time

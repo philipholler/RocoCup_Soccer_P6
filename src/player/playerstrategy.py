@@ -196,12 +196,21 @@ def determine_objective_goalie_default(state: PlayerState):
 
     # If ball coming towards us or ball will hit goal soon -> Intercept
     if (ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box())) and state.now() > 74:
-        debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
-        intercept_actions = actions.intercept_2(state, "catch")
-        if intercept_actions is not None:
-            return Objective(state, lambda: intercept_actions)
+        if constants.USING_GOALIE_POSITION_MODEL:
+            if state.now() > 74:
+                debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
+                intercept_actions = actions.intercept_2(state, "catch")
+                if intercept_actions is not None:
+                    return Objective(state, lambda: intercept_actions)
+                else:
+                    return _rush_to_ball_objective(state)
         else:
-            return _rush_to_ball_objective(state)
+            debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
+            intercept_actions = actions.intercept_2(state, "catch")
+            if intercept_actions is not None:
+                return Objective(state, lambda: intercept_actions)
+            else:
+                return _rush_to_ball_objective(state)
 
 
     # If position not alligned with ball y-position -> Adjust y-position
@@ -336,7 +345,7 @@ def determine_objective_goalie_positioning_striker(state: PlayerState):
         return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
 
     side = 1 if state.world_view.side == "l" else -1
-
+    print(state.goalie_position_strat_have_dribbled)
     if state.world_view.sim_time > 75 and len(state.coach_commands) > 0:
         # First check for dribble, and dribble if needed
         dribble_in_commands: bool = False
@@ -346,7 +355,7 @@ def determine_objective_goalie_positioning_striker(state: PlayerState):
                 dribble_in_commands = True
                 dribble_dir = int(str(cmd).replace("(dribble ", "")[:-1])
                 state.goalie_position_strat_have_dribbled = True
-                return Objective(state, lambda: actions.dribble(state, int(dribble_dir)), lambda: False, 1)
+                return Objective(state, lambda: actions.dribble(state, int(dribble_dir), dribble_kick_power=20), lambda: True, 1)
 
         # If already dribble or should not dribble
         if not dribble_in_commands or state.goalie_position_strat_have_dribbled:

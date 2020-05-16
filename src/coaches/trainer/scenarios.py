@@ -44,7 +44,7 @@ def generate_commands_coachmsg_goalie_positioning(random_seed: int, wv: WorldVie
     goalie_y_pos = 0
     goalie = ("Team2", 1, goalie_x_pos, goalie_y_pos)
 
-    ball_x_pos = striker_x_pos
+    ball_x_pos = striker_x_pos + 0.4
     ball_y_pos = striker_y_pos
     ball = (ball_x_pos, ball_y_pos)
 
@@ -52,12 +52,18 @@ def generate_commands_coachmsg_goalie_positioning(random_seed: int, wv: WorldVie
 
     should_dribble = bool(random.getrandbits(1))
     if should_dribble:
-        # Dribble up
-        if bool(random.getrandbits(1)):
+        # If standing high, always dribble down
+        if striker_y_pos > 10:
             direction = random.randint(270, 360)
-        # Dribble down
-        else:
+        # If standing low, always dribble up
+        elif striker_y_pos < -10:
             direction = random.randint(0, 90)
+        # Else dribble randomly
+        else:
+            if bool(random.getrandbits(1)):
+                direction = random.randint(270, 360)
+            else:
+                direction = random.randint(0, 90)
 
     striker_target_y = random.randint(-5, 5)
 

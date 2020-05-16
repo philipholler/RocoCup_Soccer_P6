@@ -87,7 +87,6 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
             key = "({0}.0, {1}.0),({2}.0, {3}.0)".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x), str(possessor_new_y))
             if key in state.goalie_position_dict.keys():
                 result = state.goalie_position_dict[key]
-                print("KEY FOUND RESULT! key={0}, value={1}".format(key, result))
                 optimal_x = int(goalie_new_x + result[0])
                 optimal_y = int(goalie_new_y + result[1])
                 optimal_coord = Coordinate(optimal_x, optimal_y)

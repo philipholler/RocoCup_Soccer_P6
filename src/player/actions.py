@@ -940,10 +940,13 @@ def positional_adjustment(state, adjustment: Coordinate):
     return command_builder.command_list
 
 
-def dribble(state: PlayerState, dir: int):
+def dribble(state: PlayerState, dir: int, dribble_kick_power=None):
     command_builder = CommandBuilder()
     dribble_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=dir)
-    command_builder.append_kick(state, state.body_state.dribble_kick_power, dribble_dir)
+    if dribble_kick_power is not None:
+        command_builder.append_kick(state, dribble_kick_power, dribble_dir)
+    else:
+        command_builder.append_kick(state, state.body_state.dribble_kick_power, dribble_dir)
     command_builder.next_tick()
     command_builder.append_turn_action(state, _calculate_turn_moment(state.body_state.speed, dribble_dir))
     command_builder.next_tick()
