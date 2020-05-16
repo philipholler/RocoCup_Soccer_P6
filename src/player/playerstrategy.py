@@ -147,7 +147,7 @@ def determine_objective_goalie_default(state: PlayerState):
     # If some fault has been made by our team -> Position optimally
     if "fault_{0}".format(state.world_view.side) in state.world_view.game_state:
         debug_msg(str(state.now()) + " | Team made fault -> position optimally", "GOALIE")
-        return _position_optimally_objective(state)
+        return _position_optimally_objective_goalie(state)
 
     # If we have a free kick, corner_kick, kick_in, kick_off or goal_kick
     # If closest -> Go to ball and pass, else position optimally
@@ -169,7 +169,7 @@ def determine_objective_goalie_default(state: PlayerState):
         elif state.is_nearest_ball(1):
             return _jog_to_ball_objective(state)
         else:
-            return _position_optimally_objective(state)
+            return _position_optimally_objective_goalie(state)
 
     ball: Ball = state.world_view.ball.get_value()
 
@@ -183,16 +183,16 @@ def determine_objective_goalie_default(state: PlayerState):
         debug_msg(str(state.now()) + " | in possession, pass target not found -> look for pass target", "GOALIE")
         return Objective(state, lambda: actions.look_for_pass_target(state), lambda: True, 1)
 
-    """# If ball coming to goalie inside box -> Catch ball
+    # If ball coming to goalie inside box -> Catch ball
     positions = ball.project_ball_position(2, 0)
     if positions is not None and state.is_inside_own_box():
         debug_msg(str(state.now()) + " | Ball incoming inside box -> Catch ball", "GOALIE")
         ball_pos_1_tick: Coordinate = positions[0]
         if ball_pos_1_tick.euclidean_distance_from(state.position.get_value()) < CATCHABLE_MARGIN:
-            return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)"""
+            return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)
 
     # If ball coming towards us or ball will hit goal soon -> Intercept
-    if ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box()):
+    if (ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box())) and state.now() > 74:
         debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
         intercept_actions = actions.intercept_2(state, "catch")
         if intercept_actions is not None:
@@ -204,10 +204,7 @@ def determine_objective_goalie_default(state: PlayerState):
     # If position not alligned with ball y-position -> Adjust y-position
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
         debug_msg(str(state.now()) + " | Position not optimal -> adjust position", "GOALIE")
-        optimal_position: Coordinate = _optimal_goalie_pos(state)
-        delta = 1.5
-        if optimal_position.euclidean_distance_from(state.position.get_value()) > delta:
-            return _position_optimally_objective(state)
+        return _position_optimally_objective_goalie(state)
 
     # If nothing to do -> Face ball
     debug_msg(str(state.now()) + " | Nothing to do -> Face ball", "GOALIE")
@@ -296,6 +293,8 @@ def determine_objective_position_only(state: PlayerState):
     if _ball_unknown(state):
         return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
 
+    if state.player_type == "goalie":
+        return _position_optimally_objective_goalie(state)
     return _position_optimally_objective(state)
 
 def determine_objective_biptest(state: PlayerState):
@@ -324,8 +323,46 @@ def determine_objective_biptest(state: PlayerState):
             debug_msg("Going to right goal", "BIPTEST")
             return Objective(state, lambda : actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5), 1000)
 
+def determine_objective_goalie_positioning_striker(state: PlayerState):
+    # If lost orientation -> blind orient
+    if _lost_orientation(state):
+        return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
+
+    # If ball unknown -> locate ball
+    if _ball_unknown(state):
+        return Objective(state, lambda: actions.locate_ball(state), lambda: True, 1)
+
+    side = 1 if state.world_view.side == "l" else -1
+
+    if state.world_view.sim_time > 75 and len(state.coach_commands) > 0:
+        # First check for dribble, and dribble if needed
+        dribble_in_commands: bool = False
+        for command in state.coach_commands:
+            cmd = command.get_value()
+            if "dribble" in cmd and not state.goalie_position_strat_have_dribbled:
+                dribble_in_commands = True
+                dribble_dir = int(str(cmd).replace("(dribble ", "")[:-1])
+                state.goalie_position_strat_have_dribbled = True
+                return Objective(state, lambda: actions.dribble(state, int(dribble_dir)), lambda: False, 1)
+
+        # If already dribble or should not dribble
+        if not dribble_in_commands or state.goalie_position_strat_have_dribbled:
+            if not state.is_near_ball():
+                return _rush_to_ball_objective(state)
+
+            if state.world_view.sim_time > 75:
+                for command in state.coach_commands:
+                    cmd = command.get_value()
+                    if "striker_target_y" in cmd:
+                        target_y_value = int(cmd[cmd.index(" ") + 1:-1])
+
+                return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, target_y_value), 75), lambda: True, 1)
+
+    return Objective(state, lambda: [], lambda: True, 1)
 
 def determine_objective(state: PlayerState):
+    if state.objective_behaviour == "goalie_positioning_striker":
+        return determine_objective_goalie_positioning_striker(state)
     if state.objective_behaviour == "position_optimally":
         return determine_objective_position_only(state)
     if state.objective_behaviour == "biptest":
@@ -402,12 +439,41 @@ def _jog_to_ball_objective(state):
     return Objective(state, lambda: actions.jog_to_ball(state), lambda: state.is_near_ball(), 1)
 
 
-def _optimal_goalie_pos(state):
-    ball: Ball = state.world_view.ball.get_value()
+def _optimal_goalie_pos(state: PlayerState):
+    if state.goalie_position_strategy is not None:
+        optimal_coord = Coordinate(state.goalie_position_strategy.pos_x, state.goalie_position_strategy.pos_y)
+        state.goalie_position_strategy = None
+        return optimal_coord
+    else:
+        return state.position.get_value()
+
+    # Old manual solution. Probably better, but not from Uppaal
+    """ball: Ball = state.world_view.ball.get_value()
 
     y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
 
-    return Coordinate(state.get_global_start_pos().pos_x, y_value)
+    return Coordinate(state.get_global_start_pos().pos_x, y_value)"""
+
+def _position_optimally_objective_goalie(state: PlayerState):
+    if "kick_off" in state.world_view.game_state:
+        # If already close to starting position, do idle orientation
+        if state.position.get_value().euclidean_distance_from(state.get_global_start_pos()) < 2:
+            return Objective(state, lambda: actions.idle_orientation(state), lambda: True)
+        return Objective(state, lambda: actions.jog_to(state, state.get_global_start_pos()), lambda: True)
+
+    optimal_position = _optimal_goalie_pos(state)
+
+    current_position: Coordinate = state.position.get_value()
+    dist = current_position.euclidean_distance_from(optimal_position)
+
+    if dist > 6.0:
+        target = optimal_position
+        return Objective(state, lambda: actions.rush_to(state, target), lambda: True)
+    if dist > 0.8:
+        difference = optimal_position - current_position
+        return Objective(state, lambda: actions.positional_adjustment(state, difference), lambda: True)
+    else:
+        return Objective(state, lambda: actions.idle_orientation(state), lambda: True)
 
 def _position_optimally_objective(state: PlayerState):
     if "kick_off" in state.world_view.game_state:

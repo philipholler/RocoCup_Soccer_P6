@@ -24,13 +24,13 @@ UDP_IP = "127.0.0.1"
 UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
 
 # Add teams and players here
-team_names = ["Poop1", "Poop2"]
+team_names = ["Team1", "Team2"]
 num_players = 2
 
 # Enable for more runs. Trainer is always enabled for multiple runs
 MORE_SCENARIOS_MODE = False
 NUM_SIMULATIONS = 3
-TICKS_PER_RUN = 200
+TICKS_PER_RUN = 150
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
 DEBUG_DICT["ALL"] = False
@@ -44,12 +44,16 @@ TRAINER_SINGLE_RUN_ENABLED = True
 try:
     # Run multiple games sequentially
     if MORE_SCENARIOS_MODE:
-        random.seed(123456789)
+        random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
 
-            # Generate random scenario and return commands to trainer and msg for coach
-            commands, coach_msg = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
-                                                                                     wv=WorldViewCoach(0, "Team1"))
+            # Generate passing strat
+            """commands, coach_msg = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
+                                                                                     wv=WorldViewCoach(0, "Team1"))"""
+
+            # For coach positioning strategy
+            commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(random.randint(0, 1000000000),
+                                                                                          wv=WorldViewCoach(0, "Team1"))
 
             soccersim: SoccerSim = SoccerSim(team_names=team_names,
                                              num_players=num_players,
@@ -73,8 +77,9 @@ try:
 
 
             # Give commands from coach
-            print("Coach sending: ", coach_msg)
-            soccersim.coach_1.think.say_strat(coach_msg)
+            print("Coach sending: ", coach_msgs)
+            for msg in coach_msgs:
+                soccersim.coach_1.think.say(msg)
 
             trainer = soccersim.trainer
 
