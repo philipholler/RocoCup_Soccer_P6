@@ -2,6 +2,9 @@ import math
 import random
 from random import choice
 
+import constant
+
+import constants
 from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS
 from geometry import calculate_full_origin_angle_radians
 from player import actions
@@ -440,19 +443,19 @@ def _jog_to_ball_objective(state):
 
 
 def _optimal_goalie_pos(state: PlayerState):
-    if state.goalie_position_strategy is not None:
-        optimal_coord = Coordinate(state.goalie_position_strategy.pos_x, state.goalie_position_strategy.pos_y)
-        state.goalie_position_strategy = None
-        return optimal_coord
+    if constants.USING_GOALIE_POSITION_MODEL:
+        if state.goalie_position_strategy is not None:
+            optimal_coord = Coordinate(state.goalie_position_strategy.pos_x, state.goalie_position_strategy.pos_y)
+            state.goalie_position_strategy = None
+            return optimal_coord
+        else:
+            return state.position.get_value()
     else:
-        return state.position.get_value()
+        ball: Ball = state.world_view.ball.get_value()
 
-    # Old manual solution. Probably better, but not from Uppaal
-    """ball: Ball = state.world_view.ball.get_value()
+        y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
 
-    y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
-
-    return Coordinate(state.get_global_start_pos().pos_x, y_value)"""
+        return Coordinate(state.get_global_start_pos().pos_x, y_value)
 
 def _position_optimally_objective_goalie(state: PlayerState):
     if "kick_off" in state.world_view.game_state:
