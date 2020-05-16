@@ -3,6 +3,7 @@ import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
 from constants import SECONDS_BETWEEN_STAMINA_STRAT, USING_STAMINA_MODEL, USING_GOALIE_POSITION_MODEL
+from geometry import Coordinate
 from uppaal import goalie_strategy
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
 from player.player import WorldView, PlayerState
@@ -75,7 +76,7 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
     if USING_GOALIE_POSITION_MODEL and state.player_type == "goalie":
         ball_possessor = state.get_ball_possessor()
         # Use goaliePositioning strategy
-        if ball_possessor is not None and ball_possessor.coord is not None:
+        if ball_possessor is not None and ball_possessor.coord is not None and state.team_name == "Team2":
             steps_per_meter = goalie_strategy.STEPS_PER_METER
             # Convert coordinate to fit the squares from the strategy
             possessor_new_x = math.floor(ball_possessor.coord.pos_x / steps_per_meter) * steps_per_meter
@@ -84,11 +85,13 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
             goalie_new_y = math.floor(state.position.get_value().pos_y / steps_per_meter) * steps_per_meter
             # Example: "(36.5, -19.5),(47.5, -8.5)" -> "(goalie_x, goalie_y),(player_x, player_y)"
             key = "({0}.0, {1}.0),({2}.0, {3}.0)".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x), str(possessor_new_y))
-            print("looking with key: ", key)
             if key in state.goalie_position_dict.keys():
-                print("KEY FOUND! key={0}, value={1}".format(key, state.goalie_position_dict[key]))
-                return "(head {0})".format(state.goalie_position_dict[key])
-        pass
+                result = state.goalie_position_dict[key]
+                print("KEY FOUND RESULT! key={0}, value={1}".format(key, result))
+                optimal_x = int(goalie_new_x + result[0])
+                optimal_y = int(goalie_new_y + result[1])
+                optimal_coord = Coordinate(optimal_x, optimal_y)
+                state.goalie_position_strategy = optimal_coord
     return None
 
 
