@@ -195,15 +195,14 @@ def determine_objective_goalie_default(state: PlayerState):
             return Objective(state, lambda: actions.catch_ball(state, ball_pos_1_tick), lambda: True, 1)
 
     # If ball coming towards us or ball will hit goal soon -> Intercept
-    if (ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box())) and state.now() > 74:
+    if (ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box())):
         if constants.USING_GOALIE_POSITION_MODEL:
-            if state.now() > 74:
-                debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
-                intercept_actions = actions.intercept_2(state, "catch")
-                if intercept_actions is not None:
-                    return Objective(state, lambda: intercept_actions)
-                else:
-                    return _rush_to_ball_objective(state)
+            debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
+            intercept_actions = actions.intercept_2(state, "catch")
+            if intercept_actions is not None:
+                return Objective(state, lambda: intercept_actions)
+            else:
+                return _rush_to_ball_objective(state)
         else:
             debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
             intercept_actions = actions.intercept_2(state, "catch")
@@ -451,7 +450,6 @@ def _jog_to_ball_objective(state):
 
 
 def _optimal_goalie_pos(state: PlayerState):
-    return Coordinate(52, 0)
     if constants.USING_GOALIE_POSITION_MODEL:
         if state.goalie_position_strategy is not None:
             optimal_coord = Coordinate(state.goalie_position_strategy.pos_x, state.goalie_position_strategy.pos_y)
