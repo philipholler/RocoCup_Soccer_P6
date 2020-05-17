@@ -29,6 +29,9 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
 team_names = ["Team1", "Team2"]
 num_players = 2
 
+# Enable monitor
+monitor_enabled = True
+
 # Enable for more runs. Trainer is always enabled for multiple runs
 MORE_SCENARIOS_MODE = True
 NUM_SIMULATIONS = 100
@@ -67,7 +70,8 @@ try:
                                              udp_player=UDP_PORT_PLAYER,
                                              udp_trainer=UDP_PORT_TRAINER,
                                              udp_coach=UDP_PORT_COACH,
-                                             udp_ip=UDP_IP)
+                                             udp_ip=UDP_IP,
+                                             enable_monitor=monitor_enabled)
 
             soccersim.start()
 
