@@ -16,7 +16,7 @@ ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
 
 _LOWEST_STAMINA = 1000
-_HIGHEST_DIST_GOALIE = 0.5
+_HIGHEST_DIST_GOALIE = 1.2
 
 _GOALIE_DEFENCE_STAT = False
 _START_TICK = 0
@@ -166,17 +166,17 @@ def if_goalie_defence(on: bool, start_tick, end_tick):
 
 def is_goalie_near_ball(game: Game, start_tick, end_tick):
     goalie = None
-    for x in range(start_tick, end_tick + 1):
-        stage = game.show_time[x]
+    for tick in range(start_tick, end_tick):
+        stage = game.show_time[tick]
         for g in stage.goalies:
             if g.side == "r":
                 goalie = g
         if goalie is None:
             print("goalie is none!!")
             return False
-        if get_distance_between_coords(Coordinate(stage.ball.x_coord, stage.ball.y_coord),
-                                       Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
-            return True
+        if stage.get_ball_coord().euclidean_distance_from(Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
+            if game.ball_first_time_outside_field is not None and tick <= game.ball_first_time_outside_field:
+                return True
     return False
 
 
@@ -535,6 +535,10 @@ def parse_show_line(txt, game: Game):
 
     ball_txt = matched.group(2)
     parse_ball(ball_txt, stage)
+
+    # For use in goalie positioning
+    if stage.is_ball_outside_field() and game.ball_first_time_outside_field is None:
+        game.ball_first_time_outside_field = tick
 
     # log file always has 22 players, even the ones not initiated
     players = re.findall(r'\(\([^)]*\)[^)]*\)[^)]*\)[^)]*\)', matched.group(3))

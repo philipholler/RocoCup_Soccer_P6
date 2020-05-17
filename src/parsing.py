@@ -856,7 +856,6 @@ def _parse_hear(text: str, ps: PlayerState):
         return
     elif sender == "online_coach_left":
         if ps.world_view.side == "l":
-            print("Received: ", text)
             coach_command_pattern = '.*"(.*)".*'
             matches = re.match(coach_command_pattern, text)
             ps.coach_commands.append(PrecariousData(matches.group(1), 0))  # todo Time?

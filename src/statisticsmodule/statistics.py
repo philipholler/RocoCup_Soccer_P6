@@ -1,5 +1,7 @@
 import math
 
+from geometry import Coordinate
+
 
 class Game:
 
@@ -16,6 +18,8 @@ class Game:
         self.player_r_stamina_over = []
         self.kick_dict = {}
         self.real_kick_dict = {}
+        # For use in the goalie positioning statistics
+        self.ball_first_time_outside_field = None
 
         # The stage at tick 40, is in place 40 in the array
         self.show_time = []
@@ -61,6 +65,15 @@ class Stage:
 
         return closest_player.side
 
+    def is_ball_outside_field(self):
+        if self.ball.x_coord < -52.5 or 52.5 < self.ball.x_coord:
+            return True
+        if self.ball.y_coord < -34 or 34 < self.ball.y_coord:
+            return True
+        return False
+
+    def get_ball_coord(self) -> Coordinate:
+        return Coordinate(self.ball.x_coord, self.ball.y_coord)
 
 class Ball:
 

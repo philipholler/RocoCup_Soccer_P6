@@ -49,7 +49,7 @@ class SoccerSim(threading.Thread):
 
         # Use soccerwindow2: exec soccerwindow2 --kill-server --geometry=1440x900 --gradient 1 --field-grass-type lines
         # Use regular monitor: exec rcssmonitor --show-status-bar 1 --show-kick-accel-area 1 --show-catch-area 1 --geometry=1280x800
-        self.soccer_monitor = subprocess.Popen(["exec rcssmonitor --show-status-bar 1 --show-kick-accel-area 1 --show-catch-area 1 --geometry=1280x800"], shell=True)
+        # self.soccer_monitor = subprocess.Popen(["exec rcssmonitor --show-status-bar 1 --show-kick-accel-area 1 --show-catch-area 1 --geometry=1280x800"], shell=True)
 
 
     def run(self) -> None:
@@ -99,8 +99,9 @@ class SoccerSim(threading.Thread):
         if self.trainer_mode:
             self.trainer.stop()
             self.trainer.join()
-        self.soccer_monitor.send_signal(signal.SIGINT)
-        self.soccer_monitor.wait(3)
+        if self.soccer_monitor is not None:
+            self.soccer_monitor.send_signal(signal.SIGINT)
+            self.soccer_monitor.wait(3)
         self.soccer_sim.send_signal(signal.SIGINT)
         self.soccer_sim.wait(3)
         log_parser.if_goalie_defence(True, 75, 125)

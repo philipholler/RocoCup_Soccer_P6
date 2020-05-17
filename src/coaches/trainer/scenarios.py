@@ -36,11 +36,11 @@ def generate_commands_coachmsg_goalie_positioning(random_seed: int, wv: WorldVie
     random.seed(random_seed)
 
     # Generate player position
-    striker_x_pos = random.randint(36, 40)
+    striker_x_pos = random.randint(37, 37)
     striker_y_pos = random.randint(-20, 20)
     striker = ("Team1", 2, striker_x_pos, striker_y_pos)
 
-    goalie_x_pos = 52
+    goalie_x_pos = 50
     goalie_y_pos = 0
     goalie = ("Team2", 1, goalie_x_pos, goalie_y_pos)
 
