@@ -9,6 +9,7 @@ from pathlib import Path
 from shutil import copymode, move
 from tempfile import mkstemp
 
+from constants import DISABLE_VERIFYTA_TERMINAL_OUTPUT
 from uppaal import MODELS_PATH, OUTPUT_DIR_PATH, QUERIES_PATH, VERIFYTA_PATH
 
 
@@ -441,9 +442,17 @@ def execute_verifyta(model: UppaalModel):
     command = "{0} {1} {2}".format(VERIFYTA_PATH, model.path
                                    , model.queries_path)
 
-    # Run uppaal verifyta command line tool
-    verifyta = subprocess.Popen(command, shell=True)
+    try:  # Get DEVNULL value to hide verifyta terminal output
+        from subprocess import DEVNULL
+    except ImportError:
+        import os
+        DEVNULL = open(os.devnull, 'wb')
 
+    # Run uppaal verifyta command line tool
+    if DISABLE_VERIFYTA_TERMINAL_OUTPUT:
+        verifyta = subprocess.Popen(command, shell=True, stdout=DEVNULL)
+    else:
+        verifyta = subprocess.Popen(command, shell=True)
     # Wait for uppaal to finish generating and printing strategy
     while verifyta.poll() is None:
         time.sleep(0.001)

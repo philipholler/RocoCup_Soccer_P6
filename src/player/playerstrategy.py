@@ -72,7 +72,7 @@ def _dribble_objective(state: PlayerState):
     if pos.euclidean_distance_from(Coordinate(52.5 * side, 0)) < 24:
         return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, 0), 100), lambda: True, 1)
 
-    if not state.action_history.has_looked_for_targets:
+    if (not state.action_history.has_looked_for_targets) and False:  # Todo temp
         debug_msg(str(state.now()) + "looking for pass targets", "DRIBBLE")
         state.action_history.has_looked_for_targets = True
 
@@ -83,7 +83,7 @@ def _dribble_objective(state: PlayerState):
     if target is not None:
         return Objective(state, lambda: actions.pass_to_player(state, target), lambda: True, 1)
 
-    if state.is_near_ball() and state.action_history.has_looked_for_targets:
+    if state.is_near_ball(): # todo temp: and state.action_history.has_looked_for_targets:
         target_coord: Coordinate = Coordinate(52.5 * side, 0)
         opposing_goal_dir = math.degrees(calculate_full_origin_angle_radians(target_coord, state.position.get_value()))
         state.action_history.has_looked_for_targets = False
@@ -583,7 +583,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                 return target
             else:
                 debug_msg(str(state.now()) + "No teammate matched :" + str(
-                    Coordinate(x, y) + " Visible: " + str(state.world_view.get_teammates(state.team_name, 10)))
+                    Coordinate(x, y)) + " Visible: " + str(state.world_view.get_teammates(state.team_name, 10))
                           , "DRIBBLE_PASS_MODEL")
 
     side = state.world_view.side

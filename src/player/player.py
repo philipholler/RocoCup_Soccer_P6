@@ -491,7 +491,7 @@ class BodyState:
         self.max_dash_power = 100
         self.jog_dash_power = 100 * 0.6
         self.dribble_dash_power = 100 * 0.65
-        self.dribble_kick_power = 100 * 0.4
+        self.dribble_kick_power = 100 * 0.3
 
 
 class WorldView:

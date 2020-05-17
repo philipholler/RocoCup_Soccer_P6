@@ -6,12 +6,13 @@ from constants import KICK_POWER_RATE, BALL_DECAY, \
     WARNING_PREFIX, CATCHABLE_MARGIN
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference
 from geometry import Vector2D
-from player.player import PlayerState
+from player.player import PlayerState, ViewFrequency
 from player.world_objects import Coordinate, ObservedPlayer, Ball, PrecariousData
 from utils import clamp, debug_msg
 from math import radians
 
 _IDLE_ORIENTATION_INTERVAL = 4
+_DRIBBLE_ORIENTATION_INTERVAL = 2
 _POSSESSION_ORIENTATION_INTERVAL = 2
 
 SET_FOV_NORMAL = "(change_view normal high)"
@@ -527,7 +528,7 @@ def rush_to_ball(state: PlayerState):
     ball_vel = ball.absolute_velocity
     player_vel = state.get_y_north_velocity_vector()
     if ball_vel is not None and player_vel is not None and ball_vel.magnitude() > 0.1 \
-            and abs(ball_vel.world_direction() - state.body_angle.get_value()) < 15:
+            and abs(ball_vel.world_direction() - state.body_angle.get_value()) < 10:
         ball_dist = ball.distance
         command_builder = CommandBuilder()
         if ball.direction >= 5:
@@ -538,6 +539,8 @@ def rush_to_ball(state: PlayerState):
             ball_dist += ball_vel.magnitude() - player_vel.magnitude()
             ball_vel = ball_vel.decayed(BALL_DECAY, 1)
             player_vel = player_vel.decayed(PLAYER_SPEED_DECAY, 1)
+        elif not state.action_history.turn_in_progress:
+            _append_neck_orientation(state, command_builder)
 
         player_speed = player_vel.magnitude()
         while ball_dist > 0 and command_builder.ticks < 4:
@@ -774,7 +777,14 @@ def idle_neck_orientation(state):
 def _append_neck_orientation(state: PlayerState, command_builder, body_dir_change=0):
     if state.is_test_player():
         debug_msg(str(state.now()) + " _append_neck_orientation", "ORIENTATION")
-    if state.action_history.ball_focus_actions > _IDLE_ORIENTATION_INTERVAL \
+
+    if state.is_dribbling() and state.action_history.ball_focus_actions > _DRIBBLE_ORIENTATION_INTERVAL:
+        # Find turn angle with no limit
+        look_dir = state.action_history.turn_history.least_updated_angle(state.body_state.fov)
+        look_coord = (state.position.get_value().vector() + Vector2D.velocity_to_xy(1, look_dir)).coord()
+        append_look_towards_neck_only(state, look_coord, command_builder, body_dir_change)
+        state.action_history.ball_focus_actions = 0
+    elif state.action_history.ball_focus_actions > _IDLE_ORIENTATION_INTERVAL \
             and state.world_view.ball.is_value_known(state.action_history.last_see_update):
         # Orient to least updated place within neck angle
         _append_orient(state, neck_movement_only=True, command_builder=command_builder, body_dir_change=body_dir_change)
@@ -848,7 +858,6 @@ def append_look_at_ball_body_only(state: PlayerState, command_builder):
 
 def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_change=0):
     # Look towards ball as far as possible
-    body_angle = (state.body_angle.get_value() + body_dir_change) % 360
     ball = state.world_view.ball.get_value()
     ball_projection = state.world_view.ball.get_value().project_ball_position(1,
                                                                               state.now() - state.world_view.ball.last_updated_time)
@@ -857,18 +866,25 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
     else:
         ball_position = ball_projection[0]
 
-    global_ball_angle = math.degrees(calculate_full_origin_angle_radians(ball_position, state.position.get_value()))
-    angle_difference = smallest_angle_difference((body_angle + state.body_state.neck_angle) % 360, global_ball_angle)
+    append_look_towards_neck_only(state, ball_position, command_builder, body_dir_change)
+
+
+def append_look_towards_neck_only(state: PlayerState, coord, command_builder, body_dir_change=0):
+    # Look towards ball as far as possible
+    body_angle = (state.body_angle.get_value() + body_dir_change) % 360
+
+    global_target_angle = math.degrees(calculate_full_origin_angle_radians(coord, state.position.get_value()))
+    angle_difference = smallest_angle_difference((body_angle + state.body_state.neck_angle) % 360, global_target_angle)
 
     if abs(angle_difference) > 0.9:
-        target_neck_angle = smallest_angle_difference(from_angle=body_angle, to_angle=global_ball_angle)
+        target_neck_angle = smallest_angle_difference(from_angle=body_angle, to_angle=global_target_angle)
         # Adjust to be within range of neck turn
         target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
         new_total_angle = (body_angle + target_neck_angle) % 360
 
         # Calculate which fov to use based on what is required to see the ball
         preferred_fov = _determine_fov(state)
-        required_view_angle = abs(smallest_angle_difference(new_total_angle, global_ball_angle) * 2.1)
+        required_view_angle = abs(smallest_angle_difference(new_total_angle, global_target_angle) * 2.1)
         minimum_fov = FOV_NARROW
         if required_view_angle >= FOV_NARROW:
             minimum_fov = FOV_NORMAL
@@ -878,7 +894,7 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
         fov = max(minimum_fov, preferred_fov)
         command_builder.append_fov_change(state, fov)
         debug_msg(
-            "global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(
+            "global ball:" + str(global_target_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(
                 minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
         neck_turn_angle = smallest_angle_difference(from_angle=state.body_state.neck_angle, to_angle=target_neck_angle)
         if state.body_state.neck_angle + neck_turn_angle > 90 or state.body_state.neck_angle + neck_turn_angle < -90:
@@ -891,8 +907,8 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
             debug_msg(str(state.now()) + " _look_at_ball_neck_only. New body angle=" + str(body_angle)
                       + " | Current neck angle : " + str(state.body_state.neck_angle)
                       + " | target neck angle : " + str(target_neck_angle)
-                      + " | Global ball angle : " + str(global_ball_angle)
-                      + " | Ball position : " + str(ball_position)
+                      + " | Global ball angle : " + str(global_target_angle)
+                      + " | Ball position : " + str(coord)
                       + " | Player position : " + str(state.position.get_value()),
                       "ORIENTATION")
 
@@ -940,9 +956,15 @@ def positional_adjustment(state, adjustment: Coordinate):
     return command_builder.command_list
 
 
-def dribble(state: PlayerState, dir: int):
+def find_dribble_direction(state, optimal_dir):
+    target_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=optimal_dir)
+    # todo !
+    return target_dir
+
+
+def dribble(state: PlayerState, optimal_dir: int):
     command_builder = CommandBuilder()
-    dribble_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=dir)
+    dribble_dir = find_dribble_direction(state, optimal_dir)
     command_builder.append_kick(state, state.body_state.dribble_kick_power, dribble_dir)
     command_builder.next_tick()
     command_builder.append_turn_action(state, _calculate_turn_moment(state.body_state.speed, dribble_dir))
@@ -1004,6 +1026,11 @@ def _calculate_stop_kick_power(player_pos, ball_pos, player_rotation, ball_veloc
 
 def _calculate_kick_power(state: PlayerState, distance: float) -> int:
     ball: Ball = state.world_view.ball.get_value()
+
+    starting_velocity = 0
+    if ball.absolute_velocity is not None:
+        starting_velocity = ball.absolute_velocity.magnitude()
+
     dir_diff = abs(ball.direction)
     dist_ball = ball.distance
     target_delivery_velocity = 0.7  # The velocity of the ball after traveling the given distance
@@ -1012,7 +1039,7 @@ def _calculate_kick_power(state: PlayerState, distance: float) -> int:
         (3 * distance + 50 * target_delivery_velocity) / (50 * target_delivery_velocity)) / 3
     start_velocity = target_delivery_velocity / math.exp(-0.06 * time_to_travel_distance)
 
-    power = start_velocity / (KICK_POWER_RATE * (1 - 0.25 * (dir_diff / 180) - 0.25 * (dist_ball / KICKABLE_MARGIN)))
+    power = (start_velocity - starting_velocity) / (KICK_POWER_RATE * (1 - 0.25 * (dir_diff / 180) - 0.25 * (dist_ball / KICKABLE_MARGIN)))
     return min(power, 100)
 
 

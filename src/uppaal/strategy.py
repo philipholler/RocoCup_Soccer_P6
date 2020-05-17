@@ -75,7 +75,7 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if state.is_test_player() and USING_PASS_OR_DRIBBLE_MODEL and state.needs_dribble_or_pass_strat():
+    if state.world_view.side is 'l' and USING_PASS_OR_DRIBBLE_MODEL and state.needs_dribble_or_pass_strat():
         print(state.now(), " DRIBBLE STRAT - Player : ", state.num)
         return _StrategyGenerator("/PassOrDribbleModel", _update_dribble_or_pass_model
                                   , _extract_pass_or_dribble_strategy)

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'><nta>
-	<declaration>const int OPPONENTS = 1;
+	<declaration>const int OPPONENTS = 10;
 const int TEAM_MATES = 2;
-const double opponent_pos[OPPONENTS][2] = {{33.0760, -7.5490}};
-const double team_pos[TEAM_MATES][2] = {{-24.9982, -7.3670},{-36.4193, 5.8074}};
-const double possessor[2] = {-39.9067, -17.8061};
+const double opponent_pos[OPPONENTS][2] = {{-61.6299, -37.2753},{-68.2991, -21.3088},{-55.9555, -22.5671},{-58.1408, -12.0862},{-60.7379, -10.5317},{-59.0378, -25.0919},{-68.5182, -26.9114},{-69.0453, -14.6617},{-34.5607, -28.0981},{-79.4543, -17.6504}};
+const double team_pos[TEAM_MATES][2] = {{-34.6819, -32.1639},{-68.8103, -31.6713}};
+const double possessor[2] = {-79.7633, -17.1361};
 const double DRIBBLE_DIST = 7.0;
 const double DIST_REWARD_FACTOR = 0.5;
 const double INTERCEPT_CHANCE = 0.5;
@@ -49,7 +49,7 @@ double dribble_prob(){
     int i = 0;
     while(i &lt; OPPONENTS){
         double dist = distance_between(possessor[0], possessor[1], opponent_pos[i][0], opponent_pos[i][1]);
-        if(dist &lt; 10 &amp;&amp; opponent_pos[i][0] &gt; possessor[0]){
+        if((dist &lt; 15.0 &amp;&amp; opponent_pos[i][0] &gt; possessor[0]) || dist &lt; 5.0){
             double dist_factor = 1.0 - (1.0 / (dist));
             drib_prob = drib_prob * dist_factor;
         }
