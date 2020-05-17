@@ -31,7 +31,7 @@ num_players = 2
 
 # Enable for more runs. Trainer is always enabled for multiple runs
 MORE_SCENARIOS_MODE = True
-NUM_SIMULATIONS = 2
+NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 125
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
@@ -104,6 +104,7 @@ try:
 
             soccersim.stop()
             soccersim.join()
+            print("Done with run {0} of {1}".format(sim, NUM_SIMULATIONS))
             print('_' * 200)
             finished_successfully = True
     # Run a single game

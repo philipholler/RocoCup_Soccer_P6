@@ -451,6 +451,7 @@ def _jog_to_ball_objective(state):
 
 
 def _optimal_goalie_pos(state: PlayerState):
+    return Coordinate(52, 0)
     if constants.USING_GOALIE_POSITION_MODEL:
         if state.goalie_position_strategy is not None:
             optimal_coord = Coordinate(state.goalie_position_strategy.pos_x, state.goalie_position_strategy.pos_y)
@@ -480,7 +481,7 @@ def _position_optimally_objective_goalie(state: PlayerState):
     if dist > 6.0:
         target = optimal_position
         return Objective(state, lambda: actions.rush_to(state, target), lambda: True)
-    if dist > 0.8:
+    if dist > 0.6:
         difference = optimal_position - current_position
         return Objective(state, lambda: actions.positional_adjustment(state, difference), lambda: True)
     else:
