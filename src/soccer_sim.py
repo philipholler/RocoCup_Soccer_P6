@@ -106,5 +106,4 @@ class SoccerSim(threading.Thread):
             self.soccer_monitor.wait(3)
         self.soccer_sim.send_signal(signal.SIGINT)
         self.soccer_sim.wait(3)
-        log_parser.if_goalie_defence(True, 75, 125)
         log_parser.parse_logs()

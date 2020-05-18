@@ -7,7 +7,7 @@ import time
 
 class Connection(threading.Thread):
 
-    def __init__(self, UDP_IP, UDP_PORT, think):
+    def __init__(self, UDP_IP, UDP_PORT, think, should_print=False):
         super().__init__()
         self._stop_event = threading.Event()
         self.addr = (UDP_IP, UDP_PORT)
@@ -15,10 +15,10 @@ class Connection(threading.Thread):
         self.sock.setblocking(False)
         self.think = think
         self.player_conn = None
-        self.connected = False
         self.action_queue = queue.Queue()
         self.last_send_time = 0
         self.sending = False
+        self.should_print = should_print
 
     def start(self):
         super().start()
@@ -32,6 +32,8 @@ class Connection(threading.Thread):
                 msg = self._receive_message()
                 if msg is None:
                     break
+                if self.should_print:
+                    print(msg)
                 self.think.input_queue.put(msg)
 
             while not self.action_queue.empty():
