@@ -48,6 +48,8 @@ class FakeMonitorThinker(threading.Thread):
                     self.has_started_game = True
                     self.connection.action_queue.put("(dispstart)")
 
+            time.sleep(0.05)
+
 
     def stop(self) -> None:
         self._stop_event.set()
