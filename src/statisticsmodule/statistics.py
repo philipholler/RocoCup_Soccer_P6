@@ -18,6 +18,7 @@ class Game:
         self.player_r_stamina_over = []
         self.kick_dict = {}
         self.real_kick_dict = {}
+        self.biptest_dict = {}
         # For use in the goalie positioning statistics
         self.ball_first_time_outside_field = None
 

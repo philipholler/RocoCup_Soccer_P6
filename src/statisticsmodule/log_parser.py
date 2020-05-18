@@ -77,10 +77,6 @@ def parse_logs():
     log_directory = stat_dir / game.gameID
     os.makedirs(log_directory)
 
-    biptest_dir = stat_dir / "Biptest"
-    if not biptest_dir.exists():
-        os.makedirs(biptest_dir)
-
     with open(os.path.join(log_directory, "game_goals.txt"), "w") as file:
         for goal in game.goals:
             file.write(goal + "\n")
@@ -92,25 +88,33 @@ def parse_logs():
     file_goalie_kicks = open(os.path.join(log_directory, "goalie_kicks.csv"), "w")
     file_l_stamina = open(os.path.join(log_directory, "%s_left_stamina.txt" % game.teams[0].name), "w")
     file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[1].name), "w")
-    file_l_biptest = open(os.path.join(biptest_dir, "%s_biptest_rounds.txt" % game.teams[0].name), "a")
-    file_r_biptest = open(os.path.join(biptest_dir, "%s_biptest_rounds.txt" % game.teams[1].name), "a")
+    file_biptest = open(os.path.join(log_directory, "biptest_rounds.csv"), "a")
     file_lowest_stam_tick = open(os.path.join(log_directory, "lowest_stam_tick.csv"), "w")
     file_highest_stam_tick = open(os.path.join(log_directory, "highest_stam_tick.csv"), "w")
 
     files = [file_kicks, file_goalie_kicks, file_l_stamina, file_r_stamina,
-             file_l_biptest, file_r_biptest, file_lowest_stam_tick, file_highest_stam_tick, file_real_kicks,
+             file_biptest, file_lowest_stam_tick, file_highest_stam_tick, file_real_kicks,
              file_step_real_kicks, file_step_kicks]
 
     csv_files = [file_lowest_stam_tick, file_highest_stam_tick, file_goalie_kicks, file_kicks, file_real_kicks,
-                 file_step_real_kicks, file_step_kicks]
+                 file_step_real_kicks, file_step_kicks, file_biptest]
 
     for file in csv_files:
         write_file_title(file, game)
 
     write_possession_file(game)
 
-    file_l_biptest.write(str(_GAME_NUMBER) + ", " + str(playerstrategy.__BIP_TEST_L) + "\n")
-    file_r_biptest.write(str(_GAME_NUMBER) + ", " + str(playerstrategy.__BIP_TEST_R) + "\n")
+    '''
+    for entry in playerstrategy.__BIP_TEST_L:
+        if playerstrategy.__BIP_TEST_L[entry] >= 0:
+            file_l_biptest.write(str(_GAME_NUMBER) + ", " + str(entry) + ", "
+                             + str(playerstrategy.__BIP_TEST_L[entry]) + "\n")
+
+    for entry in playerstrategy.__BIP_TEST_R:
+        if playerstrategy.__BIP_TEST_R[entry] >= 0:
+            file_r_biptest.write(str(_GAME_NUMBER) + ", " + str(entry) + ", "
+                             + str(playerstrategy.__BIP_TEST_R[entry]) + "\n")
+    '''
 
     stam_dict = calculate_stamina_pr_tick(game, True)
     write_stam_file(file_lowest_stam_tick, stam_dict)
@@ -133,12 +137,14 @@ def parse_logs():
             file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _START_TICK, _END_TICK)) + "\n")
 
     make_kick_dict(game)
+    make_biptest_dict(game)
 
     # file, game, real_kicks, steps
-    write_kick_file(file_kicks, game, False, False)
-    write_kick_file(file_real_kicks, game, True, False)
-    write_kick_file(file_step_kicks, game, False, True)
-    write_kick_file(file_step_real_kicks, game, True, True)
+    write_dict_to_file(file_kicks, game, game.kick_dict, False)
+    write_dict_to_file(file_real_kicks, game, game.real_kick_dict, False)
+    write_dict_to_file(file_step_kicks, game, game.kick_dict, True)
+    write_dict_to_file(file_step_real_kicks, game, game.real_kick_dict, True)
+    write_dict_to_file(file_biptest, game, game.biptest_dict, True)
 
     for stage in game.show_time:
         '''
@@ -180,7 +186,8 @@ def is_goalie_near_ball(game: Game, start_tick, end_tick):
         if goalie is None:
             print("goalie is none!!")
             return False
-        if stage.get_ball_coord().euclidean_distance_from(Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
+        if stage.get_ball_coord().euclidean_distance_from(
+                Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
             if game.ball_first_time_outside_field is not None and tick <= game.ball_first_time_outside_field:
                 return True
     return False
@@ -203,37 +210,73 @@ def make_kick_dict(game: Game):
     # print(game.kick_dict)
 
 
+def make_biptest_dict(game: Game):
+    next_goal = {"l": "lower", "r": "lower"}
+
+    for stage in game.show_time:
+        tick = game.show_time.index(stage)
+        for g in stage.goalies:
+            if is_near_lower_goal(g) and next_goal[g.side] == "lower":
+                print("it is writin??")
+                game.biptest_dict[(tick, g.side)] = 1
+                next_goal[g.side] = "upper"
+            if is_near_upper_goal(g) and next_goal[g.side] == "upper":
+                game.biptest_dict[(tick, g.side)] = 1
+                next_goal[g.side] = "lower"
+
+
+def is_near_upper_goal(goalie):
+    if goalie.side == "l":
+        x = -25
+        y = -33
+    if goalie.side == "r":
+        x = 25
+        y = -33
+
+    if get_distance_between_coords(Coordinate(goalie.x_coord, goalie.y_coord), Coordinate(x, y)) < 2:
+        return True
+    return False
+
+
+def is_near_lower_goal(goalie):
+    if goalie.side == "l":
+        x = -25
+        y = 33
+    if goalie.side == "r":
+        x = 25
+        y = 33
+
+    if get_distance_between_coords(Coordinate(goalie.x_coord, goalie.y_coord), Coordinate(x, y)) < 2:
+        return True
+    return False
+
+
 def write_file_title(file, game: Game):
     file.write("Tick, " + game.teams[0].name + ", " + game.teams[1].name + "\n")
 
 
-def write_kick_file(file, game: Game, real: bool, steps: bool):
-    if real:
-        kick_dict = game.real_kick_dict
-    else:
-        kick_dict = game.kick_dict
-
+def write_dict_to_file(file, game: Game, my_dict: dict, steps: bool):
     for x in range(1, len(game.show_time) + 1):
         # print("stage: " + str(x))
-        if (x, "l") not in kick_dict:
-            kick_dict[(x, "l")] = 0
-        if (x, "r") not in kick_dict:
-            kick_dict[(x, "r")] = 0
+        if (x, "l") not in my_dict:
+            my_dict[(x, "l")] = 0
+        if (x, "r") not in my_dict:
+            my_dict[(x, "r")] = 0
 
-    for x in sorted(kick_dict.keys()):
+    for x in sorted(my_dict.keys()):
         # print(x[0])
 
         if steps:
             last_tick = x[0] - 1
-            if x[1] == "l" and (last_tick, x[1]) in kick_dict:
-                kick_dict[x] += int(kick_dict.get((last_tick, x[1])))
-            if x[1] == "r" and (last_tick, x[1]) in kick_dict:
-                kick_dict[x] += int(kick_dict.get((last_tick, x[1])))
+            if x[1] == "l" and (last_tick, x[1]) in my_dict:
+                my_dict[x] += int(my_dict.get((last_tick, x[1])))
+            if x[1] == "r" and (last_tick, x[1]) in my_dict:
+                my_dict[x] += int(my_dict.get((last_tick, x[1])))
 
         if x[1] == "l":
-            file.write(str(x[0]) + ", " + str(kick_dict[x]) + ", ")
+            file.write(str(x[0]) + ", " + str(my_dict[x]) + ", ")
         if x[1] == "r":
-            file.write(str(kick_dict[x]) + "\n")
+            file.write(str(my_dict[x]) + "\n")
 
         '''
         if (x[0], "l") in kick_dict and (x[0], "r") in kick_dict:
@@ -412,7 +455,7 @@ def write_possession_file(game: Game):
 
 # Gets the newest server log ".rcg"
 def get_newest_server_log():
-    server_log_path = os.listdir('.')
+    server_log_path = os.listdir(Path(__file__).parent.parent)
     server_log_names = fnmatch.filter(server_log_path, SERVER_LOG_PATTERN)
     server_log_names.sort(reverse=True)
     return server_log_names[0]
@@ -420,7 +463,7 @@ def get_newest_server_log():
 
 # Gets the newest action log ".rcl"
 def get_newest_action_log():
-    actions_log_path = os.listdir('.')
+    actions_log_path = os.listdir(Path(__file__).parent.parent)
     action_logs = fnmatch.filter(actions_log_path, ACTION_LOG_PATTERN)
     action_logs.sort(reverse=True)
     return action_logs[0]
@@ -439,7 +482,7 @@ def parse_init_action(txt, game: Game):
 
 
 def parse_kick_action(txt, game: Game):
-    kick_regex = "({0}),{0}\tRecv (.*)_{0}: \\(kick {1} {1}\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
+    kick_regex = "({0}),{0}\tRecv (.*)_{0}: \\(kick .*\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
     kick_re = re.compile(kick_regex)
     matched = kick_re.match(txt)
 
@@ -556,7 +599,7 @@ def parse_show_line(txt, game: Game):
             if team.side == player.side and player.no in range(1, team.number_of_players + 1):
                 stage.players.append(player)
                 if player.no == 1:
-                    #player.print_player()
+                    # player.print_player()
                     stage.goalies.append(player)
 
     distance_to_ball(stage)
