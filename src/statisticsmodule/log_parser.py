@@ -91,13 +91,14 @@ def parse_logs():
     file_biptest = open(os.path.join(log_directory, "biptest_rounds.csv"), "a")
     file_lowest_stam_tick = open(os.path.join(log_directory, "lowest_stam_tick.csv"), "w")
     file_highest_stam_tick = open(os.path.join(log_directory, "highest_stam_tick.csv"), "w")
+    file_average_stamina = open(os.path.join(log_directory, "average_stamina.csv"), "w")
 
     files = [file_kicks, file_goalie_kicks, file_l_stamina, file_r_stamina,
              file_biptest, file_lowest_stam_tick, file_highest_stam_tick, file_real_kicks,
-             file_step_real_kicks, file_step_kicks]
+             file_step_real_kicks, file_step_kicks, file_average_stamina]
 
     csv_files = [file_lowest_stam_tick, file_highest_stam_tick, file_goalie_kicks, file_kicks, file_real_kicks,
-                 file_step_real_kicks, file_step_kicks, file_biptest]
+                 file_step_real_kicks, file_step_kicks, file_biptest, file_average_stamina]
 
     for file in csv_files:
         write_file_title(file, game)
@@ -118,6 +119,10 @@ def parse_logs():
 
     stam_dict = calculate_stamina_pr_tick(game, True)
     write_stam_file(file_lowest_stam_tick, stam_dict)
+
+    # Create average stamina file
+    stam_avg_dict = calculate_stamina_avg(game)
+    write_stam_file(file_average_stamina, stam_avg_dict)
 
     stam_dict = calculate_stamina_pr_tick(game, False)
     write_stam_file(file_highest_stam_tick, stam_dict)
@@ -292,6 +297,24 @@ def write_stam_file(file, stam_dict):
         if s[1] == "r":
             file.write(str(stam_dict[s]) + "\n")
 
+
+def calculate_stamina_avg(game: Game):
+    avg_stam_dict = {}
+
+    for stage in game.show_time:
+        avg_team_1 = 0
+        avg_team_2 = 0
+
+        for player in stage.players:
+            if player.side == "l":
+                avg_team_1 += player.stamina
+            else:
+                avg_team_2 += player.stamina
+
+        avg_stam_dict[game.show_time.index(stage), "l"] = avg_team_1 / 11
+        avg_stam_dict[game.show_time.index(stage), "r"] = avg_team_2 / 11
+
+    return avg_stam_dict
 
 def calculate_stamina_pr_tick(game: Game, lowest: bool):
     stam_dict = {}

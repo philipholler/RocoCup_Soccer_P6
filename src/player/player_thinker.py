@@ -79,7 +79,8 @@ class Thinker(threading.Thread):
             if len(self.player_state.strategy_result_list) > 0:
                 parsing.parse_strat_player(self.player_state)
             # look for strat:
-            if not self.player_state.is_generating_strategy and strategy.has_applicable_strat_player(self.player_state):
+            if not self.player_state.is_generating_strategy and strategy.has_applicable_strat_player(self.player_state)\
+                    and self.player_state.team_name == "Team1":
                 self.player_state.is_generating_strategy = True
                 threading.Thread(target=generate_strategy, args=(self.player_state, )).start()
 
