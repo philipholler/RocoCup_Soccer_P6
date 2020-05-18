@@ -295,35 +295,36 @@ def write_stam_file(file, stam_dict):
 
 def calculate_stamina_pr_tick(game: Game, lowest: bool):
     stam_dict = {}
-    team1 = Player()
-    team2 = Player()
-
 
     for stage in game.show_time:
         if lowest:
-            team1.stamina = 9999
-            team2.stamina = 9999
+            team1 = 9999
+            team2 = 9999
         if not lowest:
-            team1.stamina = -1
-            team2.stamina = -1
+            team1 = -1
+            team2 = -1
         for player in stage.players:
             if lowest:
                 if player.side == "l":
-                    if player.stamina < team1.stamina:
-                        team1 = player
+                    if player.stamina < team1:
+                        team1 = player.stamina
+                        side1 = player.side
                 if player.side == "r":
-                    if player.stamina < team2.stamina:
-                        team2 = player
+                    if player.stamina < team2:
+                        team2 = player.stamina
+                        side2 = player.side
             if not lowest:
                 if player.side == "l":
-                    if player.stamina > team1.stamina:
-                        team1 = player
+                    if player.stamina > team1:
+                        team1 = player.stamina
+                        side1 = player.side
                 if player.side == "r":
-                    if player.stamina > team2.stamina:
-                        team2 = player
+                    if player.stamina > team2:
+                        team2 = player.stamina
+                        side2 = player.side
 
-        stam_dict[(game.show_time.index(stage) + 1, team1.side)] = team1.stamina
-        stam_dict[(game.show_time.index(stage) + 1, team2.side)] = team2.stamina
+        stam_dict[(game.show_time.index(stage) + 1, side1)] = team1
+        stam_dict[(game.show_time.index(stage) + 1, side2)] = team2
 
     return stam_dict
 
