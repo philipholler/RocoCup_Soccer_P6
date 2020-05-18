@@ -6,6 +6,7 @@ from pathlib import Path
 
 from coaches.trainer import scenarios
 from coaches.world_objects_coach import WorldViewCoach
+from fake_monitor.fake_monitor_thread import FakeMonitorClient
 from soccer_sim import SoccerSim
 from utils import DEBUG_DICT
 
@@ -23,7 +24,7 @@ def shut_down_gracefully() -> None:
 
 # Network settings
 UDP_IP = "127.0.0.1"
-UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
+UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001, 6002, 6000
 
 # Add teams and players here
 team_names = ["Team1", "Team2"]
@@ -33,9 +34,13 @@ num_players = 11
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_MODE = False
+MORE_SCENARIOS_TRAINER_MODE = False
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
+
+# Run more games sequentially to test game performance
+MORE_GAMES_WITH_FAKE_MONITOR_MODE = True
+NUM_GAMES = 5
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
 DEBUG_DICT["ALL"] = False
@@ -55,7 +60,7 @@ game_number = 1
 
 try:
     # Run multiple games sequentially
-    if MORE_SCENARIOS_MODE:
+    if MORE_SCENARIOS_TRAINER_MODE:
         random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
@@ -114,6 +119,39 @@ try:
             print("Done with run {0} of {1}".format(sim + 1, NUM_SIMULATIONS))
             print('_' * 200)
             finished_successfully = True
+    elif MORE_GAMES_WITH_FAKE_MONITOR_MODE:
+        atexit.register(shut_down_gracefully)
+        for game in range(NUM_GAMES):
+            soccersim: SoccerSim = SoccerSim(team_names=team_names,
+                                             num_players=num_players,
+                                             trainer_mode=TRAINER_SINGLE_RUN_ENABLED,
+                                             coaches_enabled=COACHES_ENABLED,
+                                             udp_player=UDP_PORT_PLAYER,
+                                             udp_trainer=UDP_PORT_TRAINER,
+                                             udp_coach=UDP_PORT_COACH,
+                                             udp_ip=UDP_IP,
+                                             enable_monitor=False)
+
+            soccersim.start()
+            time.sleep(2)
+            fake_monitor = FakeMonitorClient(start_time=5, UDP_IP=UDP_IP, UDP_PORT=UDP_PORT_MONITOR)
+            fake_monitor.start()
+
+            try:
+                with open(game_number_path, "w") as file:
+                    print(str(game_number_path))
+                    file.write(str(game_number))
+                    game_number += 1
+            except Exception:
+                print("Log parser failed")
+
+            while fake_monitor.thinker.current_tick < 100:
+                time.sleep(0.1)
+
+            soccersim.stop()
+            soccersim.join()
+            fake_monitor.stop()
+            fake_monitor.join()
     # Run a single game
     else:
         atexit.register(shut_down_gracefully)
