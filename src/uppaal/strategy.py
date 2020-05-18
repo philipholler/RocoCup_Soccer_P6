@@ -76,7 +76,7 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
     if USING_GOALIE_POSITION_MODEL and state.player_type == "goalie":
         ball_possessor = state.get_ball_possessor()
         # Use goaliePositioning strategy
-        if ball_possessor is not None and ball_possessor.coord is not None and state.team_name == "Team2":
+        if ball_possessor is not None and ball_possessor.coord is not None:
             steps_per_meter = goalie_strategy.STEPS_PER_METER
             # Convert coordinate to fit the squares from the strategy
             possessor_new_x = math.floor(ball_possessor.coord.pos_x / steps_per_meter) * steps_per_meter

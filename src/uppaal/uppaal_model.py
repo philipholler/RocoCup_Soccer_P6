@@ -442,7 +442,7 @@ def execute_verifyta(model: UppaalModel):
                                    , model.queries_path)
 
     # Run uppaal verifyta command line tool
-    verifyta = subprocess.Popen(command, shell=True)
+    verifyta = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL)
 
     # Wait for uppaal to finish generating and printing strategy
     while verifyta.poll() is None:
