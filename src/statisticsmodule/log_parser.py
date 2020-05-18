@@ -32,7 +32,9 @@ def parse_logs():
     action_log_name = get_newest_action_log()
     parse_log_name(server_log_name, game)
 
-    game_number_path = Path(__file__).parent.parent / "Statistics" / "game_number.txt"
+    stat_dir = Path(__file__).parent.parent / "Statistics"
+
+    game_number_path = stat_dir / "game_number.txt"
 
     try:
         with open(game_number_path, "r") as file:
@@ -72,8 +74,12 @@ def parse_logs():
     calculate_possession(game)
     calculate_stamina(game)
 
-    log_directory = Path(__file__).parent.parent / "Statistics" / game.gameID
+    log_directory = stat_dir / game.gameID
     os.makedirs(log_directory)
+
+    biptest_dir = stat_dir / "Biptest"
+    if not biptest_dir.exists():
+        os.makedirs(biptest_dir)
 
     with open(os.path.join(log_directory, "game_goals.txt"), "w") as file:
         for goal in game.goals:
@@ -86,8 +92,8 @@ def parse_logs():
     file_goalie_kicks = open(os.path.join(log_directory, "goalie_kicks.csv"), "w")
     file_l_stamina = open(os.path.join(log_directory, "%s_left_stamina.txt" % game.teams[0].name), "w")
     file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[1].name), "w")
-    file_l_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[0].name), "w")
-    file_r_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[1].name), "w")
+    file_l_biptest = open(os.path.join(biptest_dir, "%s_biptest_rounds.txt" % game.teams[0].name), "a")
+    file_r_biptest = open(os.path.join(biptest_dir, "%s_biptest_rounds.txt" % game.teams[1].name), "a")
     file_lowest_stam_tick = open(os.path.join(log_directory, "lowest_stam_tick.csv"), "w")
     file_highest_stam_tick = open(os.path.join(log_directory, "highest_stam_tick.csv"), "w")
 
@@ -103,8 +109,8 @@ def parse_logs():
 
     write_possession_file(game)
 
-    file_l_biptest.write(str(playerstrategy.__BIP_TEST_L))
-    file_r_biptest.write(str(playerstrategy.__BIP_TEST_R))
+    file_l_biptest.write(str(_GAME_NUMBER) + ", " + str(playerstrategy.__BIP_TEST_L) + "\n")
+    file_r_biptest.write(str(_GAME_NUMBER) + ", " + str(playerstrategy.__BIP_TEST_R) + "\n")
 
     stam_dict = calculate_stamina_pr_tick(game, True)
     write_stam_file(file_lowest_stam_tick, stam_dict)
@@ -119,7 +125,7 @@ def parse_logs():
             file_r_stamina.write(write_stamina_file(game, t))
 
     if _GOALIE_DEFENCE_STAT:
-        goalie_defence_dir = Path(__file__).parent.parent / "Statistics" / "goalie_defence"
+        goalie_defence_dir = stat_dir / "goalie_defence"
         if not goalie_defence_dir.exists():
             os.makedirs(goalie_defence_dir)
 

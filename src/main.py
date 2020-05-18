@@ -32,7 +32,7 @@ num_players = 2
 # Enable for more runs. Trainer is always enabled for multiple runs
 MORE_SCENARIOS_MODE = True
 NUM_SIMULATIONS = 100
-TICKS_PER_RUN = 125
+TICKS_PER_RUN = 100
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
 DEBUG_DICT["ALL"] = False
@@ -44,7 +44,10 @@ COACHES_ENABLED = True
 TRAINER_SINGLE_RUN_ENABLED = True
 
 # Logparser stuffs
-game_number_path = Path(__file__).parent / "Statistics" / "game_number.txt"
+stat_dir = Path(__file__).parent / "Statistics"
+if not stat_dir.exists():
+    os.makedirs(stat_dir)
+game_number_path = stat_dir / "game_number.txt"
 game_number = 1
 
 try:
