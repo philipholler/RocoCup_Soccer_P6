@@ -27,10 +27,13 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, = 6000, 6001, 6002
 
 # Add teams and players here
 team_names = ["Team1", "Team2"]
-num_players = 2
+num_players = 11
+
+# Enable monitor
+monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_MODE = True
+MORE_SCENARIOS_MODE = False
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
@@ -41,7 +44,7 @@ DEBUG_DICT["ALL"] = False
 COACHES_ENABLED = True
 
 # Enable trainer for a single run
-TRAINER_SINGLE_RUN_ENABLED = True
+TRAINER_SINGLE_RUN_ENABLED = False
 
 # Logparser stuffs
 stat_dir = Path(__file__).parent / "Statistics"
@@ -70,7 +73,8 @@ try:
                                              udp_player=UDP_PORT_PLAYER,
                                              udp_trainer=UDP_PORT_TRAINER,
                                              udp_coach=UDP_PORT_COACH,
-                                             udp_ip=UDP_IP)
+                                             udp_ip=UDP_IP,
+                                             enable_monitor=monitor_enabled)
 
             soccersim.start()
 
@@ -107,7 +111,7 @@ try:
 
             soccersim.stop()
             soccersim.join()
-            print("Done with run {0} of {1}".format(sim, NUM_SIMULATIONS))
+            print("Done with run {0} of {1}".format(sim + 1, NUM_SIMULATIONS))
             print('_' * 200)
             finished_successfully = True
     # Run a single game
@@ -120,7 +124,8 @@ try:
                                          udp_player=UDP_PORT_PLAYER,
                                          udp_trainer=UDP_PORT_TRAINER,
                                          udp_coach=UDP_PORT_COACH,
-                                         udp_ip=UDP_IP)
+                                         udp_ip=UDP_IP,
+                                         enable_monitor=monitor_enabled)
 
         soccersim.start()
 
