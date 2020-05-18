@@ -142,7 +142,7 @@ try:
             except Exception:
                 print("Log parser failed")
 
-            while fake_monitor.thinker.current_tick < 100:
+            while fake_monitor.thinker.current_tick < 6000:
                 time.sleep(0.1)
 
             soccersim.stop()
