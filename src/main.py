@@ -40,7 +40,7 @@ TICKS_PER_RUN = 100
 
 # Run more games sequentially to test game performance
 MORE_GAMES_WITH_FAKE_MONITOR_MODE = True
-NUM_GAMES = 1
+NUM_GAMES = 50
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
 DEBUG_DICT["ALL"] = False
