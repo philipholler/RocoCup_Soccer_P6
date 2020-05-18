@@ -298,14 +298,14 @@ def calculate_stamina_pr_tick(game: Game, lowest: bool):
     team1 = Player()
     team2 = Player()
 
-    if lowest:
-        team1.stamina = 9999
-        team2.stamina = 9999
-    if not lowest:
-        team1.stamina = -1
-        team2.stamina = -1
 
     for stage in game.show_time:
+        if lowest:
+            team1.stamina = 9999
+            team2.stamina = 9999
+        if not lowest:
+            team1.stamina = -1
+            team2.stamina = -1
         for player in stage.players:
             if lowest:
                 if player.side == "l":
