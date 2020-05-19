@@ -57,10 +57,12 @@ class _StrategyGenerator:
         # Interpret strategy and produce coach /say output
         return self._strategy_parser(uppaal_strategy, model_data)
 
+
 def has_applicable_strat(wv: WorldViewCoach) -> bool:
     if _find_applicable_strat(wv) is not None:
         return True
     return False
+
 
 def has_applicable_strat_player(state: PlayerState):
     if _find_applicable_strat_player(state) is not None:
@@ -69,7 +71,7 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if USING_STAMINA_MODEL and state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 5:
+    if USING_STAMINA_MODEL and (state.now() % 111) == state.num * 10:
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
                                   _update_stamina_model_simple, _extract_stamina_solution_simple)
     # Goalie strats

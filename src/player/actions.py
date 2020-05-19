@@ -877,9 +877,10 @@ def append_look_at_ball_neck_only(state: PlayerState, command_builder, body_dir_
 
         fov = max(minimum_fov, preferred_fov)
         command_builder.append_fov_change(state, fov)
-        debug_msg(
-            "global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(
-                minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
+        if state.is_test_player():
+            debug_msg("global ball:" + str(global_ball_angle) + "global neck:" + str(new_total_angle)
+                      + "required fov: " + str(minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
+
         neck_turn_angle = smallest_angle_difference(from_angle=state.body_state.neck_angle, to_angle=target_neck_angle)
         if state.body_state.neck_angle + neck_turn_angle > 90 or state.body_state.neck_angle + neck_turn_angle < -90:
             # The smallest angle difference between 90 and -90 has two solutions: 180 and -180

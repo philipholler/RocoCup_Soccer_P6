@@ -151,7 +151,7 @@ class   PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 8 and self.team_name == "Team1"
+        return self.num == 2 and self.team_name == "Team1"
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
