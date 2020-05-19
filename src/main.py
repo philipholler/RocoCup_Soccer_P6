@@ -6,6 +6,7 @@ from pathlib import Path
 
 from coaches.trainer import scenarios
 from coaches.world_objects_coach import WorldViewCoach
+from constants import TEAM_2_NAME, TEAM_1_NAME
 from fake_monitor.fake_monitor_thread import FakeMonitorClient
 from soccer_sim import SoccerSim
 from utils import DEBUG_DICT
@@ -27,7 +28,7 @@ UDP_IP = "127.0.0.1"
 UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001, 6002, 6000
 
 # Add teams and players here
-team_names = ["Team1", "Team2"]
+team_names = [TEAM_1_NAME, TEAM_2_NAME]
 num_players = 11
 
 # Enable monitor

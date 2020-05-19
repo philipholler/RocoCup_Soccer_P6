@@ -3,12 +3,10 @@ import re
 import threading
 import queue
 
-from constants import PLAYER_SPEED_DECAY, USING_GOALIE_POSITION_MODEL
-from geometry import calculate_full_origin_angle_radians
+from constants import GOALIE_MODEL_TEAMS
 from player import player
 import client_connection
 from player.player import PlayerState
-from player.playerstrategy import Objective
 import time
 import parsing
 from player.playerstrategy import determine_objective
@@ -51,7 +49,7 @@ class Thinker(threading.Thread):
         # Set accepted coach language versions
         self.player_conn.action_queue.put("(clang (ver 8 8))")
 
-        if USING_GOALIE_POSITION_MODEL and self.player_state.player_type == "goalie":
+        if self.player_state.player_type == "goalie" and self.player_state.team_name in GOALIE_MODEL_TEAMS:
             self.player_state.goalie_position_dict = goalie_strategy.get_result_dict()
 
         self.think()

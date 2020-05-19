@@ -2,7 +2,7 @@ import math
 import re
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
-from constants import SECONDS_BETWEEN_STAMINA_STRAT, USING_STAMINA_MODEL, USING_GOALIE_POSITION_MODEL
+from constants import STAMINA_MODEL_TEAMS, GOALIE_MODEL_TEAMS
 from geometry import Coordinate
 from uppaal import goalie_strategy
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
@@ -71,11 +71,12 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if USING_STAMINA_MODEL and (state.now() % 111) == state.num * 10:
+    if state.team_name in STAMINA_MODEL_TEAMS and (state.now() % 121) == (state.num + 1) * 10:
+        print(state.num, state.team_name)
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
                                   _update_stamina_model_simple, _extract_stamina_solution_simple)
     # Goalie strats
-    if USING_GOALIE_POSITION_MODEL and state.player_type == "goalie":
+    if state.team_name in GOALIE_MODEL_TEAMS and state.player_type == "goalie":
         ball_possessor = state.get_ball_possessor()
         # Use goaliePositioning strategy
         if ball_possessor is not None and ball_possessor.coord is not None:

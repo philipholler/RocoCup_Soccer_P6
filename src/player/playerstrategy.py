@@ -193,20 +193,13 @@ def determine_objective_goalie_default(state: PlayerState):
 
     # If ball coming towards us or ball will hit goal soon -> Intercept
     if (ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box())):
-        if constants.USING_GOALIE_POSITION_MODEL:
-            debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
-            intercept_actions = actions.intercept_2(state, "catch")
-            if intercept_actions is not None:
-                return Objective(state, lambda: intercept_actions)
-            else:
-                return _rush_to_ball_objective(state)
+        debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
+        intercept_actions = actions.intercept_2(state, "catch")
+        if intercept_actions is not None:
+            return Objective(state, lambda: intercept_actions)
         else:
-            debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
-            intercept_actions = actions.intercept_2(state, "catch")
-            if intercept_actions is not None:
-                return Objective(state, lambda: intercept_actions)
-            else:
-                return _rush_to_ball_objective(state)
+            return _rush_to_ball_objective(state)
+
 
 
     # If position not alligned with ball y-position -> Adjust y-position
@@ -436,12 +429,13 @@ def _intercept_objective(state):
 def _rush_to_ball_objective(state):
     return Objective(state, lambda: actions.rush_to_ball(state), lambda: state.is_near_ball(), 1)
 
+
 def _jog_to_ball_objective(state):
     return Objective(state, lambda: actions.jog_to_ball(state), lambda: state.is_near_ball(), 1)
 
 
 def _optimal_goalie_pos(state: PlayerState):
-    if constants.USING_GOALIE_POSITION_MODEL:
+    if state.team_name in constants.GOALIE_MODEL_TEAMS:
         if state.goalie_position_strategy is not None:
             optimal_coord = Coordinate(state.goalie_position_strategy.pos_x, state.goalie_position_strategy.pos_y)
             state.goalie_position_strategy = None
@@ -454,6 +448,7 @@ def _optimal_goalie_pos(state: PlayerState):
         y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
 
         return Coordinate(state.get_global_start_pos().pos_x, y_value)
+
 
 def _position_optimally_objective_goalie(state: PlayerState):
     if "kick_off" in state.world_view.game_state:
