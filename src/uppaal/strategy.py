@@ -95,10 +95,11 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
             goalie_new_x = math.floor(state.position.get_value().pos_x / steps_per_meter) * steps_per_meter
             goalie_new_y = math.floor(state.position.get_value().pos_y / steps_per_meter) * steps_per_meter
             # Example: "(36.5, -19.5),(47.5, -8.5)" -> "(goalie_x, goalie_y),(player_x, player_y)"
-            key = "({0}.0, {1}.0),({2}.0, {3}.0)".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x), str(possessor_new_y))
-            #print("looking with key: ", key)
+            key = "({0}.0, {1}.0),({2}.0, {3}.0)".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x),
+                                                         str(possessor_new_y))
+            # print("looking with key: ", key)
             if key in state.goalie_position_dict.keys():
-                #print("KEY FOUND! key={0}, value={1}".format(key, state.goalie_position_dict[key]))
+                # print("KEY FOUND! key={0}, value={1}".format(key, state.goalie_position_dict[key]))
                 return "(head {0})".format(state.goalie_position_dict[key])
         pass
     return None
@@ -118,34 +119,46 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
 
 
 def _update_dribble_or_pass_model(state: PlayerState, model: UppaalModel):
-    FORECAST_TICKS = 1
+    FORECAST_TICKS = 3
 
     team_mates = state.world_view.get_teammates_precarious(state.team_name, 10, min_dist=5)
     opponents = state.world_view.get_opponents_precarious(state.team_name, 10, min_dist=0)
+
+    if state.get_y_north_velocity_vector() is not None:
+        possessor_forecasted = (state.position.get_value().vector() + state.get_y_north_velocity_vector()
+                                * FORECAST_TICKS).coord()
+    else:
+        possessor_forecasted = state.position.get_value()
 
     forecasted_team_positions = list(map(lambda p: p.get_value().forecasted_position(
         (state.now() - p.last_updated_time) + FORECAST_TICKS), team_mates))
     forecasted_opponent_positions = list(map(lambda p: p.get_value().forecasted_position(
         (state.now() - p.last_updated_time) + FORECAST_TICKS), opponents))
+    if state.players_close_behind > 0:
+        forecasted_opponent_positions.append(Coordinate(possessor_forecasted.pos_x - 1,
+                                                        possessor_forecasted.pos_y, ))
 
     team_pos_value = _to_3d_double_array_coordinate(forecasted_team_positions)
     opponent_pos_value = _to_3d_double_array_coordinate(forecasted_opponent_positions)
-    possessor_val = _to_2d_double_array_coordinate(state.position.get_value())
+    possessor_val = _to_2d_double_array_coordinate(possessor_forecasted)
 
-    model.set_global_declaration_value("TEAM_MATES", len(team_mates))
-    model.set_global_declaration_value("OPPONENTS", len(opponents))
+    model.set_global_declaration_value("TEAM_MATES", len(forecasted_team_positions))
+    model.set_global_declaration_value("OPPONENTS", len(forecasted_opponent_positions))
     model.set_global_declaration_value("team_pos[TEAM_MATES][2]", team_pos_value)
     model.set_global_declaration_value("opponent_pos[OPPONENTS][2]", opponent_pos_value)
     model.set_global_declaration_value("possessor[2]", possessor_val)
 
-    debug_msg(str(state.now()) + " Forecasted team positions: " + str(forecasted_team_positions), "DRIBBLE_PASS_MODEL")
-    debug_msg(str(state.now()) + " Forecasted opponent positions: " + str(forecasted_opponent_positions)
+    all_posis = list(map(lambda p: p.get_value().coord, state.world_view.other_players))
+    debug_msg(str(state.now()) + " All positions: " + str(all_posis), "DRIBBLE_PASS_MODEL")
+    debug_msg(str(state.now()) + " Forecasted team positions: " + str(team_pos_value), "DRIBBLE_PASS_MODEL")
+    debug_msg(str(state.now()) + " Forecasted opponent positions: " + str(opponent_pos_value)
               , "DRIBBLE_PASS_MODEL")
+    debug_msg(str(state.now()) + " Forecasted possessor position: " + str(possessor_val), "DRIBBLE_PASS_MODEL")
+
     return forecasted_team_positions
 
 
 def _extract_pass_or_dribble_strategy(strategy: UppaalStrategy, team_coordinates):
-
     regressor: Regressor = strategy.regressors[0]
     best_choice_transition_id = regressor.get_highest_val_trans()[0]
     transition = strategy.index_to_transition[best_choice_transition_id]
@@ -253,4 +266,3 @@ def _to_3d_double_array_coordinate(coordinates: [Coordinate]):
 
 def _to_2d_double_array_coordinate(coord: Coordinate):
     return "{" + "{:.4f}, {:.4f}".format(coord.pos_x, coord.pos_y) + "}"
-

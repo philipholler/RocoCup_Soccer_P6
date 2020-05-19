@@ -198,6 +198,12 @@ class Ball:
         self.projection = self.position_history.list[0][0], direction, final_speed
         return self.position_history.list[0][0], direction, final_speed
 
+    def project_position_in_n_ticks(self, ticks):
+        positions = self.project_ball_position(ticks, ticks - 1)
+        if positions is None:
+            return None
+        return positions[len(positions) - 1]
+
     def project_ball_position(self, ticks: int, offset: int):
         positions = []
         # coord, direction, speed = self.approximate_position_direction_speed(minimum_data_points)

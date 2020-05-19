@@ -7,10 +7,11 @@ from constants import QUANTIZE_STEP_OBJECTS, QUANTIZE_STEP_LANDMARKS, EPSILON
 DEBUG_DICT = {
     "POSITIONAL": False,
     "ALL": False,
+    "PARSING": True,
     "SCENARIOS": False,
     "INTERCEPTION": False,
     "KICK": False,
-    "ACTIONS": False,
+    "ACTIONS": True,
     "ORIENTATION": False,
     "MESSAGES": False,
     "STATUS": False,

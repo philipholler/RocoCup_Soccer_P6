@@ -290,7 +290,9 @@ def determine_objective_field_default(state: PlayerState):
             debug_msg(str(state.now()) + " Position optimally!", "ACTIONS")
         return _position_optimally_objective(state)
 
-    debug_msg(str(state.now()) + " Idle orientation!", "ACTIONS")
+    if state.is_test_player():
+        debug_msg(str(state.now()) + " Idle orientation!", "ACTIONS")
+
     return Objective(state, lambda: actions.idle_orientation(state), lambda: True, 1)
 
 

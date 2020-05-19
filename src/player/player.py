@@ -62,11 +62,23 @@ class PlayerState:
                                                                                   , self.num, self.position)
 
     def needs_dribble_or_pass_strat(self):
-        if self.mode is not DRIBBLING_MODE or self.now() - self.last_dribble_pass_strat < 4:
+        if self.mode is not DRIBBLING_MODE or self.now() - self.last_dribble_pass_strat <= 4:
+            if self.is_test_player():
+                debug_msg(str(self.now()) + " Not dribbling or recently generated strat", "DRIBBLE_PASS_MODEL")
             return False
-        return len(self.world_view.get_opponents(self.team_name, 10)) > 0 \
-            and len(self.world_view.get_teammates(self.team_name, 10, 5)) > 0
-
+        enough_opponents = len(self.world_view.get_opponents(self.team_name, 10)) > 0
+        enough_teammates = len(self.world_view.get_teammates(self.team_name, 10, 5)) > 0
+        if not enough_opponents:
+            if self.is_test_player():
+                debug_msg(str(self.now()) + " Not enough opponents: " + str(self.world_view.other_players)
+                          , "DRIBBLE_PASS_MODEL")
+            return False
+        if not enough_teammates:
+            if self.is_test_player():
+                debug_msg(str(self.now()) + " Not enough teammates: " + str(
+                    self.world_view.other_players), "DRIBBLE_PASS_MODEL")
+            return False
+        return True
 
     def is_inside_field(self):
         position: Coordinate = self.position.get_value()
@@ -269,6 +281,10 @@ class PlayerState:
         self.update_body_angle(new_global_angle - self.body_state.neck_angle, self.now())
 
     def on_see_update(self):
+        # Delete old observations of players
+        self.world_view.other_players = list(filter(lambda op: self.now() - op.last_updated_time < 20,
+                                                    self.world_view.other_players))
+
         self.action_history.three_see_updates_ago = self.action_history.two_see_updates_ago
         self.action_history.two_see_updates_ago = self.action_history.last_see_update
         self.action_history.last_see_update = self.now()
@@ -490,7 +506,7 @@ class BodyState:
         self.fov = 90
         self.max_dash_power = 100
         self.jog_dash_power = 100 * 0.6
-        self.dribble_dash_power = 100 * 0.65
+        self.dribble_dash_power = 100  # Todo Bør den være dynamisk?
         self.dribble_kick_power = 100 * 0.3
 
 
@@ -653,7 +669,7 @@ class WorldView:
     def update_player_view(self, observed_player: ObservedPlayer):
         for i, data_point in enumerate(self.other_players):
             p = data_point.get_value()
-            if p.num == observed_player.num:
+            if p.num == observed_player.num and p.team == observed_player.team:
                 self.other_players[i].set_value(observed_player, self.sim_time)
                 return
         # Add new data point if player does not already exist in list

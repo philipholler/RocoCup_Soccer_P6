@@ -708,6 +708,9 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
 # 3: (ObjName Distance Direction)
 # 4: (ObjName Direction)
 def _parse_players(players: [], ps: player.PlayerState):
+    if ps.is_test_player():
+        debug_msg(str(ps.now()) + " Parsing players: " + str(players), "PARSING")
+    player_list = []
     ps.players_close_behind = 0
     for cur_player in players:
         # Unknown see object (out of field of view)
@@ -750,6 +753,8 @@ def _parse_players(players: [], ps: player.PlayerState):
 
         # If only direction
         if len(split_by_whitespaces) == 1:
+            if ps.is_test_player():
+                debug_msg(str(ps.now()) + " Skipping parsing : " + str(cur_player), "PARSING")
             # We don't save states of players without distance
             continue
         # If only distance and direction
@@ -787,7 +792,10 @@ def _parse_players(players: [], ps: player.PlayerState):
                                     observer_velocity=ps.get_y_north_velocity_vector())
 
         ps.world_view.update_player_view(new_player)
+        player_list.append(new_player)
 
+    if ps.is_test_player():
+        debug_msg(str(ps.now()) + " Finished parsing players: " + str(player_list), "PARSING")
 
 def _parse_init_online_coach(msg, wv: WorldViewCoach):
     regex = re.compile("\\(init ([lr]) .*\\)")
