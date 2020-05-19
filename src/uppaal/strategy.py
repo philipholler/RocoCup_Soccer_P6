@@ -119,7 +119,7 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
 
 
 def _update_dribble_or_pass_model(state: PlayerState, model: UppaalModel):
-    FORECAST_TICKS = 3
+    FORECAST_TICKS = 6
 
     team_mates = state.world_view.get_teammates_precarious(state.team_name, 10, min_dist=5)
     opponents = state.world_view.get_opponents_precarious(state.team_name, 10, min_dist=0)

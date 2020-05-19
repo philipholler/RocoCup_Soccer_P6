@@ -100,7 +100,11 @@ class Thinker(threading.Thread):
         if self.player_state.current_objective.should_recalculate(self.player_state):
             self.player_state.current_objective = determine_objective(self.player_state)
 
+        if self.player_state.is_test_player():
+            debug_msg(str(self.player_state.now()) + " Mode : " + str(self.player_state.mode), "MODE")
+
         commands = self.player_state.current_objective.get_next_commands(self.player_state)
+
         if self.player_state.is_test_player():
             debug_msg(str(self.player_state.now()) + " Sending commands : " + str(commands), "SENT_COMMANDS")
             debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "

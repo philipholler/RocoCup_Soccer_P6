@@ -257,9 +257,6 @@ def determine_objective_field_default(state: PlayerState):
         else:
             return _position_optimally_objective(state)
 
-    if state.is_test_player():
-        debug_msg(str(state.now()) + " Mode : " + str(state.mode), "MODE")
-
     # If in dribbling mode -> Dribble
     if state.mode is DRIBBLING_MODE:
         return _dribble_objective(state)

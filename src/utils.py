@@ -15,7 +15,7 @@ DEBUG_DICT = {
     "ORIENTATION": False,
     "MESSAGES": False,
     "STATUS": False,
-    "MODE": False,
+    "MODE": True,
     "GOALIE": False,
     "PASS_TARGET": False,
     "DRIBBLE": False,

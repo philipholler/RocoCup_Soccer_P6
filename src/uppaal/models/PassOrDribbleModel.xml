@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'><nta>
-	<declaration>const int OPPONENTS = 3;
-const int TEAM_MATES = 4;
-const double opponent_pos[OPPONENTS][2] = {{-14.4172, -4.3407},{6.2233, 3.0057},{-16.8422, -3.8980}};
-const double team_pos[TEAM_MATES][2] = {{-51.6748, -2.0453},{-28.7194, -7.3395},{-30.5980, -19.2470},{-32.1868, 16.5379}};
-const double possessor[2] = {-15.8422, -3.8980};
+	<declaration>const int OPPONENTS = 12;
+const int TEAM_MATES = 6;
+const double opponent_pos[OPPONENTS][2] = {{-4.1003, 21.0227},{14.7928, -6.2986},{22.8072, 8.6852},{30.8857, 5.9994},{44.5331, -1.3417},{44.8394, 5.7215},{22.9217, 6.7622},{50.7139, -0.0604},{45.3265, 3.5179},{24.2969, 12.0065},{44.8557, -7.6084},{32.2041, -17.7728}};
+const double team_pos[TEAM_MATES][2] = {{-1.9216, 8.8354},{39.1869, 4.7775},{35.9690, -5.9715},{34.3704, 4.4419},{44.3270, -3.4551},{47.3853, -15.4606}};
+const double possessor[2] = {44.6607, 3.7064};
 const double DRIBBLE_DIST = 7.0;
 const double DIST_REWARD_FACTOR = 0.5;
 const double INTERCEPT_CHANCE = 0.5;
