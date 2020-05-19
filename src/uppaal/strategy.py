@@ -69,7 +69,8 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if USING_STAMINA_MODEL and state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 5:
+    # CHANGE --
+    if USING_STAMINA_MODEL and state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 10:
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
                                   _update_stamina_model_simple, _extract_stamina_solution_simple)
     # Goalie strats
