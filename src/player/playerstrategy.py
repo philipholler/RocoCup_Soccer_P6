@@ -61,7 +61,7 @@ class Objective:
 
 def _dribble_objective(state: PlayerState):
     side = 1 if state.world_view.side == "l" else -1
-    if not state.is_nearest_ball(1):
+    if not state.is_nearest_ball(2):
         state.mode = DEFAULT_MODE
         return determine_objective(state)
 
