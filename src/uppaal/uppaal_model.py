@@ -6,7 +6,7 @@ import subprocess
 from os import fdopen, remove
 from pathlib import Path
 
-from shutil import copymode, move
+from shutil import copymode, move, copyfile
 from tempfile import mkstemp
 
 from constants import DISABLE_VERIFYTA_TERMINAL_OUTPUT
@@ -19,6 +19,9 @@ class UppaalStrategy:
         super().__init__()
         self.path_to_strat_file = os.path.normpath(str(OUTPUT_DIR_PATH) + strategy_name)
         self.strategy_text = ""
+        if not os.path.exists(self.path_to_strat_file):
+            f = open(Path(self.path_to_strat_file), "x")
+            f.close()
         with open(self.path_to_strat_file, 'r') as f:
             for line in f:
                 self.strategy_text += line
@@ -405,6 +408,17 @@ class Template:
 
 def _update_queries_write_path(model: UppaalModel):
     query_path = model.queries_path
+    query_dirs = Path(query_path).parent
+
+    if not query_dirs.exists():
+        os.makedirs(query_dirs)
+
+    if "possession" in query_path:
+        orig_query = Path(query_dirs).parent / "PassOrDribbleModel.q"
+        if not Path(query_path).exists():
+            f = open(Path(query_path), "x")
+            copyfile(orig_query, query_path)
+            f.close()
     with open(query_path, 'r', encoding='utf8') as f:
         for l in f:
             stripped_line = l.strip()

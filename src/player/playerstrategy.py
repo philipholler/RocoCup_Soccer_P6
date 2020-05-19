@@ -62,7 +62,7 @@ class Objective:
 
 def _dribble_objective(state: PlayerState):
     side = 1 if state.world_view.side == "l" else -1
-    if not state.is_nearest_ball(1):
+    if not state.is_nearest_ball(2):
         state.mode = DEFAULT_MODE
         return determine_objective(state)
 
@@ -641,7 +641,11 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
             target = state.find_teammate_closest_to(Coordinate(x, y), max_distance_delta=3.0)
             if target is not None:
                 debug_msg(str(state.now()) + " DRIBBLE_PASS_MODEL : Playing to :" + str(Coordinate(x, y)), "DRIBBLE_PASS_MODEL")
-                return target
+
+                # If target is outside the no no square then return target
+                i = -1 if state.world_view.side == "l" else 1
+                if target.coord.pos_x > 36*i and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
+                    return target
             else:
                 debug_msg(str(state.now()) + "No teammate matched :" + str(
                     Coordinate(x, y)) + " Visible: " + str(state.world_view.get_teammates(state.team_name, 10))

@@ -1,15 +1,16 @@
 import math
 import re
 from decimal import Decimal
+from pathlib import Path
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
-from constants import SECONDS_BETWEEN_STAMINA_STRAT, USING_STAMINA_MODEL, USING_GOALIE_POSITION_MODEL, \
-    USING_PASS_OR_DRIBBLE_MODEL, DRIBBLE_OR_PASS_STRAT_PREFIX, DRIBBLE_INDICATOR, PASS_INDICATOR
+from constants import DRIBBLE_OR_PASS_STRAT_PREFIX, DRIBBLE_INDICATOR, PASS_INDICATOR
 from geometry import Coordinate
 from uppaal import goalie_strategy
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
 from player.player import PlayerState
 from utils import debug_msg
+from shutil import copyfile
 
 SYSTEM_PLAYER_NAMES = ["player0", "player1", "player2", "player3", "player4"]
 PLAYER_POS_DECL_NAME = "player_pos[team_members][2]"
@@ -75,6 +76,21 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
+    if state.world_view.side is 'l' and USING_PASS_OR_DRIBBLE_MODEL and state.needs_dribble_or_pass_strat():
+        print(state.now(), " DRIBBLE STRAT - Player : ", state.num)
+
+        possession_dir = Path(__file__).parent / "models" / "possessionmodel"
+        if not possession_dir.exists():
+            os.makedirs(possession_dir)
+
+        original_pos_model = Path(possession_dir).parent / "PassOrDribbleModel.xml"
+        new_pos_file = possession_dir / "possessionmodel{0}{1}.xml".format(state.world_view.side, state.num)
+
+        if not new_pos_file.exists():
+            f = open(new_pos_file, "x")
+            copyfile(original_pos_model, new_pos_file)
+            f.close()
+
     if state.team_name in STAMINA_MODEL_TEAMS and (state.now() % 121) == (state.num + 1) * 10:
         print(state.num, state.team_name)
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
