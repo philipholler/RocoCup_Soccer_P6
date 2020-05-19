@@ -173,6 +173,12 @@ class PlayerState:
         return self.num == 2 and self.world_view.side == 'l'
 
     def is_nearest_ball(self, degree=2):
+
+        # if on opposite side, then you need to be the nearest
+        i = -1 if self.world_view.side == "l" else 1
+        if self.position.is_value_known() and self.position.get_value().pos_x * i < 0:
+            degree = 1
+
         team_mates = self.world_view.get_teammates(self.team_name, 10)
 
         if len(team_mates) < degree:
