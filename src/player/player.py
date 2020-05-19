@@ -35,7 +35,7 @@ class PlayerState:
         self.action_history = ActionHistory()
         self.body_state = BodyState()
         self.players_close_behind = 0
-        self.coach_command = PrecariousData.unknown()
+        self.coach_commands: [PrecariousData] = []
         self.starting_position: Coordinate = None
         self.playing_position: Coordinate = None
         self.last_see_global_angle = 0
@@ -51,6 +51,9 @@ class PlayerState:
         self.last_dribble_pass_strat = -9999
 
         self.goalie_position_dict = None
+        self.goalie_position_strategy = None
+        self.goalie_position_random_seed = 123456789
+        self.goalie_position_strat_have_dribbled = False
 
         super().__init__()
 

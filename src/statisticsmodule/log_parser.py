@@ -16,6 +16,13 @@ ACTION_LOG_PATTERN = '*.rcl'
 __HEX_REGEX = "0[xX][0-9a-fA-F]+"
 
 _LOWEST_STAMINA = 1000
+_HIGHEST_DIST_GOALIE = 1.2
+
+_GOALIE_DEFENCE_STAT = False
+_START_TICK = 0
+_END_TICK = 0
+
+_GAME_NUMBER = 1
 
 
 # Main method
@@ -24,6 +31,17 @@ def parse_logs():
     server_log_name = get_newest_server_log()
     action_log_name = get_newest_action_log()
     parse_log_name(server_log_name, game)
+
+    stat_dir = Path(__file__).parent.parent / "Statistics"
+
+    game_number_path = stat_dir / "game_number.txt"
+
+    try:
+        with open(game_number_path, "r") as file:
+            global _GAME_NUMBER
+            _GAME_NUMBER = int(file.readline())
+    except:
+        print("number not in file")
 
     # init number of players
     with open(Path(__file__).parent.parent / action_log_name, 'r') as file:
@@ -56,7 +74,7 @@ def parse_logs():
     calculate_possession(game)
     calculate_stamina(game)
 
-    log_directory = Path(__file__).parent.parent / game.gameID
+    log_directory = stat_dir / game.gameID
     os.makedirs(log_directory)
 
     with open(os.path.join(log_directory, "game_goals.txt"), "w") as file:
@@ -70,28 +88,41 @@ def parse_logs():
     file_goalie_kicks = open(os.path.join(log_directory, "goalie_kicks.csv"), "w")
     file_l_stamina = open(os.path.join(log_directory, "%s_left_stamina.txt" % game.teams[0].name), "w")
     file_r_stamina = open(os.path.join(log_directory, "%s_right_stamina.txt" % game.teams[1].name), "w")
-    file_l_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[0].name), "w")
-    file_r_biptest = open(os.path.join(log_directory, "%s_biptest_rounds.txt" % game.teams[1].name), "w")
+    file_biptest = open(os.path.join(log_directory, "biptest_rounds.csv"), "a")
     file_lowest_stam_tick = open(os.path.join(log_directory, "lowest_stam_tick.csv"), "w")
     file_highest_stam_tick = open(os.path.join(log_directory, "highest_stam_tick.csv"), "w")
+    file_average_stamina = open(os.path.join(log_directory, "average_stamina.csv"), "w")
 
     files = [file_kicks, file_goalie_kicks, file_l_stamina, file_r_stamina,
-             file_l_biptest, file_r_biptest, file_lowest_stam_tick, file_highest_stam_tick, file_real_kicks,
-             file_step_real_kicks, file_step_kicks]
+             file_biptest, file_lowest_stam_tick, file_highest_stam_tick, file_real_kicks,
+             file_step_real_kicks, file_step_kicks, file_average_stamina]
 
     csv_files = [file_lowest_stam_tick, file_highest_stam_tick, file_goalie_kicks, file_kicks, file_real_kicks,
-                 file_step_real_kicks, file_step_kicks]
+                 file_step_real_kicks, file_step_kicks, file_biptest, file_average_stamina]
 
     for file in csv_files:
         write_file_title(file, game)
 
     write_possession_file(game)
 
-    file_l_biptest.write(str(playerstrategy.__BIP_TEST_L))
-    file_r_biptest.write(str(playerstrategy.__BIP_TEST_R))
+    '''
+    for entry in playerstrategy.__BIP_TEST_L:
+        if playerstrategy.__BIP_TEST_L[entry] >= 0:
+            file_l_biptest.write(str(_GAME_NUMBER) + ", " + str(entry) + ", "
+                             + str(playerstrategy.__BIP_TEST_L[entry]) + "\n")
+
+    for entry in playerstrategy.__BIP_TEST_R:
+        if playerstrategy.__BIP_TEST_R[entry] >= 0:
+            file_r_biptest.write(str(_GAME_NUMBER) + ", " + str(entry) + ", "
+                             + str(playerstrategy.__BIP_TEST_R[entry]) + "\n")
+    '''
 
     stam_dict = calculate_stamina_pr_tick(game, True)
     write_stam_file(file_lowest_stam_tick, stam_dict)
+
+    # Create average stamina file
+    stam_avg_dict = calculate_stamina_avg(game)
+    write_stam_file(file_average_stamina, stam_avg_dict)
 
     stam_dict = calculate_stamina_pr_tick(game, False)
     write_stam_file(file_highest_stam_tick, stam_dict)
@@ -102,13 +133,23 @@ def parse_logs():
         if t.side == "r":
             file_r_stamina.write(write_stamina_file(game, t))
 
+    if _GOALIE_DEFENCE_STAT:
+        goalie_defence_dir = stat_dir / "goalie_defence"
+        if not goalie_defence_dir.exists():
+            os.makedirs(goalie_defence_dir)
+
+        with open(os.path.join(goalie_defence_dir, "goalie_defence.csv"), "a") as file:
+            file.write(str(_GAME_NUMBER) + ", " + str(is_goalie_near_ball(game, _START_TICK, _END_TICK)) + "\n")
+
     make_kick_dict(game)
+    make_biptest_dict(game)
 
     # file, game, real_kicks, steps
-    write_kick_file(file_kicks, game, False, False)
-    write_kick_file(file_real_kicks, game, True, False)
-    write_kick_file(file_step_kicks, game, False, True)
-    write_kick_file(file_step_real_kicks, game, True, True)
+    write_dict_to_file(file_kicks, game, game.kick_dict, False)
+    write_dict_to_file(file_real_kicks, game, game.real_kick_dict, False)
+    write_dict_to_file(file_step_kicks, game, game.kick_dict, True)
+    write_dict_to_file(file_step_real_kicks, game, game.real_kick_dict, True)
+    write_dict_to_file(file_biptest, game, game.biptest_dict, True)
 
     for stage in game.show_time:
         '''
@@ -130,6 +171,33 @@ def parse_logs():
         file.close()
 
 
+def if_goalie_defence(on: bool, start_tick, end_tick):
+    if on:
+        global _GOALIE_DEFENCE_STAT
+        _GOALIE_DEFENCE_STAT = True
+        global _START_TICK
+        _START_TICK = start_tick
+        global _END_TICK
+        _END_TICK = end_tick
+
+
+def is_goalie_near_ball(game: Game, start_tick, end_tick):
+    goalie = None
+    for tick in range(start_tick, end_tick):
+        stage = game.show_time[tick]
+        for g in stage.goalies:
+            if g.side == "r":
+                goalie = g
+        if goalie is None:
+            print("goalie is none!!")
+            return False
+        if stage.get_ball_coord().euclidean_distance_from(
+                Coordinate(goalie.x_coord, goalie.y_coord)) < _HIGHEST_DIST_GOALIE:
+            if game.ball_first_time_outside_field is not None and tick <= game.ball_first_time_outside_field:
+                return True
+    return False
+
+
 def make_kick_dict(game: Game):
     for stage in game.show_time:
         if (game.show_time.index(stage) - 1, "l") in game.kick_dict:
@@ -147,37 +215,73 @@ def make_kick_dict(game: Game):
     # print(game.kick_dict)
 
 
+def make_biptest_dict(game: Game):
+    next_goal = {"l": "lower", "r": "lower"}
+
+    for stage in game.show_time:
+        tick = game.show_time.index(stage)
+        for g in stage.goalies:
+            if is_near_lower_goal(g) and next_goal[g.side] == "lower":
+                print("it is writin??")
+                game.biptest_dict[(tick, g.side)] = 1
+                next_goal[g.side] = "upper"
+            if is_near_upper_goal(g) and next_goal[g.side] == "upper":
+                game.biptest_dict[(tick, g.side)] = 1
+                next_goal[g.side] = "lower"
+
+
+def is_near_upper_goal(goalie):
+    if goalie.side == "l":
+        x = -25
+        y = -33
+    if goalie.side == "r":
+        x = 25
+        y = -33
+
+    if get_distance_between_coords(Coordinate(goalie.x_coord, goalie.y_coord), Coordinate(x, y)) < 2:
+        return True
+    return False
+
+
+def is_near_lower_goal(goalie):
+    if goalie.side == "l":
+        x = -25
+        y = 33
+    if goalie.side == "r":
+        x = 25
+        y = 33
+
+    if get_distance_between_coords(Coordinate(goalie.x_coord, goalie.y_coord), Coordinate(x, y)) < 2:
+        return True
+    return False
+
+
 def write_file_title(file, game: Game):
     file.write("Tick, " + game.teams[0].name + ", " + game.teams[1].name + "\n")
 
 
-def write_kick_file(file, game: Game, real: bool, steps: bool):
-    if real:
-        kick_dict = game.real_kick_dict
-    else:
-        kick_dict = game.kick_dict
-
+def write_dict_to_file(file, game: Game, my_dict: dict, steps: bool):
     for x in range(1, len(game.show_time) + 1):
         # print("stage: " + str(x))
-        if (x, "l") not in kick_dict:
-            kick_dict[(x, "l")] = 0
-        if (x, "r") not in kick_dict:
-            kick_dict[(x, "r")] = 0
+        if (x, "l") not in my_dict:
+            my_dict[(x, "l")] = 0
+        if (x, "r") not in my_dict:
+            my_dict[(x, "r")] = 0
 
-    for x in sorted(kick_dict.keys()):
+    for x in sorted(my_dict.keys()):
         # print(x[0])
 
         if steps:
             last_tick = x[0] - 1
-            if x[1] == "l" and (last_tick, x[1]) in kick_dict:
-                kick_dict[x] += int(kick_dict.get((last_tick, x[1])))
-            if x[1] == "r" and (last_tick, x[1]) in kick_dict:
-                kick_dict[x] += int(kick_dict.get((last_tick, x[1])))
+            if x[1] == "l" and (last_tick, x[1]) in my_dict:
+                my_dict[x] += int(my_dict.get((last_tick, x[1])))
+            if x[1] == "r" and (last_tick, x[1]) in my_dict:
+                my_dict[x] += int(my_dict.get((last_tick, x[1])))
 
         if x[1] == "l":
-            file.write(str(x[0]) + ", " + str(kick_dict[x]) + ", ")
+            file.write(str(x[0]) + ", " + str(my_dict[x]) + ", ")
         if x[1] == "r":
-            file.write(str(kick_dict[x]) + "\n")
+            file.write(str(my_dict[x]) + "\n")
 
         '''
         if (x[0], "l") in kick_dict and (x[0], "r") in kick_dict:
@@ -194,37 +298,56 @@ def write_stam_file(file, stam_dict):
             file.write(str(stam_dict[s]) + "\n")
 
 
-def calculate_stamina_pr_tick(game: Game, lowest: bool):
-    stam_dict = {}
-    team1 = Player()
-    team2 = Player()
-
-    if lowest:
-        team1.stamina = 9999
-        team2.stamina = 9999
-    if not lowest:
-        team1.stamina = -1
-        team2.stamina = -1
+def calculate_stamina_avg(game: Game):
+    avg_stam_dict = {}
 
     for stage in game.show_time:
+        avg_team_1 = 0
+        avg_team_2 = 0
+
+        for player in stage.players:
+            if player.side == "l":
+                avg_team_1 += player.stamina
+            else:
+                avg_team_2 += player.stamina
+
+        avg_stam_dict[game.show_time.index(stage), "l"] = avg_team_1 / 11
+        avg_stam_dict[game.show_time.index(stage), "r"] = avg_team_2 / 11
+
+    return avg_stam_dict
+
+def calculate_stamina_pr_tick(game: Game, lowest: bool):
+    stam_dict = {}
+
+    for stage in game.show_time:
+        if lowest:
+            team1 = 9999
+            team2 = 9999
+        if not lowest:
+            team1 = -1
+            team2 = -1
         for player in stage.players:
             if lowest:
                 if player.side == "l":
-                    if player.stamina < team1.stamina:
-                        team1 = player
+                    if player.stamina < team1:
+                        team1 = player.stamina
+                        side1 = player.side
                 if player.side == "r":
-                    if player.stamina < team2.stamina:
-                        team2 = player
+                    if player.stamina < team2:
+                        team2 = player.stamina
+                        side2 = player.side
             if not lowest:
                 if player.side == "l":
-                    if player.stamina > team1.stamina:
-                        team1 = player
+                    if player.stamina > team1:
+                        team1 = player.stamina
+                        side1 = player.side
                 if player.side == "r":
-                    if player.stamina > team2.stamina:
-                        team2 = player
+                    if player.stamina > team2:
+                        team2 = player.stamina
+                        side2 = player.side
 
-        stam_dict[(game.show_time.index(stage) + 1, team1.side)] = team1.stamina
-        stam_dict[(game.show_time.index(stage) + 1, team2.side)] = team2.stamina
+        stam_dict[(game.show_time.index(stage) + 1, side1)] = team1
+        stam_dict[(game.show_time.index(stage) + 1, side2)] = team2
 
     return stam_dict
 
@@ -344,19 +467,19 @@ def calculate_possession_length(start_ball: Ball, last_ball: Ball):
 
 
 def write_possession_file(game: Game):
-    possession_dir = Path(__file__).parent.parent / "possessions"
+    possession_dir = Path(__file__).parent.parent / "Statistics" / "possessions"
     if not possession_dir.exists():
         os.makedirs(possession_dir)
 
-    now = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = "possession_" + now
-    file_possession = open(possession_dir / file_name, "w")
-    file_possession.write(str(game.possession_length))
+    # now = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_name = "possession.csv"
+    file_possession = open(possession_dir / file_name, "a")
+    file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_length) + "\n")
 
 
 # Gets the newest server log ".rcg"
 def get_newest_server_log():
-    server_log_path = os.listdir('.')
+    server_log_path = os.listdir(Path(__file__).parent.parent)
     server_log_names = fnmatch.filter(server_log_path, SERVER_LOG_PATTERN)
     server_log_names.sort(reverse=True)
     return server_log_names[0]
@@ -364,7 +487,7 @@ def get_newest_server_log():
 
 # Gets the newest action log ".rcl"
 def get_newest_action_log():
-    actions_log_path = os.listdir('.')
+    actions_log_path = os.listdir(Path(__file__).parent.parent)
     action_logs = fnmatch.filter(actions_log_path, ACTION_LOG_PATTERN)
     action_logs.sort(reverse=True)
     return action_logs[0]
@@ -375,13 +498,15 @@ def parse_init_action(txt, game: Game):
     init_re = re.compile(init_regex)
     matched = init_re.match(txt)
 
+    # print(str(matched.group(1)) + " team name")
+
     for team in game.teams:
         if team.name == matched.group(1):
             team.number_of_players += 1
 
 
 def parse_kick_action(txt, game: Game):
-    kick_regex = "({0}),{0}\tRecv (.*)_{0}: \\(kick {1} {1}\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
+    kick_regex = "({0}),{0}\tRecv (.*)_{0}: \\(kick .*\\)".format(_SIGNED_INT_REGEX, _REAL_NUM_REGEX)
     kick_re = re.compile(kick_regex)
     matched = kick_re.match(txt)
 
@@ -484,14 +609,22 @@ def parse_show_line(txt, game: Game):
     ball_txt = matched.group(2)
     parse_ball(ball_txt, stage)
 
+    # For use in goalie positioning
+    if stage.is_ball_outside_field() and game.ball_first_time_outside_field is None:
+        game.ball_first_time_outside_field = tick
+
     # log file always has 22 players, even the ones not initiated
     players = re.findall(r'\(\([^)]*\)[^)]*\)[^)]*\)[^)]*\)', matched.group(3))
     for p in players:
         player = parse_player(p)
         # check if the parsed player is initiated
+
         for team in game.teams:
-            if player.side == team.side and player.no in range(team.number_of_players + 1):
+            if team.side == player.side and player.no in range(1, team.number_of_players + 1):
                 stage.players.append(player)
+                if player.no == 1:
+                    # player.print_player()
+                    stage.goalies.append(player)
 
     distance_to_ball(stage)
     insert_kicks(stage)

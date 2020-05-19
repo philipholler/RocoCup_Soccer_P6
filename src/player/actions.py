@@ -931,9 +931,11 @@ def append_look_towards_neck_only(state: PlayerState, coord, command_builder, bo
 
         fov = max(minimum_fov, preferred_fov)
         command_builder.append_fov_change(state, fov)
-        debug_msg(
-            "global ball:" + str(global_target_angle) + "global neck:" + str(new_total_angle) + "required fov: " + str(
-                minimum_fov) + "view angle: " + str(required_view_angle), "POSITIONAL")
+        if state.is_test_player():
+            debug_msg("global ball:" + str(global_target_angle) + "global neck:" + str(
+                    new_total_angle) + "required fov: " + str(minimum_fov) +
+                      "view angle: " + str(required_view_angle), "POSITIONAL")
+
         neck_turn_angle = smallest_angle_difference(from_angle=state.body_state.neck_angle, to_angle=target_neck_angle)
         if state.body_state.neck_angle + neck_turn_angle > 90 or state.body_state.neck_angle + neck_turn_angle < -90:
             # The smallest angle difference between 90 and -90 has two solutions: 180 and -180
@@ -1000,10 +1002,14 @@ def find_dribble_direction(state, optimal_dir):
     return target_dir
 
 
-def dribble(state: PlayerState, optimal_dir: int):
+def dribble(state: PlayerState, optimal_dir: int, dribble_kick_power=None):
     command_builder = CommandBuilder()
     dribble_dir = find_dribble_direction(state, optimal_dir)
-    command_builder.append_kick(state, state.body_state.dribble_kick_power, dribble_dir)
+    dribble_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=dribble_dir)
+    if dribble_kick_power is not None:
+        command_builder.append_kick(state, dribble_kick_power, dribble_dir)
+    else:
+        command_builder.append_kick(state, state.body_state.dribble_kick_power, dribble_dir)
     command_builder.next_tick()
     command_builder.append_turn_action(state, _calculate_turn_moment(state.body_state.speed, dribble_dir))
     command_builder.next_tick()
@@ -1110,3 +1116,4 @@ def _allowed_angle_delta(distance, max_distance_deviation=0.5):
     """if distance < 0.1:
         return 90
     return math.degrees(math.acos(distance / math.sqrt(pow(max_distance_deviation, 2) + pow(distance, 2))))"""
+

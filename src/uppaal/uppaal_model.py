@@ -449,10 +449,8 @@ def execute_verifyta(model: UppaalModel):
         DEVNULL = open(os.devnull, 'wb')
 
     # Run uppaal verifyta command line tool
-    if DISABLE_VERIFYTA_TERMINAL_OUTPUT:
-        verifyta = subprocess.Popen(command, shell=True, stdout=DEVNULL)
-    else:
-        verifyta = subprocess.Popen(command, shell=True)
+    verifyta = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL)
+
     # Wait for uppaal to finish generating and printing strategy
     while verifyta.poll() is None:
         time.sleep(0.001)

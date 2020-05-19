@@ -298,6 +298,8 @@ def _parse_see(msg, state: player.PlayerState):
     new_pos = _approx_position_lines(state, flags)
     if new_pos is not None:
         state.update_position(new_pos)
+        if state.is_test_player():
+            debug_msg(str(state.now()) + " New position : " + str(new_pos), "POSITIONAL")
 
     # _approx_position(flags, state)
     # _approx_body_angle(flags, state)
@@ -867,7 +869,7 @@ def _parse_hear(text: str, ps: PlayerState):
         if ps.world_view.side == "l":
             coach_command_pattern = '.*"(.*)".*'
             matches = re.match(coach_command_pattern, text)
-            ps.coach_command.set_value(matches.group(1), 0)  # todo Time?
+            ps.coach_commands.append(PrecariousData(matches.group(1), 0))  # todo Time?
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":
@@ -1230,15 +1232,16 @@ def _approx_angle_lines(state: PlayerState, lines):
 
 
 def _approx_position_lines(state: PlayerState, flags: [Flag]):
+    if len(flags) == 0:
+        return None
+
+    return _emergency_approximation(state, flags)
+
     solution_paths = []
     flags = sorted(flags, key=lambda f: f.relative_distance)
-
     # Create solution shapes for all flags
     for flag in flags:
         solution_paths.append(create_solution_shape(state, flag))
-
-    if len(flags) == 0:
-        return None
 
     if len(flags) == 1:
         result = Polygon(create_solution_shape(state, flags[0])).centroid.coords
@@ -1310,7 +1313,8 @@ def _emergency_approximation(state, flags):
         approx_play_pos = flag.coordinate - relative_pos
         positions.append(approx_play_pos)
 
-    return avg_coord(positions)
+    avg = avg_coord(positions)
+    return Coordinate(avg.pos_x, -avg.pos_y)
 
 
 def parse_strat_player(state: PlayerState):

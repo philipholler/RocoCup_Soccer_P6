@@ -31,6 +31,48 @@ passing_strat = [
 ]
 
 
+def generate_commands_coachmsg_goalie_positioning(random_seed: int, wv: WorldViewCoach):
+    # Set seed for random generator
+    random.seed(random_seed)
+
+    # Generate player position
+    striker_x_pos = 36.5
+    striker_y_pos = random.randint(-20, 20)
+    striker = ("Team1", 2, striker_x_pos, striker_y_pos)
+
+    goalie_x_pos = 50
+    goalie_y_pos = 0
+    goalie = ("Team2", 1, goalie_x_pos, goalie_y_pos)
+
+    ball_x_pos = striker_x_pos + 0.4
+    ball_y_pos = striker_y_pos
+    ball = (ball_x_pos, ball_y_pos)
+
+    commands = _generate_commands([striker, goalie], ball)
+
+    should_dribble = bool(random.getrandbits(1))
+    if should_dribble:
+        # If standing high, always dribble down
+        if striker_y_pos > 10:
+            direction = random.randint(270, 360)
+        # If standing low, always dribble up
+        elif striker_y_pos < -10:
+            direction = random.randint(0, 90)
+        # Else dribble randomly
+        else:
+            if bool(random.getrandbits(1)):
+                direction = random.randint(270, 360)
+            else:
+                direction = random.randint(0, 90)
+
+    striker_target_y = random.randint(-5, 5)
+
+    if should_dribble:
+        return commands, ["(dribble {0})".format(direction), "(striker_target_y {0})".format(striker_target_y)]
+    else:
+        return commands, ["(striker_target_y {0})".format(striker_target_y)]
+
+
 def generate_commands_coachmsg_passing_strat(random_seed: int, wv: WorldViewCoach):
     """
     :param random_seed:
@@ -41,7 +83,7 @@ def generate_commands_coachmsg_passing_strat(random_seed: int, wv: WorldViewCoac
     players: [] = _generate_players_passing_strat()
     ball_pos = (float(players[0][2]) + 0.1, float(players[0][3]))
     _update_world_view_passing_strat(wv, players, ball_pos)
-    passing_strat_commands: [] = _generate_commands_passing_strat(players, ball_pos)
+    passing_strat_commands: [] = _generate_commands(players, ball_pos)
     coach_msg = generate_strategy(wv)
 
     return passing_strat_commands, coach_msg
@@ -89,7 +131,12 @@ def _update_world_view_passing_strat(wv: WorldViewCoach, players, ball_pos):
     ball: BallOnlineCoach = BallOnlineCoach(Coordinate(ball_pos[0], ball_pos[1]), 0, 0)
     wv.ball = ball
 
-def _generate_commands_passing_strat(players, ball_pos):
+def _generate_commands(players, ball_pos):
+    """
+    :param players: List of players as tuple. (team, unum, x_pos, y_pos)
+    :param ball_pos: Tuple as such (x_pos, y_pos)
+    :return:
+    """
     commands = []
     # Move all players
     for player in players:
