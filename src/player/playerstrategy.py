@@ -651,7 +651,6 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                         return teammate
 
 
-
     if len(forward_team_mates) > 0:
         # If free team mates sort by closest to opposing teams goal
         opposing_team_goal: Coordinate = Coordinate(52.5, 0) if side == "l" else Coordinate(-52.5, 0)
