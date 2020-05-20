@@ -856,9 +856,18 @@ def _parse_hear(text: str, ps: PlayerState):
         return
     elif sender == "online_coach_left":
         if ps.world_view.side == "l":
-            coach_command_pattern = '.*"(.*)".*'
-            matches = re.match(coach_command_pattern, text)
-            ps.coach_commands.append(PrecariousData(matches.group(1), 0))  # todo Time?
+            coach_command_pattern = ".*? \\(freeform .*?\\(([0-9]) (.*?)([0-9])?\\)"
+            coach_expression = re.compile(coach_command_pattern)
+            matches = coach_expression.match(text)
+
+            if int(matches.group(1)) == ps.num:
+                if matches.group(2) == "pass ":
+                    ps.passchain_targets.append(PrecariousData(int(matches.group(3)), ps.now()))
+                    print(str(ps.num) + "passes to: " + str(matches.group(3)))
+                elif matches.group(2) == "dribble":
+                    # TODO dribble thingz
+                    pass
+
     elif sender == "online_coach_right":
         return  # todo handle incoming messages from online coach
     elif sender == "coach":

@@ -43,6 +43,7 @@ class   PlayerState:
         self.face_dir = PrecariousData(0, 0)
         self.should_reset_to_start_position = False
         self.objective_behaviour = "idle"
+        self.passchain_targets: [PrecariousData] = []
 
 
         self.is_generating_strategy = False
