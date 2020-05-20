@@ -13,7 +13,7 @@ from player import actions
 from player.actions import Command, _calculate_relative_angle
 from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE, CATCH_MODE, \
     DRIBBLING_MODE
-from player.world_objects import Coordinate, Ball
+from player.world_objects import Coordinate, Ball, ObservedPlayer
 from utils import clamp, debug_msg
 
 
@@ -62,7 +62,7 @@ class Objective:
 
 def _dribble_objective(state: PlayerState):
     side = 1 if state.world_view.side == "l" else -1
-    if not state.is_nearest_ball(2):
+    if not state.is_nearest_ball(1):
         state.mode = DEFAULT_MODE
         return determine_objective(state)
 
@@ -84,7 +84,7 @@ def _dribble_objective(state: PlayerState):
     if target is not None:
         return Objective(state, lambda: actions.pass_to_player(state, target), lambda: True, 1)
 
-    if state.is_near_ball(): # todo temp: and state.action_history.has_looked_for_targets:
+    if state.is_near_ball():  # todo temp: and state.action_history.has_looked_for_targets:
         target_coord: Coordinate = Coordinate(52.5 * side, 0)
         opposing_goal_dir = math.degrees(calculate_full_origin_angle_radians(target_coord, state.position.get_value()))
         state.action_history.has_looked_for_targets = False
@@ -199,14 +199,13 @@ def determine_objective_goalie_default(state: PlayerState):
 
     # If ball coming towards us or ball will hit goal soon -> Intercept
     if (ball.will_hit_goal_within(ticks=5) or (state.is_nearest_ball(1) and state.is_ball_inside_own_box())):
-        debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!", "GOALIE")
+        debug_msg(str(state.now()) + " | ball coming towards us or ball will hit goal soon -> run to ball and catch!",
+                  "GOALIE")
         intercept_actions = actions.intercept_2(state, "catch")
         if intercept_actions is not None:
             return Objective(state, lambda: intercept_actions)
         else:
             return _rush_to_ball_objective(state)
-
-
 
     # If position not alligned with ball y-position -> Adjust y-position
     if state.position.is_value_known() and state.world_view.ball.is_value_known():
@@ -218,7 +217,19 @@ def determine_objective_goalie_default(state: PlayerState):
     return Objective(state, lambda: actions.face_ball(state), lambda: True, 1)
 
 
+def calculate_required_degree(state):
+    if (state.world_view.side == 'l' and state.world_view.ball.get_value().coord.pos_x < -15) \
+            or (state.world_view.side == 'r' and state.world_view.ball.get_value().coord.pos_x > 15):
+        for op in state.world_view.get_opponents(state.team_name, 10):
+            op: ObservedPlayer
+            if op.coord.euclidean_distance_from(state.world_view.ball.get_value().coord) < 4:
+                return 2
+
+    return 1
+
+
 def determine_objective_field_default(state: PlayerState):
+    state.intercepting = False
     # If lost orientation -> blind orient
     if _lost_orientation(state):
         return Objective(state, lambda: actions.blind_orient(state), lambda: True, 1)
@@ -273,8 +284,10 @@ def determine_objective_field_default(state: PlayerState):
         state.mode = DRIBBLING_MODE
         return _dribble_objective(state)
 
-    if state.is_nearest_ball(1):
+    required_degree = calculate_required_degree(state)
+    if state.is_nearest_ball(required_degree):
         intercept_actions = actions.intercept_2(state)
+        state.intercepting = True
         if intercept_actions is not None:
             return Objective(state, lambda: intercept_actions)
         else:
@@ -328,6 +341,7 @@ def determine_objective_biptest(state: PlayerState):
             return Objective(state, lambda: actions.rush_to(state, lower_goal), lambda: state.is_near(lower_goal, 0.5),
                              1000)
 
+
 def determine_objective_goalie_positioning_striker(state: PlayerState):
     # If lost orientation -> blind orient
     if _lost_orientation(state):
@@ -347,7 +361,8 @@ def determine_objective_goalie_positioning_striker(state: PlayerState):
                 dribble_in_commands = True
                 dribble_dir = int(str(cmd).replace("(dribble ", "")[:-1])
                 state.goalie_position_strat_have_dribbled = True
-                return Objective(state, lambda: actions.dribble(state, int(dribble_dir), dribble_kick_power=20), lambda: True, 1)
+                return Objective(state, lambda: actions.dribble(state, int(dribble_dir), dribble_kick_power=20),
+                                 lambda: True, 1)
 
         # If already dribble or should not dribble
         if not dribble_in_commands or state.goalie_position_strat_have_dribbled:
@@ -360,9 +375,11 @@ def determine_objective_goalie_positioning_striker(state: PlayerState):
                     if "striker_target_y" in cmd:
                         target_y_value = int(cmd[cmd.index(" ") + 1:-1])
 
-                return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, target_y_value), 75), lambda: True, 1)
+                return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, target_y_value), 75),
+                                 lambda: True, 1)
 
     return Objective(state, lambda: [], lambda: True, 1)
+
 
 def determine_objective(state: PlayerState):
     if state.objective_behaviour == "goalie_positioning_striker":
@@ -615,6 +632,25 @@ def _find_player(state, player_num):
     return None
 
 
+def is_offside(state: PlayerState, target):
+    if state.world_view.side is 'l':
+        if target.coord.pos_x < 10:
+            return False
+    else:
+        if target.coord.pos_x > -10:
+            return False
+
+    opponents = state.world_view.get_opponents(state.team_name, 10)
+
+    for o in opponents:
+        if state.world_view.side is 'l' and o.coord.pos_x > target.coord.pos_x:
+            return False
+        if state.world_view.side is 'r' and o.coord.pos_x < target.coord.pos_x:
+            return False
+
+    return True
+
+
 def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     """
     If uppaal has been generated recently -> Follow strat if applicable
@@ -640,11 +676,15 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
             y = float(match.group(2))
             target = state.find_teammate_closest_to(Coordinate(x, y), max_distance_delta=3.0)
             if target is not None:
-                debug_msg(str(state.now()) + " DRIBBLE_PASS_MODEL : Playing to :" + str(Coordinate(x, y)), "DRIBBLE_PASS_MODEL")
+                debug_msg(str(state.now()) + " DRIBBLE_PASS_MODEL : Playing to :" + str(Coordinate(x, y)),
+                          "DRIBBLE_PASS_MODEL")
 
                 # If target is outside the no no square then return target
                 i = -1 if state.world_view.side == "l" else 1
-                if target.coord.pos_x > 36*i and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
+                is_too_far_back = True if (state.world_view.side == "l" and target.coord.pos_x < -36) \
+                                          or (state.world_view.side == "r" and target.coord.pos_x > 36) else False
+
+                if (not is_too_far_back) and (not is_offside(state, target)) and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
                     return target
             else:
                 debug_msg(str(state.now()) + "No teammate matched :" + str(
@@ -677,7 +717,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     if len(forward_team_mates) < 1 and not am_i_marked:
         debug_msg("No free targets forward -> Dribble!", "PASS_TARGET")
         if must_pass:
-            tms = state.world_view.get_player_observations(state.team_name, 3)
+            tms = state.world_view.get_teammates(state.team_name, 5)
             if len(tms) > 0:
                 return random.choice(tms)
         return None
@@ -712,4 +752,3 @@ def team_has_corner_kick(state):
             return True
 
     return False
-

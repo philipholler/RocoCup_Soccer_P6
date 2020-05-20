@@ -1,10 +1,12 @@
 import math
+import os
 import re
 from decimal import Decimal
 from pathlib import Path
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
-from constants import DRIBBLE_OR_PASS_STRAT_PREFIX, DRIBBLE_INDICATOR, PASS_INDICATOR
+from constants import DRIBBLE_OR_PASS_STRAT_PREFIX, DRIBBLE_INDICATOR, PASS_INDICATOR, GOALIE_MODEL_TEAMS, \
+    STAMINA_MODEL_TEAMS, DRIBBLE_OR_PASS_TEAMS
 from geometry import Coordinate
 from uppaal import goalie_strategy
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
@@ -76,7 +78,7 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if state.world_view.side is 'l' and USING_PASS_OR_DRIBBLE_MODEL and state.needs_dribble_or_pass_strat():
+    if state.team_name in DRIBBLE_OR_PASS_TEAMS and state.needs_dribble_or_pass_strat():
         print(state.now(), " DRIBBLE STRAT - Player : ", state.num)
 
         possession_dir = Path(__file__).parent / "models" / "possessionmodel"
@@ -84,12 +86,16 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
             os.makedirs(possession_dir)
 
         original_pos_model = Path(possession_dir).parent / "PassOrDribbleModel.xml"
-        new_pos_file = possession_dir / "possessionmodel{0}{1}.xml".format(state.world_view.side, state.num)
+        model_name = "possessionmodel{0}{1}.xml".format(state.world_view.side, state.num)
+        new_pos_file = possession_dir / model_name
 
         if not new_pos_file.exists():
             f = open(new_pos_file, "x")
             copyfile(original_pos_model, new_pos_file)
             f.close()
+
+        return _StrategyGenerator("/possessionmodel/possessionmodel{0}{1}".format(state.world_view.side, state.num)
+                                  , _update_dribble_or_pass_model, _extract_pass_or_dribble_strategy)
 
     if state.team_name in STAMINA_MODEL_TEAMS and (state.now() % 121) == (state.num + 1) * 10:
         print(state.num, state.team_name)
@@ -125,7 +131,7 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
             play_in_poss += 1
 
     if play_in_poss == 1:
-        return _StrategyGenerator("PassingModel", _update_passing_model, _extract_actions)
+        return _StrategyGenerator("/PassingModel", _update_passing_model, _extract_actions)
 
     return None
 
@@ -160,12 +166,13 @@ def _update_dribble_or_pass_model(state: PlayerState, model: UppaalModel):
     model.set_global_declaration_value("opponent_pos[OPPONENTS][2]", opponent_pos_value)
     model.set_global_declaration_value("possessor[2]", possessor_val)
 
-    all_posis = list(map(lambda p: p.get_value().coord, state.world_view.other_players))
-    debug_msg(str(state.now()) + " All positions: " + str(all_posis), "DRIBBLE_PASS_MODEL")
-    debug_msg(str(state.now()) + " Forecasted team positions: " + str(team_pos_value), "DRIBBLE_PASS_MODEL")
-    debug_msg(str(state.now()) + " Forecasted opponent positions: " + str(opponent_pos_value)
-              , "DRIBBLE_PASS_MODEL")
-    debug_msg(str(state.now()) + " Forecasted possessor position: " + str(possessor_val), "DRIBBLE_PASS_MODEL")
+    if state.is_test_player():
+        all_posis = list(map(lambda p: p.get_value().coord, state.world_view.other_players))
+        debug_msg(str(state.now()) + " All positions: " + str(all_posis), "DRIBBLE_PASS_MODEL")
+        debug_msg(str(state.now()) + " Forecasted team positions: " + str(team_pos_value), "DRIBBLE_PASS_MODEL")
+        debug_msg(str(state.now()) + " Forecasted opponent positions: " + str(opponent_pos_value)
+                  , "DRIBBLE_PASS_MODEL")
+        debug_msg(str(state.now()) + " Forecasted possessor position: " + str(possessor_val), "DRIBBLE_PASS_MODEL")
 
     return forecasted_team_positions
 
@@ -189,7 +196,7 @@ def _update_stamina_model_simple(state: PlayerState, model: UppaalModel):
 
     model.set_global_declaration_value("recovery_rate_per_sec", 300)
     model.set_global_declaration_value("dashes_last_strategy", dashes_since_last_strat)
-    model.set_global_declaration_value("seconds_per_strategy", SECONDS_BETWEEN_STAMINA_STRAT)
+    model.set_global_declaration_value("seconds_per_strategy", 11)
 
     return state.body_state.stamina
 
@@ -252,7 +259,7 @@ def _get_ball_possessor(regressor: Regressor, locations, team_members):
 
 
 def _get_pass_target(r, index_to_transition_dict, team_members):
-    action = index_to_transition_dict[str(r.get_highest_val_trans()[0])]
+    action = index_to_transition_dict[r.get_highest_val_trans()[0]]
     target = int(re.search("pass_target := ([0-9]*)", action).group(1))
     return team_members[target]
 

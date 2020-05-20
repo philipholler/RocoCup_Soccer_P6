@@ -9,7 +9,6 @@ from pathlib import Path
 from shutil import copymode, move, copyfile
 from tempfile import mkstemp
 
-from constants import DISABLE_VERIFYTA_TERMINAL_OUTPUT
 from uppaal import MODELS_PATH, OUTPUT_DIR_PATH, QUERIES_PATH, VERIFYTA_PATH
 
 

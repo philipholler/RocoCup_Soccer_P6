@@ -824,8 +824,8 @@ def _append_wide_neck_orientation(state, command_builder, body_dir_change=0):
     else:
         current_body_angle = state.body_angle.get_value() + body_dir_change
 
-    target_angle = state.action_history.turn_history.least_updated_angle(fov, (current_body_angle - 90) % 360
-                                                                            , (current_body_angle + 90) % 360)
+    target_angle = state.action_history.turn_history.least_updated_angle(fov, (current_body_angle - 80) % 360
+                                                                            , (current_body_angle + 80) % 360)
     target_neck_angle = smallest_angle_difference(from_angle=current_body_angle, to_angle=target_angle)
     turn_angle = target_neck_angle - state.body_state.neck_angle
     state.action_history.turn_history.renew_angle(target_angle, fov)
@@ -1005,7 +1005,6 @@ def find_dribble_direction(state, optimal_dir):
 def dribble(state: PlayerState, optimal_dir: int, dribble_kick_power=None):
     command_builder = CommandBuilder()
     dribble_dir = find_dribble_direction(state, optimal_dir)
-    dribble_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=dribble_dir)
     if dribble_kick_power is not None:
         command_builder.append_kick(state, dribble_kick_power, dribble_dir)
     else:

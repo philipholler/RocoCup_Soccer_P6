@@ -54,6 +54,7 @@ class PlayerState:
         self.goalie_position_strategy = None
         self.goalie_position_random_seed = 123456789
         self.goalie_position_strat_have_dribbled = False
+        self.intercepting = False
 
         super().__init__()
 
@@ -65,7 +66,7 @@ class PlayerState:
                                                                                   , self.num, self.position)
 
     def needs_dribble_or_pass_strat(self):
-        if self.mode is not DRIBBLING_MODE or self.now() - self.last_dribble_pass_strat <= 4:
+        if not (self.mode is DRIBBLING_MODE or self.ball_incoming()) or self.intercepting or self.now() - self.last_dribble_pass_strat <= 4:
             if self.is_test_player():
                 debug_msg(str(self.now()) + " Not dribbling or recently generated strat", "DRIBBLE_PASS_MODEL")
             return False
@@ -173,15 +174,9 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 2 and self.world_view.side == 'l'
+        return self.num == 6 and self.world_view.side == 'l'
 
-    def is_nearest_ball(self, degree=2):
-
-        # if on opposite side, then you need to be the nearest
-        i = -1 if self.world_view.side == "l" else 1
-        if self.position.is_value_known() and self.position.get_value().pos_x * i < 0:
-            degree = 1
-
+    def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
 
         if len(team_mates) < degree:
@@ -318,11 +313,18 @@ class PlayerState:
 
         ball: Ball = self.world_view.ball.get_value()
         dist = ball.distance
+        if dist >= 15:
+            return False
         if ball.absolute_velocity is not None:
             ball_move_dir = ball.absolute_velocity.world_direction()
-            ball_relative_dir = self.face_dir.get_value() + ball.direction
+            ball_relative_dir = math.degrees(calculate_full_origin_angle_radians(ball.coord, self.position.get_value()))
             dif = abs(smallest_angle_difference((ball_move_dir + 180) % 360, ball_relative_dir))
-            return dif < 15
+
+            if self.is_test_player():
+                debug_msg(str(self.now()) + " Ball movement dir: " + str(ball_move_dir)
+                          + " Direction from player: " + str(ball_relative_dir)
+                          + " Heading this way : " + str(dif <= 15), "DRIBBLE_PASS_MODEL")
+            return dif <= 15
 
         position, projected_direction, speed = ball.approximate_position_direction_speed(2)
         if projected_direction is None or speed < 0.25:
@@ -410,7 +412,7 @@ class PlayerState:
 
     def find_teammate_closest_to(self, coord: Coordinate, max_distance_delta=200):
         closest_teammate = None
-        team_mates: [ObservedPlayer] = self.world_view.get_teammates(self.team_name, max_data_age=10)
+        team_mates: [ObservedPlayer] = self.world_view.get_teammates(self.team_name, max_data_age=8)
         for tm in team_mates:
             tm : ObservedPlayer
             if closest_teammate is None or \
@@ -515,7 +517,7 @@ class BodyState:
         self.fov = 90
         self.max_dash_power = 100
         self.jog_dash_power = 100 * 0.6
-        self.dribble_dash_power = 100  # Todo Bør den være dynamisk?
+        self.dribble_dash_power = 80  # Todo Bør den være dynamisk?
         self.dribble_kick_power = 100 * 0.3
 
 

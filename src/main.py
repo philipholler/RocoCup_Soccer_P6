@@ -29,19 +29,19 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001
 
 # Add teams and players here
 team_names = [TEAM_1_NAME, TEAM_2_NAME]
-num_players = 11
+num_players = 5
 
 # Enable monitor
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_TRAINER_MODE = False
+MORE_SCENARIOS_TRAINER_MODE = True
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
 # Run more games sequentially to test game performance
 MORE_GAMES_WITH_FAKE_MONITOR_MODE = False
-NUM_GAMES = 50
+NUM_GAMES = 100
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
 DEBUG_DICT["ALL"] = False
@@ -50,7 +50,7 @@ DEBUG_DICT["ALL"] = False
 COACHES_ENABLED = True
 
 # Enable trainer for a single run
-TRAINER_SINGLE_RUN_ENABLED = False
+TRAINER_SINGLE_RUN_ENABLED = True
 
 # Logparser stuffs
 stat_dir = Path(__file__).parent / "Statistics"
@@ -65,12 +65,12 @@ try:
         random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
-            """commands, coach_msg = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
-                                                                                     wv=WorldViewCoach(0, "Team1"))"""
+            commands, coach_msgs = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
+                                                                                     wv=WorldViewCoach(0, "Team1"))
 
             # For coach positioning strategy
-            commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(random.randint(0, 1000000000),
-                                                                                          wv=WorldViewCoach(0, "Team1"))
+            #commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(random.randint(0, 1000000000),
+            #                                                                              wv=WorldViewCoach(0, "Team1"))
 
             soccersim: SoccerSim = SoccerSim(team_names=team_names,
                                              num_players=num_players,
@@ -92,7 +92,6 @@ try:
             for command in commands:
                 print("Trainer sending: ", command)
                 soccersim.trainer.think.say_command(command)
-
 
             # Give commands from coach
             print("Coach sending: ", coach_msgs)
