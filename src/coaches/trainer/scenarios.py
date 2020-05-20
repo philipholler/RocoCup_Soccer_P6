@@ -8,6 +8,7 @@ Use commands likes:
 import random
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
+from constants import TEAM_2_NAME, TEAM_1_NAME
 from geometry import Coordinate
 from uppaal.strategy import generate_strategy
 
@@ -94,31 +95,29 @@ def _generate_players_passing_strat() -> []:
     """
     players: [] = []
     possessor = None
-    for team in range(2):
+    for team in [TEAM_1_NAME, TEAM_2_NAME]:
         for player in range(5):
             # Generate possessor
-            if team == 0 and player == 0:
-                cur_team: str = "Team{0}".format(str(int(team) + 1))
+            if team == TEAM_1_NAME and player == 0:
                 unum: int = player + 1
                 x_pos = random.randint(-50, 20)
                 y_pos = random.randint(-20, 20)
-                players.append((cur_team, unum, x_pos, y_pos))
-                possessor = (cur_team, unum, x_pos, y_pos)
+                players.append((team, unum, x_pos, y_pos))
+                possessor = (team, unum, x_pos, y_pos)
             # Generate other players
             else:
-                cur_team: str = "Team{0}".format(str(int(team) + 1))
                 unum: int = player + 1
                 # Position should not be closer than 10 meters
                 x_pos = random.randint(possessor[2] + 10, possessor[2] + 30)
                 y_pos = random.randint(possessor[3] - 20, possessor[3] + 20)
-                players.append((cur_team, unum, x_pos, y_pos))
+                players.append((team, unum, x_pos, y_pos))
 
     return players
 
 def _update_world_view_passing_strat(wv: WorldViewCoach, players, ball_pos):
     # Add all players to world view
     for player in players:
-        if player[0] == "Team1" and player[1] == 1:
+        if player[0] == TEAM_1_NAME and player[1] == 1:
             new_player: PlayerViewCoach = PlayerViewCoach(player[0], player[1], False, Coordinate(player[2], player[3])
                                                           , 0, 0, 0, 0, True)
         else:

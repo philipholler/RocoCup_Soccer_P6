@@ -27,7 +27,7 @@ QUANTIZE_STEP_LINES = 0.01
 EPSILON = 1.0e-10
 
 # -----------------  Uppaal Strategies --------------------- #
-DRIBBLE_OR_PASS_TEAMS = [TEAM_1_NAME]
+DRIBBLE_OR_PASS_TEAMS = []
 STAMINA_MODEL_TEAMS = []
 GOALIE_MODEL_TEAMS = []
 

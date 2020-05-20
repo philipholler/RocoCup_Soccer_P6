@@ -23,13 +23,14 @@ def shut_down_gracefully() -> None:
         soccersim.join()
     exit(0)
 
+
 # Network settings
 UDP_IP = "127.0.0.1"
 UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001, 6002, 6000
 
 # Add teams and players here
 team_names = [TEAM_1_NAME, TEAM_2_NAME]
-num_players = 11
+num_players = 5
 
 # Enable monitor
 monitor_enabled = True
@@ -66,16 +67,12 @@ try:
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
             commands, coach_msgs = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
-                                                                                     wv=WorldViewCoach(0, "Team1"))
-            print(coach_msgs)
+                                                                                     wv=WorldViewCoach(0, TEAM_1_NAME))
 
             # For coach positioning strategy
-            # commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(random.randint(0, 1000000000),
-                                                                                         # wv=WorldViewCoach(0, "Team1"))
-
-            # For coach positioning strategy
-            #commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(random.randint(0, 1000000000),
-            #                                                                              wv=WorldViewCoach(0, "Team1"))
+            #commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(
+            #    random.randint(0, 1000000000),
+            #    wv=WorldViewCoach(0, TEAM_1_NAME))
 
             soccersim: SoccerSim = SoccerSim(team_names=team_names,
                                              num_players=num_players,
