@@ -35,7 +35,7 @@ num_players = 11
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_TRAINER_MODE = False
+MORE_SCENARIOS_TRAINER_MODE = True
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
@@ -50,7 +50,7 @@ DEBUG_DICT["ALL"] = False
 COACHES_ENABLED = True
 
 # Enable trainer for a single run
-TRAINER_SINGLE_RUN_ENABLED = False
+TRAINER_SINGLE_RUN_ENABLED = True
 
 # Logparser stuffs
 stat_dir = Path(__file__).parent / "Statistics"
@@ -67,6 +67,11 @@ try:
             # Generate passing strat
             commands, coach_msgs = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
                                                                                      wv=WorldViewCoach(0, "Team1"))
+            print(coach_msgs)
+
+            # For coach positioning strategy
+            # commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(random.randint(0, 1000000000),
+                                                                                         # wv=WorldViewCoach(0, "Team1"))
 
             # For coach positioning strategy
             #commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(random.randint(0, 1000000000),

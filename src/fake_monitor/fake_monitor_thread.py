@@ -12,7 +12,7 @@ class FakeMonitorClient(threading.Thread):
         self._stop_event = threading.Event()
         self.start_time = start_time
         self.thinker = FakeMonitorThinker(start_time)
-        self.connection = client_connection.Connection(UDP_IP, UDP_PORT, self.thinker, should_print=True)
+        self.connection = client_connection.Connection(UDP_IP, UDP_PORT, self.thinker, should_print=False)
         self.thinker.connection = self.connection
 
 

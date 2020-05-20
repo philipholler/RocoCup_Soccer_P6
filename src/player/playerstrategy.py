@@ -652,6 +652,7 @@ def is_offside(state: PlayerState, target):
 
 
 def _choose_pass_target(state: PlayerState, must_pass: bool = False):
+    print("choose pass target")
     """
     If uppaal has been generated recently -> Follow strat if applicable
     If free targets forward -> Pass forward
@@ -705,6 +706,24 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     forward_team_mates = state.world_view.get_non_offside_forward_team_mates(state.team_name, side,
                                                                              state.position.get_value(), max_data_age=4,
                                                                              min_distance_free=2, min_dist_from_me=2)
+
+    # For pass chain model, if an existing target is seen by player, pass ball
+    if len(state.passchain_targets) > 0:
+        print("passchain longer than 0")
+        for target in state.passchain_targets:
+            target: PrecariousData
+            if target.last_updated_time > state.now() - 40:
+                print("if target update time is later than 40 seconds ago")
+                for teammate in state.world_view.get_teammates(state.team_name, 10):
+                    print(" length of teammate list: " + str(len(state.world_view.get_teammates(state.team_name, 10))))
+                    print(teammate.num)
+                    print(target.get_value())
+                    teammate: ObservedPlayer
+                    if teammate.num is not None and int(teammate.num) == int(target.get_value()):
+                        print("good teammate!!" + str(state.num) + " passes to " + str(teammate.num))
+                        return teammate
+
+
     if len(forward_team_mates) > 0:
         # If free team mates sort by closest to opposing teams goal
         opposing_team_goal: Coordinate = Coordinate(52.5, 0) if side == "l" else Coordinate(-52.5, 0)
