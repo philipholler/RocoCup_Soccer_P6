@@ -1,19 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
-<nta>
+<?xml version="1.0" encoding="utf-8"?><!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'><nta>
 	<declaration>typedef const int[0, 8] stamina_intervals_id_t;
 		typedef const int[0, 100] dash_power_id_t;
-
 		int stamina_interval;
-		int final_stamina_interval = 9;
-
-		const int seconds_per_strategy = 10;
-		const int recovery_rate_per_sec = 300;
-
-
-		int dashes_last_strategy = 42;
-		int new_dash_power = 0;
-
+int final_stamina_interval = 9;
+const int seconds_per_strategy = 10;
+const int recovery_rate_per_sec = 300;
+int dashes_last_strategy = 10;
+int new_dash_power = 0;
 		int update_stamina_interval(int dash_power){
 		int total_recovery = recovery_rate_per_sec * seconds_per_strategy;
 		int total_consumption = dashes_last_strategy * dash_power;
@@ -26,51 +19,51 @@
 		return 0;
 		}
 		return stamina_interval + delta_interval;
-		}
-	</declaration>
+}
+</declaration>
 	<template>
 		<name x="5" y="5">Player</name>
 		<declaration>// Place local declarations here.</declaration>
 		<location id="id0" x="-1139" y="-535">
 			<name x="-1113" y="-544">stamina_chosen</name>
-			<urgent/>
+			<urgent />
 		</location>
 		<location id="id1" x="-1139" y="-671">
 			<name x="-1113" y="-679">start</name>
-			<urgent/>
+			<urgent />
 		</location>
 		<location id="id2" x="-1139" y="-408">
 			<name x="-1113" y="-417">dash</name>
 		</location>
-		<init ref="id1"/>
+		<init ref="id1" />
 		<transition>
-			<source ref="id0"/>
-			<target ref="id2"/>
+			<source ref="id0" />
+			<target ref="id2" />
 			<label kind="select" x="-1122" y="-501">dash_power_selected : dash_power_id_t</label>
 			<label kind="assignment" x="-1122" y="-476">final_stamina_interval = update_stamina_interval(dash_power_selected),
 				new_dash_power = dash_power_selected</label>
 		</transition>
 		<transition controllable="false">
-			<source ref="id1"/>
-			<target ref="id0"/>
+			<source ref="id1" />
+			<target ref="id0" />
 			<label kind="select" x="-1122" y="-629">stamina_ran : stamina_intervals_id_t</label>
 			<label kind="assignment" x="-1122" y="-603">stamina_interval = stamina_ran</label>
 		</transition>
 	</template>
 	<system>player = Player();
-		system player;</system>
+system player;</system>
 	<queries>
 		<query>
 			<formula>saveStrategy("/home/philipholler/Desktop/staminastrat", opt_power)</formula>
-			<comment></comment>
+			<comment />
 		</query>
 		<query>
 			<formula>strategy opt_power = maxE(new_dash_power) [&lt;=1000]: &lt;&gt; player.dash under safe</formula>
-			<comment></comment>
+			<comment />
 		</query>
 		<query>
 			<formula>strategy safe = control: A[] not (final_stamina_interval &lt; 2)</formula>
-			<comment></comment>
+			<comment />
 		</query>
 	</queries>
 </nta>

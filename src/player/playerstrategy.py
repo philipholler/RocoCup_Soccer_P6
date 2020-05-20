@@ -2,7 +2,7 @@ import math
 import random
 from random import choice
 
-import constant
+import constants
 
 import constants
 from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS

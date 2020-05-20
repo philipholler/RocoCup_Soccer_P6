@@ -69,25 +69,32 @@ def has_applicable_strat_player(state: PlayerState):
 
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
-    if USING_STAMINA_MODEL and state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 5:
+    # CHANGE --
+    if USING_STAMINA_MODEL and state.now() % (SECONDS_BETWEEN_STAMINA_STRAT * 10) == 2 + int(state.num) * 10:
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
                                   _update_stamina_model_simple, _extract_stamina_solution_simple)
     # Goalie strats
     if USING_GOALIE_POSITION_MODEL and state.player_type == "goalie":
         ball_possessor = state.get_ball_possessor()
         # Use goaliePositioning strategy
-        if ball_possessor is not None and ball_possessor.coord is not None and state.team_name == "Team2":
+        if ball_possessor is not None and ball_possessor.coord is not None:
+            side = 1 if state.world_view.side == "r" else -1
             steps_per_meter = goalie_strategy.STEPS_PER_METER
             # Convert coordinate to fit the squares from the strategy
-            possessor_new_x = math.floor(ball_possessor.coord.pos_x / steps_per_meter) * steps_per_meter
+            possessor_new_x = math.floor(ball_possessor.coord.pos_x * side / steps_per_meter) * steps_per_meter
             possessor_new_y = math.floor(ball_possessor.coord.pos_y / steps_per_meter) * steps_per_meter
-            goalie_new_x = math.floor(state.position.get_value().pos_x / steps_per_meter) * steps_per_meter
+            goalie_new_x = math.floor(state.position.get_value().pos_x * side / steps_per_meter) * steps_per_meter
             goalie_new_y = math.floor(state.position.get_value().pos_y / steps_per_meter) * steps_per_meter
+
+
+            if abs(state.position.get_value().pos_x) > 52.5:
+                goalie_new_x = 52 * side
+
             # Example: "(36.5, -19.5),(47.5, -8.5)" -> "(goalie_x, goalie_y),(player_x, player_y)"
             key = "({0}.0, {1}.0),({2}.0, {3}.0)".format(str(goalie_new_x), str(goalie_new_y), str(possessor_new_x), str(possessor_new_y))
             if key in state.goalie_position_dict.keys():
                 result = state.goalie_position_dict[key]
-                optimal_x = int(goalie_new_x + result[0])
+                optimal_x = int(goalie_new_x * side + result[0] * side)
                 optimal_y = int(goalie_new_y + result[1])
                 optimal_coord = Coordinate(optimal_x, optimal_y)
                 state.goalie_position_strategy = optimal_coord
