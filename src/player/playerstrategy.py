@@ -685,7 +685,6 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                                           or (state.world_view.side == "r" and target.coord.pos_x > 36) else False
 
                 if (not is_too_far_back) and (not is_offside(state, target)) and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
-                if target.coord.pos_x > 36*i or target.coord.pos_y > -20 or target.coord.pos_y > 20:
                     return target
             else:
                 debug_msg(str(state.now()) + "No teammate matched :" + str(

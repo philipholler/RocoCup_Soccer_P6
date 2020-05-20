@@ -29,13 +29,13 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001
 
 # Add teams and players here
 team_names = [TEAM_1_NAME, TEAM_2_NAME]
-num_players = 5
+num_players = 11
 
 # Enable monitor
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_TRAINER_MODE = True
+MORE_SCENARIOS_TRAINER_MODE = False
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
@@ -50,7 +50,7 @@ DEBUG_DICT["ALL"] = False
 COACHES_ENABLED = True
 
 # Enable trainer for a single run
-TRAINER_SINGLE_RUN_ENABLED = True
+TRAINER_SINGLE_RUN_ENABLED = False
 
 # Logparser stuffs
 stat_dir = Path(__file__).parent / "Statistics"
