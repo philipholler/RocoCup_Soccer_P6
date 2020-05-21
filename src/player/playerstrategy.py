@@ -388,6 +388,8 @@ def determine_objective_goalie_positioning_striker(state: PlayerState):
 
 
 def determine_objective(state: PlayerState):
+    if state.objective_behaviour == "field":
+        return determine_objective_field_default(state)
     if state.objective_behaviour == "goalie_positioning_striker":
         return determine_objective_goalie_positioning_striker(state)
     if state.objective_behaviour == "position_optimally":

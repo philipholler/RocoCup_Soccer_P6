@@ -31,14 +31,14 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001
 
 # Add teams and players here
 team_names = [TEAM_1_NAME, TEAM_2_NAME]
-num_players = 11
+num_players = 5
 
 # Enable monitor
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_TRAINER_MODE = False
-constants.USING_PASS_CHAIN_STRAT = False
+MORE_SCENARIOS_TRAINER_MODE = True
+constants.USING_PASS_CHAIN_STRAT = True
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
@@ -69,8 +69,15 @@ try:
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
             if constants.USING_PASS_CHAIN_STRAT:
-                commands, coach_msgs = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
-                                                                                     wv=WorldViewCoach(0, TEAM_1_NAME))
+                generate_success = False
+                while not generate_success:
+                    try:
+                        commands, coach_msgs = scenarios.generate_commands_coachmsg_passing_strat(
+                            random.randint(0, 1000000000),
+                            wv=WorldViewCoach(0, TEAM_1_NAME))
+                        generate_success = True
+                    except Exception:
+                        continue
             else:
                 # For coach positioning strategy
                 commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(
@@ -106,9 +113,10 @@ try:
 
             trainer = soccersim.trainer
 
-            time.sleep(20)
             # Start game
+            time.sleep(2)
             trainer.think.change_game_mode("play_on")
+
 
             while trainer.think.world_view.sim_time < TICKS_PER_RUN:
                 pass

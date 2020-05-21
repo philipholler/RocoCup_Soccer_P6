@@ -1,4 +1,8 @@
 import math
+import re
+from pathlib import Path
+
+from numpy import average, median
 
 from geometry import Coordinate
 
@@ -105,3 +109,41 @@ class Player:
     def print_player(self):
         print("player side: " + self.side + " no: " + str(self.no) +
               " player coords: " + str(self.x_coord) + " " + str(self.y_coord) + "kick count: " + str(self.kicks))
+
+
+stat_dir = Path(__file__).parent.parent / "Statistics"
+
+
+def print_to_file(text, file_name):
+    try:
+        with open(stat_dir / file_name, "w") as file:
+            file.write(text)
+    except Exception:
+        print("Could not write to file : ")
+    pass
+
+
+if __name__ == "__main__":
+    all_ticks = []
+    for num in range(11):
+        for side in ['l', 'r']:
+            name = "missed_ticks_" + str(num + 1) + side
+            try:
+                with open(stat_dir / name, "r") as file:
+                    ticks = file.read()
+                    split_by_whitespaces = re.split(',', ticks)
+                    all_ticks.extend(map(lambda t: int(t), split_by_whitespaces))
+            except FileNotFoundError:
+                print("Could not read from file : " + str(stat_dir / name))
+
+    print("Average = ", average(all_ticks))
+    print("Median = ", median(all_ticks))
+    print("Max = ", max(all_ticks))
+    print("Min = ", min(all_ticks))
+
+    amount_in_range = sum(1 if int(x) <= 3 else 0 for x in all_ticks)
+    amount_not_range = len(all_ticks) - amount_in_range
+    print("Percentage in range 7-8= ", amount_in_range / len(all_ticks) * 100)
+
+    print(all_ticks)
+    print(len(all_ticks))

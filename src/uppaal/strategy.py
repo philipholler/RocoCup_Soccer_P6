@@ -136,7 +136,7 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
             play_in_poss += 1
 
     if play_in_poss == 1:
-        return _StrategyGenerator("/PassingModel", _update_passing_model, _extract_actions)
+        return _StrategyGenerator("/PassChainModel", _update_passing_model, _extract_actions)
 
     return None
 
