@@ -1,5 +1,6 @@
 # angle between c2 and c3 with vertex c1
 import math
+import re
 from math import atan2
 
 
@@ -31,6 +32,14 @@ class Coordinate:
 
     def __gt__(self, other):
         return self.pos_x > other.pos_x and self.pos_y > other.pos_y
+
+    def marshal(self) -> str:
+        return "(" + str(self.pos_x) + " " + str(self.pos_y) + ")"
+
+    @staticmethod
+    def unmarshal(text):
+        match = re.match("\\(([0-9]*.[0-9]*) ([0-9]*.[0-9]*)\\)", text)
+        return Coordinate(float(match.group(1)), float(match.group(2)))
 
     def euclidean_distance_from(self, other):
         return math.sqrt((self.pos_x - other.pos_x) ** 2 + (self.pos_y - other.pos_y) ** 2)

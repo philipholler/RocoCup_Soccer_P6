@@ -56,7 +56,9 @@ class PlayerState:
         self.goalie_position_random_seed = 123456789
         self.goalie_position_strat_have_dribbled = False
         self.intercepting = False
+        self.received_dribble_instruction = PrecariousData(False, 0)
 
+        self.statistics = Statistics()
         super().__init__()
 
     def get_y_north_velocity_vector(self):
@@ -175,7 +177,7 @@ class PlayerState:
         return self.world_view.sim_time
 
     def is_test_player(self):
-        return self.num == 6 and self.world_view.side == 'l'
+        return self.num == 2 and self.world_view.side == 'l'
 
     def is_nearest_ball(self, degree=1):
         team_mates = self.world_view.get_teammates(self.team_name, 10)
@@ -423,6 +425,37 @@ class PlayerState:
         if closest_teammate is None or closest_teammate.coord.euclidean_distance_from(coord) > max_distance_delta:
             return None
         return closest_teammate
+
+
+class Statistics(object):
+
+    def __init__(self) -> None:
+        self.strategies_generated = 0
+        self.current_missed_ticks = 0
+        self.missed_ticks_history = []
+        self.applied_possession_strategies = 0
+        self.outdated_possession_strategies = 0
+
+    def register_missed_tick(self):
+        self.current_missed_ticks += 1
+
+    def register_finished_strategy_generation(self):
+        self.missed_ticks_history.append(self.current_missed_ticks)
+        self.current_missed_ticks = 0
+
+    def use_possession_strategy(self):
+        self.applied_possession_strategies += 1
+
+    def discard_possession_strategy(self):
+        self.outdated_possession_strategies += 1
+
+    def print_to_file(self, player_num, player_team):
+        pass
+
+    def text(self):
+        return "Applied Strategies : {0} | Outdated Strategies : {1}\nMissed ticks: {2}"\
+            .format(self.applied_possession_strategies, self.outdated_possession_strategies, self.missed_ticks_history)
+
 
 
 class ActionHistory:

@@ -76,6 +76,7 @@ class Thinker(threading.Thread):
             # If some result of a strategy generation has been returned to the result var
             if len(self.player_state.strategy_result_list) > 0:
                 parsing.parse_strat_player(self.player_state)
+                self.player_state.statistics.register_finished_strategy_generation()
 
             # look for strat:
             if not self.player_state.is_generating_strategy and strategy.has_applicable_strat_player(self.player_state):
@@ -87,6 +88,11 @@ class Thinker(threading.Thread):
             last_time = current_time
             # Update current objective in accordance to the player's strategy
             if time_since_action >= 0.1:
+                if self.player_state.is_generating_strategy:  # Statistics
+                    self.player_state.statistics.register_missed_tick()
+
+                if self.player_state.now() == 230:
+                    print(self.player_state.statistics.text())
                 time_since_action -= 0.1
                 time_since_action %= 0.08  # discard queued updates if more than 80 ms behind
                 self.perform_action()

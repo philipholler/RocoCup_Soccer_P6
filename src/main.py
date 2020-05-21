@@ -4,6 +4,7 @@ import random
 import time
 from pathlib import Path
 
+import constants
 from coaches.trainer import scenarios
 from coaches.world_objects_coach import WorldViewCoach
 from constants import TEAM_2_NAME, TEAM_1_NAME
@@ -30,13 +31,14 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001
 
 # Add teams and players here
 team_names = [TEAM_1_NAME, TEAM_2_NAME]
-num_players = 5
+num_players = 11
 
 # Enable monitor
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_TRAINER_MODE = True
+MORE_SCENARIOS_TRAINER_MODE = False
+constants.USING_PASS_CHAIN_STRAT = False
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
@@ -51,7 +53,7 @@ DEBUG_DICT["ALL"] = False
 COACHES_ENABLED = True
 
 # Enable trainer for a single run
-TRAINER_SINGLE_RUN_ENABLED = True
+TRAINER_SINGLE_RUN_ENABLED = False
 
 # Logparser stuffs
 stat_dir = Path(__file__).parent / "Statistics"
@@ -66,13 +68,15 @@ try:
         random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
-            commands, coach_msgs = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
+            if constants.USING_PASS_CHAIN_STRAT:
+                commands, coach_msgs = scenarios.generate_commands_coachmsg_passing_strat(random.randint(0, 1000000000),
                                                                                      wv=WorldViewCoach(0, TEAM_1_NAME))
+            else:
+                # For coach positioning strategy
+                commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(
+                        random.randint(0, 1000000000),
+                        wv=WorldViewCoach(0, TEAM_1_NAME))
 
-            # For coach positioning strategy
-            #commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(
-            #    random.randint(0, 1000000000),
-            #    wv=WorldViewCoach(0, TEAM_1_NAME))
 
             soccersim: SoccerSim = SoccerSim(team_names=team_names,
                                              num_players=num_players,
@@ -102,6 +106,7 @@ try:
 
             trainer = soccersim.trainer
 
+            time.sleep(20)
             # Start game
             trainer.think.change_game_mode("play_on")
 

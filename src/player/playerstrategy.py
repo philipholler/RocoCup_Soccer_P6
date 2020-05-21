@@ -13,7 +13,7 @@ from player import actions
 from player.actions import Command, _calculate_relative_angle
 from player.player import PlayerState, DEFAULT_MODE, INTERCEPT_MODE, CHASE_MODE, POSSESSION_MODE, CATCH_MODE, \
     DRIBBLING_MODE
-from player.world_objects import Coordinate, Ball, ObservedPlayer
+from player.world_objects import Coordinate, Ball, ObservedPlayer, PrecariousData
 from utils import clamp, debug_msg
 
 
@@ -80,9 +80,15 @@ def _dribble_objective(state: PlayerState):
         return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(
             state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
 
-    target = _choose_pass_target(state)
-    if target is not None:
-        return Objective(state, lambda: actions.pass_to_player(state, target), lambda: True, 1)
+    should_dribble = state.received_dribble_instruction.get_value() \
+                     and state.received_dribble_instruction.last_updated_time >= state.now() - 80
+
+    if not should_dribble:
+        target = _choose_pass_target(state)
+        if target is not None:
+            return Objective(state, lambda: actions.pass_to_player(state, target), lambda: True, 1)
+    else:
+        state.received_dribble_instruction.set_value(False, state.now())
 
     if state.is_near_ball():  # todo temp: and state.action_history.has_looked_for_targets:
         target_coord: Coordinate = Coordinate(52.5 * side, 0)
@@ -208,7 +214,7 @@ def determine_objective_goalie_default(state: PlayerState):
             return _rush_to_ball_objective(state)
 
     # If position not alligned with ball y-position -> Adjust y-position
-    if state.position.is_value_known() and state.world_view.ball.is_value_known():
+    if state.position.is_value_known() and state.world_view.ball.is_value_known() and not constants.USING_PASS_CHAIN_STRAT:
         debug_msg(str(state.now()) + " | Position not optimal -> adjust position", "GOALIE")
         return _position_optimally_objective_goalie(state)
 
@@ -294,7 +300,7 @@ def determine_objective_field_default(state: PlayerState):
             return _rush_to_ball_objective(state)
 
     # If ball not incoming -> Position optimally while looking at ball
-    if not state.ball_incoming():
+    if not state.ball_incoming() and not constants.USING_PASS_CHAIN_STRAT:
         if state.is_test_player():
             debug_msg(str(state.now()) + " Position optimally!", "ACTIONS")
         return _position_optimally_objective(state)
@@ -661,36 +667,58 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     If no free targets and i am marked -> Try to dribble anyway
     :return: Parse target or None, if dribble
     """
+
+    # For pass chain model, if an existing target is seen by player, pass ball
+    if len(state.passchain_targets) > 0:
+        print("passchain longer than 0")
+        for target in state.passchain_targets:
+            target: PrecariousData
+            if target.last_updated_time > state.now() - 40:
+                print("if target update time is later than 40 seconds ago")
+                target = state.find_teammate_closest_to(target.get_value(), max_distance_delta=8.0)
+                if target is not None:
+                    print("TORGET ACQUIRED : ", target)
+                    return target
+
     debug_msg(str(state.now()) + "Choosing pass target", "DRIBBLE_PASS_MODEL")
     # Act according to Possession model
-    if state.dribble_or_pass_strat.is_value_known(state.now() - 8):
-        debug_msg("Following uppaal DribbleOrPass strategy :" + str(state.dribble_or_pass_strat.get_value())
-                  , "DRIBBLE_PASS_MODEL")
-        strat = state.dribble_or_pass_strat.get_value()
-        if DRIBBLE_INDICATOR in strat:
-            if not must_pass:
-                debug_msg(str(state.now()) + " Dribble!", "DRIBBLE_PASS_MODEL")
-                return None
-        else:
-            match = re.match(r'.*\(([^,]*), ([^)]*)\)', strat)
-            x = float(match.group(1))
-            y = float(match.group(2))
-            target = state.find_teammate_closest_to(Coordinate(x, y), max_distance_delta=3.0)
-            if target is not None:
-                debug_msg(str(state.now()) + " DRIBBLE_PASS_MODEL : Playing to :" + str(Coordinate(x, y)),
-                          "DRIBBLE_PASS_MODEL")
+    if state.dribble_or_pass_strat.is_value_known():
+        if state.dribble_or_pass_strat.is_value_known(state.now() - 8):
+            debug_msg("Following uppaal DribbleOrPass strategy :" + str(state.dribble_or_pass_strat.get_value())
+                      , "DRIBBLE_PASS_MODEL")
+            strat = state.dribble_or_pass_strat.get_value()
+            state.dribble_or_pass_strat = PrecariousData.unknown()
+            if DRIBBLE_INDICATOR in strat:
+                if not must_pass:
+                    state.statistics.use_possession_strategy()
+                    debug_msg(str(state.now()) + " Dribble!", "DRIBBLE_PASS_MODEL")
+                    return None
 
-                # If target is outside the no no square then return target
-                i = -1 if state.world_view.side == "l" else 1
-                is_too_far_back = True if (state.world_view.side == "l" and target.coord.pos_x < -36) \
-                                          or (state.world_view.side == "r" and target.coord.pos_x > 36) else False
-
-                if (not is_too_far_back) and (not is_offside(state, target)) and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
-                    return target
             else:
-                debug_msg(str(state.now()) + "No teammate matched :" + str(
-                    Coordinate(x, y)) + " Visible: " + str(state.world_view.get_teammates(state.team_name, 10))
-                          , "DRIBBLE_PASS_MODEL")
+                match = re.match(r'.*\(([^,]*), ([^)]*)\)', strat)
+                x = float(match.group(1))
+                y = float(match.group(2))
+                target = state.find_teammate_closest_to(Coordinate(x, y), max_distance_delta=3.0)
+                if target is not None:
+                    debug_msg(str(state.now()) + " DRIBBLE_PASS_MODEL : Playing to :" + str(Coordinate(x, y)),
+                              "DRIBBLE_PASS_MODEL")
+
+                    # If target is outside the no no square then return target
+                    i = -1 if state.world_view.side == "l" else 1
+                    is_too_far_back = True if (state.world_view.side == "l" and target.coord.pos_x < -36) \
+                                              or (state.world_view.side == "r" and target.coord.pos_x > 36) else False
+
+                    if (not is_too_far_back) and (not is_offside(state, target)) and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
+                        state.statistics.use_possession_strategy()
+                        return target
+                else:
+                    debug_msg(str(state.now()) + "No teammate matched :" + str(
+                        Coordinate(x, y)) + " Visible: " + str(state.world_view.get_teammates(state.team_name, 10))
+                              , "DRIBBLE_PASS_MODEL")
+
+        # Discard strategy
+        state.statistics.discard_possession_strategy()
+        state.dribble_or_pass_strat = PrecariousData.unknown()
 
     side = state.world_view.side
 
@@ -707,21 +735,6 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                                                                              state.position.get_value(), max_data_age=4,
                                                                              min_distance_free=2, min_dist_from_me=2)
 
-    # For pass chain model, if an existing target is seen by player, pass ball
-    if len(state.passchain_targets) > 0:
-        print("passchain longer than 0")
-        for target in state.passchain_targets:
-            target: PrecariousData
-            if target.last_updated_time > state.now() - 40:
-                print("if target update time is later than 40 seconds ago")
-                for teammate in state.world_view.get_teammates(state.team_name, 10):
-                    print(" length of teammate list: " + str(len(state.world_view.get_teammates(state.team_name, 10))))
-                    print(teammate.num)
-                    print(target.get_value())
-                    teammate: ObservedPlayer
-                    if teammate.num is not None and int(teammate.num) == int(target.get_value()):
-                        print("good teammate!!" + str(state.num) + " passes to " + str(teammate.num))
-                        return teammate
 
 
     if len(forward_team_mates) > 0:

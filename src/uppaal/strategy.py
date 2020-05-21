@@ -246,7 +246,8 @@ def _extract_actions(strategy: UppaalStrategy, team_members):
         if "Passing" in str(strategy.index_to_transition[r.get_highest_val_trans()[0]]):
             from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
             to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
-            actions.append("(" + str(from_player.num) + " pass " + str(to_player.num) + ")")
+            to_player: PlayerViewCoach
+            actions.append("(" + str(from_player.num) + " pass " + to_player.coord.marshal() + ")")
         else:
             from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
             actions.append("(" + str(from_player.num) + " dribble" + ")")

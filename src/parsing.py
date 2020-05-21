@@ -867,20 +867,25 @@ def _parse_hear(text: str, ps: PlayerState):
         return
     elif sender == "online_coach_left":
         if ps.world_view.side == "l":
-            coach_command_pattern = ".*? \\(freeform .*?\\(([0-9]) (.*?)([0-9])?\\)"
-            coach_expression = re.compile(coach_command_pattern)
-            matches = coach_expression.match(text)
 
-            if int(matches.group(1)) == ps.num:
-                if matches.group(2) == "pass ":
-                    ps.passchain_targets.append(PrecariousData(int(matches.group(3)), ps.now()))
-                    print(str(ps.num) + "passes to: " + str(matches.group(3)))
-                elif matches.group(2) == "dribble":
-                    # TODO dribble thingz
-                    pass
+            if "dribble" in text:
+                coach_command_pattern = r'.*freeform.* "\(([0-9]*) dribble.*'
+                ps.received_dribble_instruction = PrecariousData(True, ps.now())
+                if int(ps.num) == int(re.match(coach_command_pattern, text).group(1)):
+                    print(ps.now(), "Player : ", ps.num, "DRIBBLE ;);););));")
+                pass
+            else:
+                coach_command_pattern = r'.*freeform.* "\(([0-9]*) pass (\([^)]*\))\)"\)\).*'
+                matches = re.match(coach_command_pattern, text)
+                if int(matches.group(1)) == int(ps.num):
+                    coord = Coordinate.unmarshal(matches.group(2))
+                    coord = Coordinate(coord.pos_x, -coord.pos_y)
+                    ps.passchain_targets.append(PrecariousData(coord, ps.now()))
+                    print(str(ps.num) + "passes to: " + str(Coordinate.unmarshal(matches.group(2))))
+
 
     elif sender == "online_coach_right":
-        return  # todo handle incoming messages from online coach
+        return  # todo handle incomitextng messages from online coach
     elif sender == "coach":
         return  # todo handle trainer input
     else:
