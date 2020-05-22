@@ -473,7 +473,7 @@ def calculate_stamina(game: Game):
 
 def calculate_fieldprogress(game: Game):
     last_ball = None
-    start_ball = game.show_time[1].ball
+    start_ball = game.show_time[0].ball
     last_stage = game.show_time[0]
 
     # for all ticks in game
@@ -486,8 +486,9 @@ def calculate_fieldprogress(game: Game):
         vel_x_change = abs(stage.ball.delta_x - last_stage.ball.delta_x)
         vel_y_change = abs(stage.ball.delta_y - last_stage.ball.delta_y)
         # if the abs value of either x or y goes up, then the ball has been possessed.
-        if vel_x_change > 0.1 or vel_y_change > 0.1 or abs(angle_change) > 5:
-
+        if vel_x_change > max(abs(0.15 * last_stage.ball.delta_x), 0.1) \
+                or vel_y_change > max(abs(0.15 * last_stage.ball.delta_y), 0.1) or abs(angle_change) > 5:
+            print(tick, "Vel change : ", vel_x_change, vel_y_change, "delta x, y: ", stage.ball.delta_x, stage.ball.delta_y, "Direction change", angle_change)
             # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
             if last_stage.r_kicked_this_tick:
                 team = 'r'
@@ -498,16 +499,12 @@ def calculate_fieldprogress(game: Game):
 
             # if it is our team, and it is the first time, set it as start ball. else set it as last ball.
             if team == "l":
-                last_ball = stage.ball
+                last_ball = last_stage.ball
 
             # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
             if team == "r":
-                if last_ball is not None:
-                    game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
-                else:
-                    game.fieldprogress = 0
-                print(last_ball.print_ball())
-                return
+                print(tick, "Vel change : ", vel_x_change, vel_y_change, "delta x, y: ", stage.ball.delta_x, stage.ball.delta_y, "Direction change", angle_change)
+                break
 
         if float(stage.closest_player().distance_to_ball) < 0.4:
             team = stage.closest_player().side
@@ -516,16 +513,16 @@ def calculate_fieldprogress(game: Game):
 
             # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
             if team == "r":
-                if last_ball is not None:
-                    game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
-                else:
-                    game.fieldprogress = 0
+                break
 
+    if last_ball is not None:
+        game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
+    else:
+        game.fieldprogress = 0
 
 
 # Calculates the difference between the length to the goal from first possession to length of goal from last possession
 def calculate_fieldprogress_length(start_ball: Ball, last_ball: Ball):
-    # TODO very hard code of goal coords
     goal_x = 52.5
     goal_y = 0
     goal_coord = Coordinate(goal_x, goal_y)
@@ -761,4 +758,3 @@ def parse_player(txt):
     player.kicks = int(matched.group(12))
 
     return player
-

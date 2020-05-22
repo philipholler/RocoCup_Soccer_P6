@@ -73,15 +73,8 @@ def _dribble_objective(state: PlayerState):
     if pos.euclidean_distance_from(Coordinate(52.5 * side, 0)) < 24:
         return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, 0), 100), lambda: True, 1)
 
-    if (not state.action_history.has_looked_for_targets) and False:  # Todo temp
-        debug_msg(str(state.now()) + "looking for pass targets", "DRIBBLE")
-        state.action_history.has_looked_for_targets = True
-
-        return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(
-            state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
-
     should_dribble = state.received_dribble_instruction.get_value() \
-                     and state.received_dribble_instruction.last_updated_time >= state.now() - 80
+                     and state.received_dribble_instruction.last_updated_time >= state.now() - 100
 
     if not should_dribble:
         target = _choose_pass_target(state)
