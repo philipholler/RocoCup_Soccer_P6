@@ -670,7 +670,6 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
 
     # For pass chain model, if an existing target is seen by player, pass ball
     if len(state.passchain_targets) > 0 and constants.USING_PASS_CHAIN_STRAT:
-        print("passchain longer than 0")
         for target in state.passchain_targets:
             target: PrecariousData
             if target.last_updated_time > state.now() - 40:
