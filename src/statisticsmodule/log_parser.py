@@ -466,15 +466,29 @@ def calculate_fieldprogress(game: Game):
     for stage in game.show_time:
         # if the abs value of either x or y goes up, then the ball has been possessed.
         if abs(stage.ball.delta_x) > abs(last_stage.ball.delta_x) or \
-                abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y) or stage.closest_player().distance_to_ball() < 0.4:
+                abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y):
 
             # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
             if game.show_time.index(stage) == game.last_kicker_tick:
                 team = game.last_kicker.side
             else:
-                team = stage.closest_player.side
+                team = stage.closest_player().side
 
             # if it is our team, and it is the first time, set it as start ball. else set it as last ball.
+            if team == "l":
+                last_ball = stage.ball
+
+            # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
+            if team == "r":
+                if last_ball is not None:
+                    game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
+                    continue
+                else:
+                    game.fieldprogress = 0
+                    continue
+
+        if stage.closest_player().distance_to_ball() < 0.4:
+            team = stage.closest_player().side
             if team == "l":
                 last_ball = stage.ball
 
