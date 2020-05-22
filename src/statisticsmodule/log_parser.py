@@ -459,28 +459,24 @@ def calculate_stamina(game: Game):
 
 def calculate_fieldprogress(game: Game):
     last_ball = None
-    counter = 0
-    start_ball = None
+    start_ball = game.show_time[1].ball
     last_stage = game.show_time[0]
 
     # for all ticks in game
     for stage in game.show_time:
         # if the abs value of either x or y goes up, then the ball has been possessed.
         if abs(stage.ball.delta_x) > abs(last_stage.ball.delta_x) or \
-                abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y):
+                abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y) or stage.closest_player().distance_to_ball() < 0.4:
 
             # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
             if game.show_time.index(stage) == game.last_kicker_tick:
                 team = game.last_kicker.side
             else:
-                team = stage.closest_player_team()
+                team = stage.closest_player.side
 
             # if it is our team, and it is the first time, set it as start ball. else set it as last ball.
             if team == "l":
                 last_ball = stage.ball
-                if counter == 0:
-                    start_ball = last_stage.ball
-                    counter += 1
 
             # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
             if team == "r":
