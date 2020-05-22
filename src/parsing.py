@@ -867,7 +867,6 @@ def _parse_hear(text: str, ps: PlayerState):
         return
     elif sender == "online_coach_left":
         if ps.world_view.side == "l":
-
             if "dribble" in text:
                 coach_command_pattern = r'.*freeform.* "\(([0-9]*) dribble.*'
                 ps.received_dribble_instruction = PrecariousData(True, ps.now())

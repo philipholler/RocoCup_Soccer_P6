@@ -388,6 +388,8 @@ def determine_objective_goalie_positioning_striker(state: PlayerState):
 
 
 def determine_objective(state: PlayerState):
+    if state.objective_behaviour == "field":
+        return determine_objective_field_default(state)
     if state.objective_behaviour == "goalie_positioning_striker":
         return determine_objective_goalie_positioning_striker(state)
     if state.objective_behaviour == "position_optimally":
@@ -474,7 +476,11 @@ def _optimal_goalie_pos(state: PlayerState):
             state.goalie_position_strategy = None
             return optimal_coord
         else:
-            return state.position.get_value()
+            ball: Ball = state.world_view.ball.get_value()
+
+            y_value = clamp(ball.coord.pos_y * 0.8, -5, 5)
+
+            return Coordinate(state.get_global_start_pos().pos_x, y_value)
     else:
         ball: Ball = state.world_view.ball.get_value()
 

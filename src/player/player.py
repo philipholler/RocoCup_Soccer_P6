@@ -452,10 +452,8 @@ class Statistics(object):
     def print_to_file(self, player_num, player_team):
         pass
 
-    def text(self):
-        return "Applied Strategies : {0} | Outdated Strategies : {1}\nMissed ticks: {2}"\
-            .format(self.applied_possession_strategies, self.outdated_possession_strategies, self.missed_ticks_history)
-
+    def missed_ticks_text(self):
+        return str(self.missed_ticks_history).replace('[', '').replace(']', '')
 
 
 class ActionHistory:

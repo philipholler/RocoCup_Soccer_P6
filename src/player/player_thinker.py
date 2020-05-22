@@ -12,6 +12,7 @@ import parsing
 from player.playerstrategy import determine_objective
 from player.startup_positions import goalie_pos, defenders_pos, midfielders_pos, strikers_pos
 from player.world_objects import Coordinate
+from statisticsmodule import statistics
 from uppaal import strategy, goalie_strategy
 from utils import debug_msg
 
@@ -90,9 +91,12 @@ class Thinker(threading.Thread):
             if time_since_action >= 0.1:
                 if self.player_state.is_generating_strategy:  # Statistics
                     self.player_state.statistics.register_missed_tick()
-
-                if self.player_state.now() == 230:
-                    print(self.player_state.statistics.text())
+                
+                if self.player_state.now() == 5900:
+                    statistics.print_to_file(self.player_state.statistics.missed_ticks_text(),
+                                             "missed_ticks_" + str(self.player_state.num)
+                                             + str(self.player_state.world_view.side))
+                    
                 time_since_action -= 0.1
                 time_since_action %= 0.08  # discard queued updates if more than 80 ms behind
                 self.perform_action()

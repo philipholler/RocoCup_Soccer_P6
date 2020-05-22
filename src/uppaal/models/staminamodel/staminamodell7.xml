@@ -5,7 +5,7 @@
 int final_stamina_interval = 9;
 const int seconds_per_strategy = 11;
 const int recovery_rate_per_sec = 300;
-int dashes_last_strategy = 49;
+int dashes_last_strategy = 61;
 int new_dash_power = 0;
 		int update_stamina_interval(int dash_power){
 		int total_recovery = recovery_rate_per_sec * seconds_per_strategy;

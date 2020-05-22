@@ -96,28 +96,29 @@ def _generate_players_passing_strat() -> []:
     players: [] = []
     possessor = None
     for team in [TEAM_1_NAME, TEAM_2_NAME]:
-        for player in range(5):
+        for player in range(2, 7):
             # Generate possessor
-            if team == TEAM_1_NAME and player == 0:
-                unum: int = player + 1
-                x_pos = random.randint(-50, 20)
-                y_pos = random.randint(-20, 20)
+            if team == TEAM_1_NAME and player == 2:
+                unum: int = player
+                x_pos = random.randint(-45, -40)
+                y_pos = random.randint(-15, 15)
                 players.append((team, unum, x_pos, y_pos))
                 possessor = (team, unum, x_pos, y_pos)
             # Generate other players
             else:
-                unum: int = player + 1
+                unum: int = player
                 # Position should not be closer than 10 meters
-                x_pos = random.randint(possessor[2] + 10, possessor[2] + 30)
+                x_pos = random.randint(possessor[2] + 10, possessor[2] + 35)
                 y_pos = random.randint(possessor[3] - 20, possessor[3] + 20)
                 players.append((team, unum, x_pos, y_pos))
 
     return players
 
 def _update_world_view_passing_strat(wv: WorldViewCoach, players, ball_pos):
+    # Players -> List of players as tuple. (team, unum, x_pos, y_pos)
     # Add all players to world view
     for player in players:
-        if player[0] == TEAM_1_NAME and player[1] == 1:
+        if player[0] == TEAM_1_NAME and player[1] == 2:
             new_player: PlayerViewCoach = PlayerViewCoach(player[0], player[1], False, Coordinate(player[2], player[3])
                                                           , 0, 0, 0, 0, True)
         else:
