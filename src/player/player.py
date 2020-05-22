@@ -258,6 +258,11 @@ class PlayerState:
         self.body_angle.set_value(new_angle, time)
 
     def update_position(self, new_position: Coordinate):
+        if self.position.is_value_known():
+            if new_position.euclidean_distance_from(self.position.get_value()) > 5.0:
+                # Player has been teleported: forget all previously known player positions
+                self.world_view.other_players.clear()
+
         self.position.set_value(new_position, self.now())
         # print("PARSED : ", time, " | Position: ", new_position)
         self.action_history.projected_position = new_position

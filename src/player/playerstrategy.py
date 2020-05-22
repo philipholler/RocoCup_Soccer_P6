@@ -667,6 +667,20 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     If no free targets and i am marked -> Try to dribble anyway
     :return: Parse target or None, if dribble
     """
+    if state.team_name in constants.SIMPLE_PASS_TEAMS:
+        team_mates = state.world_view.get_teammates(state.team_name, 8)
+        my_coord = state.position.get_value()
+        if state.world_view.side == "l":
+            forward_team_mates = list(filter(
+                lambda p: p.coord.pos_x > my_coord.pos_x, team_mates))
+        else:
+            forward_team_mates = list(filter(
+                lambda p: p.coord.pos_x < my_coord.pos_x, team_mates))
+
+        if len(forward_team_mates) > 0:
+            return choice(forward_team_mates)
+        return None
+
 
     # For pass chain model, if an existing target is seen by player, pass ball
     if len(state.passchain_targets) > 0 and constants.USING_PASS_CHAIN_STRAT:

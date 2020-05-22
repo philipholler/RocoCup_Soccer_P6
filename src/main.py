@@ -39,7 +39,7 @@ monitor_enabled = True
 # Enable for more runs. Trainer is always enabled for multiple runs
 MORE_SCENARIOS_TRAINER_MODE = True
 PASS_CHAIN_SCENARIO = True
-NUM_SIMULATIONS = 50
+NUM_SIMULATIONS = 200
 TICKS_PER_RUN = 100
 
 # Run more games sequentially to test game performance

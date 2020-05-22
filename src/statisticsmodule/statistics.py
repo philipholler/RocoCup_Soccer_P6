@@ -178,11 +178,13 @@ if __name__ == "__main__":
     chain_default = list(zip(pass_chain_progress, default_progress))
     pass_chain_better_count = sum(chain > default for chain, default in chain_default)
     default_better_count = sum(chain < default for chain, default in chain_default)
-    print(pass_chain_better_count)
-    print(default_better_count)
+    print("-"*50)
+    print("Pass chain wins : ", pass_chain_better_count)
+    print("Default wins : ", default_better_count,"\n")
 
     print("Pass chain average progress: ", average(pass_chain_progress))
-    print("Default average progress: ", average(default_progress))
+    print("Default average progress: ", average(default_progress), "\n")
 
     print("Pass chain median: ", median(pass_chain_progress))
     print("Default median: ", median(default_progress))
+    print("-"*50)
