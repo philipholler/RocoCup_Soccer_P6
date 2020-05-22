@@ -186,7 +186,7 @@ def calculate_possession(game: Game):
             if game.show_time.index(stage) == game.last_kicker_tick:
                 team = game.last_kicker.side
             else:
-                team = stage.closest_player_team()
+                team = stage.closest_player().side
 
         # add tick to possessing team
         if team == "l":
@@ -487,7 +487,7 @@ def calculate_fieldprogress(game: Game):
                     game.fieldprogress = 0
                     continue
 
-        if stage.closest_player().distance_to_ball() < 0.4:
+        if float(stage.closest_player().distance_to_ball) < 0.4:
             team = stage.closest_player().side
             if team == "l":
                 last_ball = stage.ball
