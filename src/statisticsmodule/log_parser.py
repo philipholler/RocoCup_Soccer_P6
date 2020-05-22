@@ -24,6 +24,8 @@ _END_TICK = 0
 
 _GAME_NUMBER = 1
 
+POSSESSION_GAME_LENGTH = 6000
+
 
 # Main method
 def parse_logs():
@@ -188,24 +190,40 @@ def parse_logs():
 
 def calculate_possession(game: Game):
     last_stage = game.show_time[0]
-    team = None
+    team = "none"
 
-    for stage in game.show_time:
+    # for all ticks in game
+    for tick, stage in enumerate(game.show_time):
+        if tick > 0:
+            last_stage: Stage
+            last_stage = game.show_time[tick - 1]
+
+        angle_change = smallest_angle_difference(last_stage.ball.direction, stage.ball.direction)
+        vel_x_change = abs(stage.ball.delta_x - last_stage.ball.delta_x)
+        vel_y_change = abs(stage.ball.delta_y - last_stage.ball.delta_y)
         # if the abs value of either x or y goes up, then the ball has been possessed.
-        if abs(stage.ball.delta_x) > abs(last_stage.ball.delta_x) or \
-                abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y):
-
+        if vel_x_change > max(abs(0.15 * last_stage.ball.delta_x), 0.1) \
+                or vel_y_change > max(abs(0.15 * last_stage.ball.delta_y), 0.1) or abs(angle_change) > 5:
+            print(tick, "Vel change : ", vel_x_change, vel_y_change, "delta x, y: ", stage.ball.delta_x,
+                  stage.ball.delta_y, "Direction change", angle_change)
             # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
-            if game.show_time.index(stage) == game.last_kicker_tick:
-                team = game.last_kicker.side
+            if last_stage.r_kicked_this_tick:
+                team = 'r'
+            elif last_stage.l_kicked_this_tick:
+                team = 'l'
             else:
-                team = stage.closest_player().side
+                team = last_stage.closest_player().side
 
-        # add tick to possessing team
+        if float(stage.closest_player().distance_to_ball) < 0.4:
+            team = stage.closest_player().side
+
         if team == "l":
             game.possession_l_in_ticks += 1
-        if team == "r":
+        elif team == "r":
             game.possession_r_in_ticks += 1
+
+        if game.possession_r_in_ticks + game.possession_l_in_ticks == POSSESSION_GAME_LENGTH:
+            break
 
 
 def write_possession_file(game):
