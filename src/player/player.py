@@ -70,20 +70,12 @@ class PlayerState:
 
     def needs_dribble_or_pass_strat(self):
         if not (self.mode is DRIBBLING_MODE or self.ball_incoming()) or self.intercepting or self.now() - self.last_dribble_pass_strat <= 4:
-            if self.is_test_player():
-                debug_msg(str(self.now()) + " Not dribbling or recently generated strat", "DRIBBLE_PASS_MODEL")
             return False
         enough_opponents = len(self.world_view.get_opponents(self.team_name, 10)) > 0
         enough_teammates = len(self.world_view.get_teammates(self.team_name, 10, 5)) > 0
         if not enough_opponents:
-            if self.is_test_player():
-                debug_msg(str(self.now()) + " Not enough opponents: " + str(self.world_view.other_players)
-                          , "DRIBBLE_PASS_MODEL")
             return False
         if not enough_teammates:
-            if self.is_test_player():
-                debug_msg(str(self.now()) + " Not enough teammates: " + str(
-                    self.world_view.other_players), "DRIBBLE_PASS_MODEL")
             return False
         return True
 
@@ -413,9 +405,9 @@ class PlayerState:
     def is_dribbling(self):
         return self.mode == DRIBBLING_MODE
 
-    def find_teammate_closest_to(self, coord: Coordinate, max_distance_delta=200):
+    def find_teammate_closest_to(self, coord: Coordinate, max_distance_delta=200, max_age=8):
         closest_teammate = None
-        team_mates: [ObservedPlayer] = self.world_view.get_teammates(self.team_name, max_data_age=8)
+        team_mates: [ObservedPlayer] = self.world_view.get_teammates(self.team_name, max_data_age=max_age)
         for tm in team_mates:
             tm : ObservedPlayer
             if closest_teammate is None or \

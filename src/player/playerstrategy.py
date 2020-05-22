@@ -73,15 +73,9 @@ def _dribble_objective(state: PlayerState):
     if pos.euclidean_distance_from(Coordinate(52.5 * side, 0)) < 24:
         return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, 0), 100), lambda: True, 1)
 
-    if (not state.action_history.has_looked_for_targets) and False:  # Todo temp
-        debug_msg(str(state.now()) + "looking for pass targets", "DRIBBLE")
-        state.action_history.has_looked_for_targets = True
-
-        return Objective(state, lambda: actions.look_for_pass_target(state), lambda: len(
-            state.world_view.get_teammates(state.team_name, max_data_age=3)) >= MINIMUM_TEAMMATES_FOR_PASS, 3)
-
-    should_dribble = state.received_dribble_instruction.get_value() \
-                     and state.received_dribble_instruction.last_updated_time >= state.now() - 80
+    #should_dribble = state.received_dribble_instruction.get_value() \
+    #                and state.received_dribble_instruction.last_updated_time >= state.now() - 80 todo TEMP
+    should_dribble = False # todo temp
 
     if not should_dribble:
         target = _choose_pass_target(state)
@@ -658,7 +652,6 @@ def is_offside(state: PlayerState, target):
 
 
 def _choose_pass_target(state: PlayerState, must_pass: bool = False):
-    print("choose pass target")
     """
     If uppaal has been generated recently -> Follow strat if applicable
     If free targets forward -> Pass forward
@@ -675,15 +668,15 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
             target: PrecariousData
             if target.last_updated_time > state.now() - 40:
                 print("if target update time is later than 40 seconds ago")
-                target = state.find_teammate_closest_to(target.get_value(), max_distance_delta=8.0)
+                target = state.find_teammate_closest_to(target.get_value(), max_distance_delta=3.0)
                 if target is not None:
                     print("TORGET ACQUIRED : ", target)
                     return target
 
-    debug_msg(str(state.now()) + "Choosing pass target", "DRIBBLE_PASS_MODEL")
+    debug_msg(str(state.now()) + " Choosing pass target", "DRIBBLE_PASS_MODEL")
     # Act according to Possession model
-    if state.dribble_or_pass_strat.is_value_known():
-        if state.dribble_or_pass_strat.is_value_known(state.now() - 8):
+    if state.dribble_or_pass_strat.is_value_known() and False:  # TODO TEST!
+        if state.dribble_or_pass_strat.is_value_known(state.now() - 6):
             debug_msg("Following uppaal DribbleOrPass strategy :" + str(state.dribble_or_pass_strat.get_value())
                       , "DRIBBLE_PASS_MODEL")
             strat = state.dribble_or_pass_strat.get_value()
@@ -698,7 +691,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                 match = re.match(r'.*\(([^,]*), ([^)]*)\)', strat)
                 x = float(match.group(1))
                 y = float(match.group(2))
-                target = state.find_teammate_closest_to(Coordinate(x, y), max_distance_delta=3.0)
+                target = state.find_teammate_closest_to(Coordinate(x, y), max_distance_delta=3.0, max_age=5)
                 if target is not None:
                     debug_msg(str(state.now()) + " DRIBBLE_PASS_MODEL : Playing to :" + str(Coordinate(x, y)),
                               "DRIBBLE_PASS_MODEL")

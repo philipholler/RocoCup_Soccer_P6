@@ -45,7 +45,7 @@ class SoccerSim(threading.Thread):
             self.soccer_sim = subprocess.Popen(["exec rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = true server::clang_mess_delay = 0 player::player_types = 1"],
                                                 shell=True)
         else:
-            self.soccer_sim = subprocess.Popen(["exec rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0 player::player_types = 1"],
+            self.soccer_sim = subprocess.Popen(["exec rcssserver server::say_coach_cnt_max=-1 server::freeform_send_period=6000 server::freeform_wait_period=-1 server::coach = false server::clang_mess_delay = 0 player::player_types = 1 server::stamina_max = 200000"],
                                                 shell=True)
 
         # Use soccerwindow2: exec soccerwindow2 --kill-server --geometry=1440x900 --gradient 1 --field-grass-type lines
@@ -106,4 +106,4 @@ class SoccerSim(threading.Thread):
             self.soccer_monitor.wait(3)
         self.soccer_sim.send_signal(signal.SIGINT)
         self.soccer_sim.wait(3)
-        log_parser.parse_logs()
+        # log_parser.parse_logs() TODO TEMP
