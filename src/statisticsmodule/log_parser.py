@@ -71,6 +71,7 @@ def parse_logs():
 
     # print("last tick:" + str(game.show_time.index(game.show_time[-1]) + 1))
 
+    calculate_fieldprogress(game)
     calculate_possession(game)
     calculate_stamina(game)
 
@@ -103,6 +104,7 @@ def parse_logs():
     for file in csv_files:
         write_file_title(file, game)
 
+    write_fieldprogress_file(game)
     write_possession_file(game)
 
     '''
@@ -169,6 +171,42 @@ def parse_logs():
 
     for file in files:
         file.close()
+
+
+def calculate_possession(game: Game):
+    last_stage = game.show_time[0]
+    team = None
+
+    for stage in game.show_time:
+        # if the abs value of either x or y goes up, then the ball has been possessed.
+        if abs(stage.ball.delta_x) > abs(last_stage.ball.delta_x) or \
+                abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y):
+
+            # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
+            if game.show_time.index(stage) == game.last_kicker_tick:
+                team = game.last_kicker.side
+            else:
+                team = stage.closest_player_team()
+
+        # add tick to possessing team
+        if team == "l":
+            game.possession_l_in_ticks += 1
+        if team == "r":
+            game.possession_r_in_ticks += 1
+
+
+def write_possession_file(game):
+    possession_dir = Path(__file__).parent.parent / "Statistics" / "possession"
+    if not possession_dir.exists():
+        os.makedirs(possession_dir)
+
+    # now = datetime.now().strftime("%Y%m%d%H%M%S")
+    file_name = "possession.csv"
+    file_possession = open(possession_dir / file_name, "a")
+    write_file_title(file_possession, game)
+    file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_l_in_ticks) + ", "
+                          + str(game.possession_r_in_ticks) + "\n")
+
 
 
 def if_goalie_defence(on: bool, start_tick, end_tick):
@@ -418,7 +456,7 @@ def calculate_stamina(game: Game):
     calculate_highest_stamina(game)
 
 
-def calculate_possession(game: Game):
+def calculate_fieldprogress(game: Game):
     last_ball = None
     counter = 0
     start_ball = None
@@ -446,13 +484,13 @@ def calculate_possession(game: Game):
             # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
             if team == "r":
                 if last_ball is not None:
-                    game.possession_length = calculate_possession_length(start_ball, last_ball)
+                    game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
                 else:
-                    game.possession_length = 0
+                    game.fieldprogress = 0
 
 
 # Calculates the difference between the length to the goal from first possession to length of goal from last possession
-def calculate_possession_length(start_ball: Ball, last_ball: Ball):
+def calculate_fieldprogress_length(start_ball: Ball, last_ball: Ball):
     # TODO very hard code of goal coords
     goal_x = 52.5
     goal_y = 0
@@ -466,15 +504,15 @@ def calculate_possession_length(start_ball: Ball, last_ball: Ball):
     return start_dist - end_dist
 
 
-def write_possession_file(game: Game):
-    possession_dir = Path(__file__).parent.parent / "Statistics" / "possessions"
-    if not possession_dir.exists():
-        os.makedirs(possession_dir)
+def write_fieldprogress_file(game: Game):
+    fieldprogress_dir = Path(__file__).parent.parent / "Statistics" / "fieldprogress"
+    if not fieldprogress_dir.exists():
+        os.makedirs(fieldprogress_dir)
 
     # now = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_name = "possession.csv"
-    file_possession = open(possession_dir / file_name, "a")
-    file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_length) + "\n")
+    file_name = "fieldprogress.csv"
+    file_fieldprogress = open(fieldprogress_dir / file_name, "a")
+    file_fieldprogress.write(str(_GAME_NUMBER) + ", " + str(game.fieldprogress) + "\n")
 
 
 # Gets the newest server log ".rcg"
