@@ -203,7 +203,8 @@ def write_possession_file(game):
     # now = datetime.now().strftime("%Y%m%d%H%M%S")
     file_name = "possession.csv"
     file_possession = open(possession_dir / file_name, "a")
-    write_file_title(file_possession, game)
+    if (Path(possession_dir) / file_name).stat().st_size == 0:
+        file_possession.write("Game number, " + str(game.teams[0].name) + ", " + str(game.teams[1].name) + "\n")
     file_possession.write(str(_GAME_NUMBER) + ", " + str(game.possession_l_in_ticks) + ", "
                           + str(game.possession_r_in_ticks) + "\n")
 
@@ -508,10 +509,17 @@ def write_fieldprogress_file(game: Game):
     fieldprogress_dir = Path(__file__).parent.parent / "Statistics" / "fieldprogress"
     if not fieldprogress_dir.exists():
         os.makedirs(fieldprogress_dir)
+    team_name = "no team name"
+
+    for team in game.teams:
+        if team.side == "l":
+            team_name = team.name
 
     # now = datetime.now().strftime("%Y%m%d%H%M%S")
     file_name = "fieldprogress.csv"
     file_fieldprogress = open(fieldprogress_dir / file_name, "a")
+    if (Path(fieldprogress_dir) / file_name).stat().st_size == 0:
+        file_fieldprogress.write("Game number, " + str(team_name) + "\n")
     file_fieldprogress.write(str(_GAME_NUMBER) + ", " + str(game.fieldprogress) + "\n")
 
 

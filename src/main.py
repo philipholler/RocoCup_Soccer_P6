@@ -161,6 +161,7 @@ try:
             fake_monitor.join()
     # Run a single game
     else:
+        atexit.register(shut_down_gracefully)
         soccersim: SoccerSim = SoccerSim(team_names=team_names,
                                          num_players=num_players,
                                          trainer_mode=TRAINER_SINGLE_RUN_ENABLED,
