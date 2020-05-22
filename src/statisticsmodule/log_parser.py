@@ -8,7 +8,7 @@ import math
 from statisticsmodule.statistics import Game, Team, Stage, Player, Ball
 from statisticsmodule import statistics
 from parsing import _ROBOCUP_MSG_REGEX, _SIGNED_INT_REGEX, _REAL_NUM_REGEX
-from geometry import get_distance_between_coords, Coordinate
+from geometry import get_distance_between_coords, Coordinate, smallest_angle_difference
 from player import playerstrategy
 
 SERVER_LOG_PATTERN = '*.rcg'
@@ -70,6 +70,19 @@ def parse_logs():
                 continue
 
     # print("last tick:" + str(game.show_time.index(game.show_time[-1]) + 1))
+
+    # Determine if a player of either team kicked in the current tick for each stage
+    last_kick_count_l = 0
+    last_kick_count_r = 0
+    for i, stage in enumerate(game.show_time):
+        stage: Stage
+        if i > 0:
+            if stage.team_r_kicks > last_kick_count_r:
+                stage.r_kicked_this_tick = True
+            if stage.team_l_kicks > last_kick_count_l:
+                stage.l_kicked_this_tick = True
+        last_kick_count_l = stage.team_l_kicks
+        last_kick_count_r = stage.team_r_kicks
 
     calculate_fieldprogress(game)
     calculate_possession(game)
@@ -438,6 +451,7 @@ def highest_stamina_under(game: Game, side: str):
         return max(game.player_r_stamina_under)
 
 
+
 def calculate_stamina(game: Game):
     # for every tick in log file
     for stage in game.show_time:
@@ -463,16 +477,24 @@ def calculate_fieldprogress(game: Game):
     last_stage = game.show_time[0]
 
     # for all ticks in game
-    for stage in game.show_time:
+    for tick, stage in enumerate(game.show_time):
+        if tick > 0:
+            last_stage: Stage
+            last_stage = game.show_time[tick - 1]
+
+        angle_change = smallest_angle_difference(last_stage.ball.direction, stage.ball.direction)
+        vel_x_change = abs(stage.ball.delta_x - last_stage.ball.delta_x)
+        vel_y_change = abs(stage.ball.delta_y - last_stage.ball.delta_y)
         # if the abs value of either x or y goes up, then the ball has been possessed.
-        if abs(stage.ball.delta_x) > abs(last_stage.ball.delta_x) or \
-                abs(stage.ball.delta_y) > abs(last_stage.ball.delta_y):
+        if vel_x_change > 0.1 or vel_y_change > 0.1 or abs(angle_change) > 5:
 
             # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
-            if game.show_time.index(stage) == game.last_kicker_tick:
-                team = game.last_kicker.side
+            if last_stage.r_kicked_this_tick:
+                team = 'r'
+            elif last_stage.l_kicked_this_tick:
+                team = 'l'
             else:
-                team = stage.closest_player().side
+                team = last_stage.closest_player().side
 
             # if it is our team, and it is the first time, set it as start ball. else set it as last ball.
             if team == "l":
@@ -482,10 +504,10 @@ def calculate_fieldprogress(game: Game):
             if team == "r":
                 if last_ball is not None:
                     game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
-                    continue
                 else:
                     game.fieldprogress = 0
-                    continue
+                print(last_ball.print_ball())
+                return
 
         if float(stage.closest_player().distance_to_ball) < 0.4:
             team = stage.closest_player().side
@@ -498,6 +520,7 @@ def calculate_fieldprogress(game: Game):
                     game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
                 else:
                     game.fieldprogress = 0
+
 
 
 # Calculates the difference between the length to the goal from first possession to length of goal from last possession
@@ -738,3 +761,4 @@ def parse_player(txt):
     player.kicks = int(matched.group(12))
 
     return player
+
