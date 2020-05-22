@@ -241,17 +241,19 @@ def _update_passing_model(wv, model: UppaalModel):
 
 def _extract_actions(strategy: UppaalStrategy, team_members):
     actions = []
-
+    debug_msg("-" * 50, "PASS_CHAIN")
     for r in strategy.regressors:
         if "Passing" in str(strategy.index_to_transition[r.get_highest_val_trans()[0]]):
             from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
             to_player = _get_pass_target(r, strategy.index_to_transition, team_members)
             to_player: PlayerViewCoach
             actions.append("(" + str(from_player.num) + " pass " + to_player.coord.marshal() + ")")
+            debug_msg(str(from_player.num) + " passes to " + str(to_player.num), "PASS_CHAIN")
         else:
             from_player = _get_ball_possessor(r, strategy.location_to_id, team_members)
             actions.append("(" + str(from_player.num) + " dribble" + ")")
-
+            debug_msg(str(from_player.num) + " dribbles ", "PASS_CHAIN")
+    debug_msg("-" * 50, "PASS_CHAIN")
     return actions
 
 

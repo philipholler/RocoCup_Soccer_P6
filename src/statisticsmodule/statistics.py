@@ -4,7 +4,7 @@ from pathlib import Path
 
 from numpy import average, median
 
-from geometry import Coordinate
+from geometry import Coordinate, Vector2D
 
 
 class Game:
@@ -54,6 +54,8 @@ class Stage:
         self.team_l_real_kicks = 0
         self.team_r_real_kicks = 0
         self.goalies = []
+        self.l_kicked_this_tick = False
+        self.r_kicked_this_tick = False
 
     def print_stage(self):
 
@@ -83,6 +85,7 @@ class Stage:
     def get_ball_coord(self) -> Coordinate:
         return Coordinate(self.ball.x_coord, self.ball.y_coord)
 
+
 class Ball:
 
     def __init__(self):
@@ -90,9 +93,10 @@ class Ball:
         self.y_coord = 0
         self.delta_x = 0
         self.delta_y = 0
+        self.direction = Vector2D(self.delta_x, self.delta_y).direction()
 
     def print_ball(self):
-        print("ball coords:" + str(self.y_coord) + " " + str(self.y_coord) +
+        print("ball coords:" + str(self.x_coord) + " " + str(self.y_coord) +
               "\nball deltas: " + str(self.delta_x) + " " + str(self.delta_y))
 
 

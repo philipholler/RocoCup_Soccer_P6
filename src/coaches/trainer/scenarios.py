@@ -82,7 +82,7 @@ def generate_commands_coachmsg_passing_strat(random_seed: int, wv: WorldViewCoac
     # Set seed for random generator
     random.seed(random_seed)
     players: [] = _generate_players_passing_strat()
-    ball_pos = (float(players[0][2]) + 0.1, float(players[0][3]))
+    ball_pos = (float(players[0][2]) + 0.5, float(players[0][3]))
     _update_world_view_passing_strat(wv, players, ball_pos)
     passing_strat_commands: [] = _generate_commands(players, ball_pos)
     coach_msg = generate_strategy(wv)
