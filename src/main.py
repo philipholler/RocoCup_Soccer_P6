@@ -38,8 +38,8 @@ monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
 MORE_SCENARIOS_TRAINER_MODE = True
-constants.USING_PASS_CHAIN_STRAT = True
-NUM_SIMULATIONS = 100
+PASS_CHAIN_SCENARIO = True
+NUM_SIMULATIONS = 50
 TICKS_PER_RUN = 100
 
 # Run more games sequentially to test game performance
@@ -68,7 +68,7 @@ try:
         random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
-            if constants.USING_PASS_CHAIN_STRAT:
+            if PASS_CHAIN_SCENARIO:
                 generate_success = False
                 while not generate_success:
                     try:
@@ -117,6 +117,7 @@ try:
             # Start game
             time.sleep(2)
             trainer.think.change_game_mode("play_on")
+
 
 
             while trainer.think.world_view.sim_time < TICKS_PER_RUN:

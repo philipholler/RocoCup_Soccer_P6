@@ -129,7 +129,7 @@ def print_to_file(text, file_name):
         print("Could not write to file : ")
     pass
 
-
+"""
 if __name__ == "__main__":
     all_ticks = []
     for num in range(11):
@@ -154,3 +154,35 @@ if __name__ == "__main__":
 
     print(all_ticks)
     print(len(all_ticks))
+"""
+
+def parse_field_progress(name):
+    field_progress = []
+    try:
+        with open(stat_dir / "fieldprogress" / name, "r") as file:
+            file.readline()  # discard first line
+            while True:
+                line = file.readline()
+                if not line:
+                    break
+                field_progress.append(float(re.split(',', line)[1]))
+    except FileNotFoundError:
+        print("Could not read from file : " + str(stat_dir / "fieldprogress" / name))
+
+    return field_progress
+
+
+if __name__ == "__main__":
+    pass_chain_progress = parse_field_progress("fieldprogress_pass_chain.csv")
+    default_progress = parse_field_progress("fieldprogress_default.csv")
+    chain_default = list(zip(pass_chain_progress, default_progress))
+    pass_chain_better_count = sum(chain > default for chain, default in chain_default)
+    default_better_count = sum(chain < default for chain, default in chain_default)
+    print(pass_chain_better_count)
+    print(default_better_count)
+
+    print("Pass chain average progress: ", average(pass_chain_progress))
+    print("Default average progress: ", average(default_progress))
+
+    print("Pass chain median: ", median(pass_chain_progress))
+    print("Default median: ", median(default_progress))

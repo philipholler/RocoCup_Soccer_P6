@@ -6,7 +6,7 @@ from pathlib import Path
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
 from constants import DRIBBLE_OR_PASS_STRAT_PREFIX, DRIBBLE_INDICATOR, PASS_INDICATOR, GOALIE_MODEL_TEAMS, \
-    STAMINA_MODEL_TEAMS, DRIBBLE_OR_PASS_TEAMS
+    STAMINA_MODEL_TEAMS, DRIBBLE_OR_PASS_TEAMS, USING_PASS_CHAIN_STRAT
 from geometry import Coordinate
 from uppaal import goalie_strategy
 from uppaal.uppaal_model import UppaalModel, UppaalStrategy, execute_verifyta, Regressor
@@ -135,7 +135,7 @@ def _find_applicable_strat(world_view) -> _StrategyGenerator:
         if play.has_ball and play.team == world_view.team:
             play_in_poss += 1
 
-    if play_in_poss == 1:
+    if USING_PASS_CHAIN_STRAT and play_in_poss == 1:
         return _StrategyGenerator("/PassChainModel", _update_passing_model, _extract_actions)
 
     return None

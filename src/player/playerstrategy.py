@@ -74,7 +74,8 @@ def _dribble_objective(state: PlayerState):
         return Objective(state, lambda: actions.shoot_to(state, Coordinate(55 * side, 0), 100), lambda: True, 1)
 
     should_dribble = state.received_dribble_instruction.get_value() \
-                     and state.received_dribble_instruction.last_updated_time >= state.now() - 100
+                     and state.received_dribble_instruction.last_updated_time >= state.now() - 100 \
+                     and constants.USING_PASS_CHAIN_STRAT
 
     if not should_dribble:
         target = _choose_pass_target(state)
@@ -668,7 +669,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     """
 
     # For pass chain model, if an existing target is seen by player, pass ball
-    if len(state.passchain_targets) > 0:
+    if len(state.passchain_targets) > 0 and constants.USING_PASS_CHAIN_STRAT:
         print("passchain longer than 0")
         for target in state.passchain_targets:
             target: PrecariousData
@@ -707,7 +708,8 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                     is_too_far_back = True if (state.world_view.side == "l" and target.coord.pos_x < -36) \
                                               or (state.world_view.side == "r" and target.coord.pos_x > 36) else False
 
-                    if (not is_too_far_back) and (not is_offside(state, target)) and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
+                    if (not is_too_far_back) and (not is_offside(state, target)) and (
+                            target.coord.pos_y > -20 or target.coord.pos_y > 20):
                         state.statistics.use_possession_strategy()
                         return target
                 else:
@@ -733,8 +735,6 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
     forward_team_mates = state.world_view.get_non_offside_forward_team_mates(state.team_name, side,
                                                                              state.position.get_value(), max_data_age=4,
                                                                              min_distance_free=2, min_dist_from_me=2)
-
-
 
     if len(forward_team_mates) > 0:
         # If free team mates sort by closest to opposing teams goal
@@ -783,4 +783,3 @@ def team_has_corner_kick(state):
             return True
 
     return False
-

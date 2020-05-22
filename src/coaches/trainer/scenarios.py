@@ -8,7 +8,7 @@ Use commands likes:
 import random
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
-from constants import TEAM_2_NAME, TEAM_1_NAME
+from constants import TEAM_2_NAME, TEAM_1_NAME, USING_PASS_CHAIN_STRAT
 from geometry import Coordinate
 from uppaal.strategy import generate_strategy
 
@@ -85,7 +85,10 @@ def generate_commands_coachmsg_passing_strat(random_seed: int, wv: WorldViewCoac
     ball_pos = (float(players[0][2]) + 0.5, float(players[0][3]))
     _update_world_view_passing_strat(wv, players, ball_pos)
     passing_strat_commands: [] = _generate_commands(players, ball_pos)
-    coach_msg = generate_strategy(wv)
+    if USING_PASS_CHAIN_STRAT:
+        coach_msg = generate_strategy(wv)
+    else:
+        coach_msg = []
 
     return passing_strat_commands, coach_msg
 
