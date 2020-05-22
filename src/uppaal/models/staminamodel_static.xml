@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+typedef const int[0, 8] stamina_intervals_id_t;
+typedef const int[0, 100] dash_power_id_t;
+typedef const int[0, 50] dash_since_last_strat_id_t;
+
+int stamina_interval;
+int final_stamina_interval = 9;
+int seconds_per_strategy = 10;
+int recovery_rate_per_sec = 300;
+
+int dashes_last_strategy;
+
+int new_dash_power = 0;
+
+
+int update_stamina_interval(int dash_power){
+    int total_recovery = recovery_rate_per_sec * seconds_per_strategy;
+    int total_consumption = dashes_last_strategy * dash_power;
+    int delta = total_recovery - total_consumption;
+    
+    // Get the delta interval, for example -1 if more than 1000 stamina used
+    int delta_interval = fint(delta / 1000);
+    if (stamina_interval + delta_interval &gt; 8){
+        return 8;
+    }
+    if (stamina_interval + delta_interval &lt; 0){
+        return 0;
+    }
+    return stamina_interval + delta_interval;
+}</declaration>
+	<template>
+		<name x="5" y="5">Player</name>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="-2406" y="-2184">
+			<name x="-2568" y="-2192">stamin_chosen_state</name>
+			<urgent/>
+		</location>
+		<location id="id1" x="-2406" y="-2295">
+			<name x="-2542" y="-2303">dashes_chosen</name>
+			<urgent/>
+		</location>
+		<location id="id2" x="-2406" y="-2065">
+			<name x="-2465" y="-2074">dash</name>
+		</location>
+		<location id="id3" x="-2406" y="-2414">
+			<name x="-2457" y="-2422">start</name>
+			<urgent/>
+		</location>
+		<init ref="id3"/>
+		<transition controllable="false">
+			<source ref="id3"/>
+			<target ref="id1"/>
+			<label kind="select" x="-2397" y="-2371">dashes : dash_since_last_strat_id_t</label>
+			<label kind="assignment" x="-2397" y="-2346">dashes_last_strategy = dashes</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id2"/>
+			<label kind="select" x="-2397" y="-2159">dash_power_selected : dash_power_id_t</label>
+			<label kind="assignment" x="-2397" y="-2133">final_stamina_interval = update_stamina_interval(dash_power_selected),
+new_dash_power = dash_power_selected</label>
+		</transition>
+		<transition controllable="false">
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="select" x="-2397" y="-2261">stamina_ran : stamina_intervals_id_t</label>
+			<label kind="assignment" x="-2397" y="-2235">stamina_interval = stamina_ran</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+player = Player();
+// List one or more processes to be composed into a system.
+system player;</system>
+	<queries>
+		<query>
+			<formula>saveStrategy("/home/philipholler/Desktop/staminastrat", opt_power)</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy opt_power = maxE(new_dash_power) [&lt;=100]: &lt;&gt; player.dash under safe</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>strategy safe = control: A[] not (final_stamina_interval &lt; 2)</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>
