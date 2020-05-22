@@ -31,7 +31,7 @@ UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001
 
 # Add teams and players here
 team_names = [TEAM_1_NAME, TEAM_2_NAME]
-num_players = 5
+num_players = 6
 
 # Enable monitor
 monitor_enabled = True
@@ -77,6 +77,7 @@ try:
                             wv=WorldViewCoach(0, TEAM_1_NAME))
                         generate_success = True
                     except Exception:
+                        print("Generating...")
                         continue
             else:
                 # For coach positioning strategy
@@ -169,6 +170,7 @@ try:
             fake_monitor.join()
     # Run a single game
     else:
+        atexit.register(shut_down_gracefully)
         soccersim: SoccerSim = SoccerSim(team_names=team_names,
                                          num_players=num_players,
                                          trainer_mode=TRAINER_SINGLE_RUN_ENABLED,
