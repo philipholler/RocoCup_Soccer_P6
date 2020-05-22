@@ -186,7 +186,7 @@ def calculate_possession(game: Game):
             if game.show_time.index(stage) == game.last_kicker_tick:
                 team = game.last_kicker.side
             else:
-                team = stage.closest_player_team()
+                team = stage.closest_player().side
 
         # add tick to possessing team
         if team == "l":
@@ -459,8 +459,7 @@ def calculate_stamina(game: Game):
 
 def calculate_fieldprogress(game: Game):
     last_ball = None
-    counter = 0
-    start_ball = None
+    start_ball = game.show_time[1].ball
     last_stage = game.show_time[0]
 
     # for all ticks in game
@@ -473,14 +472,25 @@ def calculate_fieldprogress(game: Game):
             if game.show_time.index(stage) == game.last_kicker_tick:
                 team = game.last_kicker.side
             else:
-                team = stage.closest_player_team()
+                team = stage.closest_player().side
 
             # if it is our team, and it is the first time, set it as start ball. else set it as last ball.
             if team == "l":
                 last_ball = stage.ball
-                if counter == 0:
-                    start_ball = last_stage.ball
-                    counter += 1
+
+            # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
+            if team == "r":
+                if last_ball is not None:
+                    game.fieldprogress = calculate_fieldprogress_length(start_ball, last_ball)
+                    continue
+                else:
+                    game.fieldprogress = 0
+                    continue
+
+        if float(stage.closest_player().distance_to_ball) < 0.4:
+            team = stage.closest_player().side
+            if team == "l":
+                last_ball = stage.ball
 
             # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
             if team == "r":

@@ -64,14 +64,14 @@ class Stage:
         for player in self.players:
             player.print_player()
 
-    def closest_player_team(self):
+    def closest_player(self):
         closest_player = self.players[0]
 
         for player in self.players:
             if closest_player.distance_to_ball > player.distance_to_ball:
                 closest_player = player
 
-        return closest_player.side
+        return closest_player
 
     def is_ball_outside_field(self):
         if self.ball.x_coord < -52.5 or 52.5 < self.ball.x_coord:
