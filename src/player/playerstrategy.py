@@ -673,9 +673,10 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                     print("TORGET ACQUIRED : ", target)
                     return target
 
+
     debug_msg(str(state.now()) + " Choosing pass target", "DRIBBLE_PASS_MODEL")
     # Act according to Possession model
-    if state.dribble_or_pass_strat.is_value_known() and False:  # TODO TEST!
+    if state.dribble_or_pass_strat.is_value_known():
         if state.dribble_or_pass_strat.is_value_known(state.now() - 6):
             debug_msg("Following uppaal DribbleOrPass strategy :" + str(state.dribble_or_pass_strat.get_value())
                       , "DRIBBLE_PASS_MODEL")
@@ -686,7 +687,6 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                     state.statistics.use_possession_strategy()
                     debug_msg(str(state.now()) + " Dribble!", "DRIBBLE_PASS_MODEL")
                     return None
-
             else:
                 match = re.match(r'.*\(([^,]*), ([^)]*)\)', strat)
                 x = float(match.group(1))
@@ -703,17 +703,39 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
 
                     if (not is_too_far_back) and (not is_offside(state, target)) and (target.coord.pos_y > -20 or target.coord.pos_y > 20):
                         state.statistics.use_possession_strategy()
+                        debug_msg(str(state.now()) + " Passing to target from Possession model", "DRIBBLE_PASS_MODEL")
+                        return target
+                    else:
+                        debug_msg(str(state.now()) + " DISCARDED Passing to target from Possession model", "DRIBBLE_PASS_MODEL")
                         return target
                 else:
                     debug_msg(str(state.now()) + "No teammate matched :" + str(
                         Coordinate(x, y)) + " Visible: " + str(state.world_view.get_teammates(state.team_name, 10))
                               , "DRIBBLE_PASS_MODEL")
+        else:
+            debug_msg(str(state.now()) + " Strategy outdated:", "DRIBBLE_PASS_MODEL")
+            # Discard strategy
+            state.statistics.discard_possession_strategy()
+            state.dribble_or_pass_strat = PrecariousData.unknown()
 
-        # Discard strategy
-        state.statistics.discard_possession_strategy()
-        state.dribble_or_pass_strat = PrecariousData.unknown()
+    if state.team_name in constants.SIMPLE_PASS_TEAMS:
+        team_mates = state.world_view.get_teammates(state.team_name, 8)
+        my_coord = state.position.get_value()
+        if state.world_view.side == "l":
+            forward_team_mates = list(filter(
+                lambda p: p.coord.pos_x > my_coord.pos_x, team_mates))
+        else:
+            forward_team_mates = list(filter(
+                lambda p: p.coord.pos_x < my_coord.pos_x, team_mates))
 
-    side = state.world_view.side
+        if len(forward_team_mates) > 0:
+            return choice(forward_team_mates)
+
+        if not must_pass:
+            return None
+
+        if len(team_mates) > 0:
+            return choice(team_mates)
 
     """ # TODO : TESTING ONLY ----------------------------------------------------------
     teammates = state.world_view.get_teammates(state.team_name, 2)
@@ -721,6 +743,7 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
         return choice(teammates)
     # todo -------------------------------------------------------------------------- """
 
+    side = state.world_view.side
     am_i_marked = state.world_view.is_marked(team=state.team_name, max_data_age=4, min_distance=4)
 
     # If free targets forward -> Pass forward

@@ -44,7 +44,7 @@ TICKS_PER_RUN = 100
 
 # Run more games sequentially to test game performance
 MORE_GAMES_WITH_FAKE_MONITOR_MODE = True
-NUM_GAMES = 100
+NUM_GAMES = 50
 
 # Debugging information showed. See file constants.DEBUG_DICT to add more
 DEBUG_DICT["ALL"] = False
@@ -76,7 +76,6 @@ try:
                 commands, coach_msgs = scenarios.generate_commands_coachmsg_goalie_positioning(
                         random.randint(0, 1000000000),
                         wv=WorldViewCoach(0, TEAM_1_NAME))
-
 
             soccersim: SoccerSim = SoccerSim(team_names=team_names,
                                              num_players=num_players,
