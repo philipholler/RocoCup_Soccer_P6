@@ -175,16 +175,22 @@ def parse_field_progress(name):
 if __name__ == "__main__":
     pass_chain_progress = parse_field_progress("fieldprogress_pass_chain.csv")
     default_progress = parse_field_progress("fieldprogress_default.csv")
-    chain_default = list(zip(pass_chain_progress, default_progress))
-    pass_chain_better_count = sum(chain > default for chain, default in chain_default)
-    default_better_count = sum(chain < default for chain, default in chain_default)
+    naive_progress = parse_field_progress("fieldprogress_naive.csv")
+
+    chain_default_naive = list(zip(pass_chain_progress, default_progress, naive_progress))
+    pass_chain_better_count = sum(chain > default and chain > naive for chain, default, naive in chain_default_naive)
+    default_better_count = sum(default > chain and default > naive for chain, default, naive in chain_default_naive)
+    naive_better_count = sum(naive > chain and naive > default for chain, default, naive in chain_default_naive)
     print("-"*50)
     print("Pass chain wins : ", pass_chain_better_count)
-    print("Default wins : ", default_better_count,"\n")
+    print("Default wins : ", default_better_count)
+    print("Naive wins : ", naive_better_count, "\n")
 
     print("Pass chain average progress: ", average(pass_chain_progress))
-    print("Default average progress: ", average(default_progress), "\n")
+    print("Default average progress: ", average(default_progress))
+    print("Naive average progress: ", average(naive_progress), "\n")
 
     print("Pass chain median: ", median(pass_chain_progress))
     print("Default median: ", median(default_progress))
+    print("Naive median: ", median(naive_progress))
     print("-"*50)
