@@ -194,3 +194,5 @@ if __name__ == "__main__":
     print("Default median: ", median(default_progress))
     print("Naive median: ", median(naive_progress))
     print("-"*50)
+
+
