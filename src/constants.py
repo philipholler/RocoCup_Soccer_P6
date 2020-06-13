@@ -28,7 +28,7 @@ EPSILON = 1.0e-10
 
 # -----------------  Uppaal Strategies --------------------- #
 DRIBBLE_OR_PASS_TEAMS = [TEAM_1_NAME]
-SIMPLE_PASS_TEAMS = [TEAM_1_NAME, TEAM_2_NAME]
+SIMPLE_PASS_TEAMS = []
 STAMINA_MODEL_TEAMS = []
 GOALIE_MODEL_TEAMS = []
 

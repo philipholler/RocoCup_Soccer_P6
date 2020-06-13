@@ -73,7 +73,7 @@ double pass_reward(teammate_id_t target){
     }else{
 		dist_reward = dist_increase * 0.1;
 	}
-    return (POSSESSION_REWARD + dist_reward) * pass_chance;
+    return dist_reward * pass_chance;
 }
 double dribble_prob(){
     double drib_prob = 1.0;
@@ -89,7 +89,7 @@ double dribble_prob(){
     return drib_prob;
 }
 double dribble_reward(){
-    return (POSSESSION_REWARD + (DRIBBLE_DIST * DIST_REWARD_FACTOR)) * dribble_prob();
+    return (DRIBBLE_DIST * DIST_REWARD_FACTOR) * dribble_prob();
 }
 </declaration>
 	<template>

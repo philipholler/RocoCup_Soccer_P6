@@ -79,7 +79,7 @@ def has_applicable_strat_player(state: PlayerState):
 
 def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
     if state.team_name in DRIBBLE_OR_PASS_TEAMS and state.needs_dribble_or_pass_strat():
-        print(state.now(), " DRIBBLE STRAT - Player : ", state.num)
+        #print(state.now(), " DRIBBLE STRAT - Player : ", state.num)
 
         possession_dir = Path(__file__).parent / "models" / "possessionmodel"
         if not possession_dir.exists():
@@ -98,7 +98,6 @@ def _find_applicable_strat_player(state: PlayerState) -> _StrategyGenerator:
                                   , _update_dribble_or_pass_model, _extract_pass_or_dribble_strategy)
 
     if state.team_name in STAMINA_MODEL_TEAMS and (state.now() % 121) == (state.num + 1) * 10:
-        print(state.num, state.team_name)
         return _StrategyGenerator("/staminamodel/staminamodel{0}{1}".format(state.world_view.side, state.num),
                                   _update_stamina_model_simple, _extract_stamina_solution_simple)
     # Goalie strats

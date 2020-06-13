@@ -84,7 +84,7 @@ def _dribble_objective(state: PlayerState):
     else:
         state.received_dribble_instruction.set_value(False, state.now())
 
-    if state.is_near_ball():  # todo temp: and state.action_history.has_looked_for_targets:
+    if state.is_near_ball():
         target_coord: Coordinate = Coordinate(52.5 * side, 0)
         opposing_goal_dir = math.degrees(calculate_full_origin_angle_radians(target_coord, state.position.get_value()))
         state.action_history.has_looked_for_targets = False
@@ -673,8 +673,6 @@ def _choose_pass_target(state: PlayerState, must_pass: bool = False):
                     print("TORGET ACQUIRED : ", target)
                     return target
 
-
-    debug_msg(str(state.now()) + " Choosing pass target", "DRIBBLE_PASS_MODEL")
     # Act according to Possession model
     if state.dribble_or_pass_strat.is_value_known():
         if state.dribble_or_pass_strat.is_value_known(state.now() - 6):

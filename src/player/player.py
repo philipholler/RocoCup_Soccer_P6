@@ -315,10 +315,10 @@ class PlayerState:
             ball_relative_dir = math.degrees(calculate_full_origin_angle_radians(ball.coord, self.position.get_value()))
             dif = abs(smallest_angle_difference((ball_move_dir + 180) % 360, ball_relative_dir))
 
-            if self.is_test_player():
-                debug_msg(str(self.now()) + " Ball movement dir: " + str(ball_move_dir)
-                          + " Direction from player: " + str(ball_relative_dir)
-                          + " Heading this way : " + str(dif <= 15), "DRIBBLE_PASS_MODEL")
+            #if self.is_test_player():
+            #    debug_msg(str(self.now()) + " Ball movement dir: " + str(ball_move_dir)
+            #              + " Direction from player: " + str(ball_relative_dir)
+            #              + " Heading this way : " + str(dif <= 15), "DRIBBLE_PASS_MODEL")
             return dif <= 15
 
         position, projected_direction, speed = ball.approximate_position_direction_speed(2)

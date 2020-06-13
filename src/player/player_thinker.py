@@ -91,7 +91,7 @@ class Thinker(threading.Thread):
                 if self.player_state.is_generating_strategy:  # Statistics
                     self.player_state.statistics.register_missed_tick()
 
-                if self.player_state.now() == 230:
+                if self.player_state.now() == 300:
                     print(self.player_state.statistics.text())
                 time_since_action -= 0.1
                 time_since_action %= 0.08  # discard queued updates if more than 80 ms behind

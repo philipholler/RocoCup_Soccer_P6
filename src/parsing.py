@@ -286,8 +286,8 @@ def _parse_see(msg, state: player.PlayerState):
     flags = create_flags(flag_strings, goals, state)
 
     _parse_lines(lines, state)
-    if len(lines) == 0:
-        print("NO LINES " + msg)
+    #if len(lines) == 0:
+    #   print("NO LINES " + msg)
 
     # Find angle from visible lines
     new_global_angle = _approx_angle_lines(state, lines)

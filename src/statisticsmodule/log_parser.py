@@ -682,3 +682,35 @@ def parse_player(txt):
     player.kicks = int(matched.group(12))
 
     return player
+
+stat_dir = Path(__file__).parent.parent / "Statistics"
+
+def count_kicks():
+    pattern = r'Team_1_[0-9]*: \(kick ([0-9]*.?[0-9]*) '
+    pattern2 = r'Team_2_[0-9]*: \(kick ([0-9]*.?[0-9]*) '
+    team_1_kicks = []
+    team_2_kicks = []
+    for file_name in os.listdir(stat_dir):
+        print(file_name)
+        try:
+            with open(stat_dir / file_name) as file:
+                lines = file.readlines()
+                for l in lines:
+                    team_1_kicks.extend(re.findall(pattern, l))
+                    team_2_kicks.extend(re.findall(pattern2, l))
+
+        except FileNotFoundError:
+            return None
+
+    team_1_kick_count = len(list(filter(lambda power: float(power) != 40 and float(power) != 100, team_1_kicks)))
+    team_1_dribble_count = len(list(filter(lambda power: float(power) == 30, team_1_kicks)))
+
+    team_2_kick_count = len(list(filter(lambda power: float(power) != 40 and float(power) != 100, team_2_kicks)))
+    team_2_dribble_count = len(list(filter(lambda power: float(power) == 30, team_2_kicks)))
+
+    print("Passes. Team1 : ", team_1_kick_count, ", Team2: ", team_2_kick_count)
+    print("Dribbles. Team1 ", team_1_dribble_count, ", Team2: ", team_2_dribble_count)
+    print("Passes per dribble. Team1 ", team_1_kick_count / team_1_dribble_count, ", Team2: ", team_2_kick_count / team_2_dribble_count)
+
+if __name__ == "__main__":
+    count_kicks()
