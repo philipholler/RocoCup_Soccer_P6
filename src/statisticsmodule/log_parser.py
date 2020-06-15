@@ -713,4 +713,27 @@ def count_kicks():
     print("Passes per dribble. Team1 ", team_1_kick_count / team_1_dribble_count, ", Team2: ", team_2_kick_count / team_2_dribble_count)
 
 if __name__ == "__main__":
-    count_kicks()
+    left_wins = 0
+    right_wins = 0
+    total_goals_right = 0
+    total_goals_left = 0
+
+    games_dir = Path(__file__).parent.parent
+    for file_name in os.listdir(games_dir):
+        if str(file_name).endswith(".rcl"):
+            match = re.match(r'.*Team_1_([0-9]*)-vs-Team_2_([0-9]*).rcl', str(file_name))
+            left_goals = int(match.group(1))
+            right_goals = int(match.group(2))
+
+            total_goals_left += left_goals
+            total_goals_right += right_goals
+
+            if left_goals > right_goals:
+                left_wins += 1
+            elif left_goals < right_goals:
+                right_wins += 1
+
+    print("Left wins:", left_wins, "| Right wins:", right_wins)
+    print("Left goals: ", total_goals_left, "| Right goals", total_goals_right)
+
+
