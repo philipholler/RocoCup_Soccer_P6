@@ -29,7 +29,7 @@ DEBUG_DICT = {
     "STAMINA_STRAT": False,
     "FREE_POSITION": False,
     "DRIBBLE_PASS_MODEL": False,
-    "PASS_CHAIN": True
+    "PASS_CHAIN": False
 }
 
 
