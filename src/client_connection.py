@@ -4,6 +4,9 @@ import threading
 import queue
 import time
 
+"""
+This class is used by both player, trainer, coach and fake monitor for connecting to the server.
+"""
 
 class Connection(threading.Thread):
 

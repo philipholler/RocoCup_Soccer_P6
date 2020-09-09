@@ -18,6 +18,17 @@ from player.world_objects import ObservedPlayer
 from player.world_objects import PrecariousData
 from utils import debug_msg, get_flag_quantize_range
 
+"""
+This class contains methods for parsing input from server to both player, goalie, trainer and coach.
+Each of the client types have their own entry method, f.ex. parse_message_online_coach(args) parses
+the message from the server for an online coach and updates this clients world view.
+The division into more methods was due to the different clients having different needs and receiving 
+information using different protocols from the robocup server.
+
+Additionally, the parsing of information from the soccer server includes some interpretation. For example
+the flag positions are analysed and used in combination to calculate the position of the player.
+"""
+
 _REAL_NUM_REGEX = "[-0-9]*\\.?[0-9]*"
 _SIGNED_INT_REGEX = "[-0-9]+"
 _ROBOCUP_MSG_REGEX = "[-0-9a-zA-Z ().+*/?<>_]*"
@@ -27,6 +38,7 @@ _TEAM_NAME_REGEX = "(−|_|a-z|A−Z|0−9)+"
 # Introduced to reduce calculation time
 MAX_FLAGS_FOR_POSITION_ESTIMATE = 10
 
+# Static information about flag positions on the field.
 _FLAG_COORDS = {
     # perimiter flags
     "tl50": (-50, 39),
@@ -661,7 +673,6 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
 
         # This gives us a list like this:
         # ['p', 'Team1', '1', 'goalie', '-50', '0', '0', '0', '0', '0']
-        # Todo include pointing direction? - Philip
         split_by_whitespaces = re.split('\\s+', cur_player)
 
         for s in split_by_whitespaces:
@@ -1273,7 +1284,6 @@ def _approx_position_lines(state: PlayerState, flags: [Flag]):
 
     if len(res) == 0:
         print("FAILED for player ", state.num, "Flags: ", len(flags), res)
-        # TODO Return average coordinate using normal trigonometry
         return _emergency_approximation(state, flags)
 
     result = Polygon(res[0]).centroid.coords

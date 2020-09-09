@@ -4,6 +4,11 @@ import time
 import client_connection
 from fake_monitor.fake_monitor_thinker import FakeMonitorThinker
 
+"""
+This thread is created to pretend to be a fake monitor in order to disable graphics for robocut, 
+while still receiving information about the game state, that the monitor normally uses.
+This was used for debugging and tests purposes.
+"""
 
 class FakeMonitorClient(threading.Thread):
 

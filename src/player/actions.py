@@ -19,7 +19,7 @@ SET_FOV_NORMAL = "(change_view normal high)"
 SET_FOV_NARROW = "(change_view narrow high)"
 SET_FOV_WIDE = "(change_view wide high)"
 
-_MAX_TICKS_PER_SEE_UPDATE = 4  # todo Correct?
+_MAX_TICKS_PER_SEE_UPDATE = 4
 
 
 class Command:
@@ -124,7 +124,6 @@ class CommandBuilder:
 
 
 def kick_if_collision(state: PlayerState, command: Command, speed=0.5, ball_dir: int = 0):
-    # todo consider ball speed
     now = state.now()
     ball = state.world_view.ball.get_value()
 
@@ -785,7 +784,6 @@ def _append_look_direction(state: PlayerState, target_direction, fov, command_bu
         command_builder.append_neck_body_turn(state, body_turn_angle, neck_turn_angle, fov)
 
 
-# todo for testing only!
 @require_angle_update
 def idle_neck_orientation(state):
     command_builder = CommandBuilder()
@@ -998,7 +996,6 @@ def positional_adjustment(state, adjustment: Coordinate):
 
 def find_dribble_direction(state, optimal_dir):
     target_dir = smallest_angle_difference(from_angle=state.body_angle.get_value(), to_angle=optimal_dir)
-    # todo !
     return target_dir
 
 
