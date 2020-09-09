@@ -673,7 +673,6 @@ def _parse_players_online_coach(players: [], wv: WorldViewCoach):
 
         # This gives us a list like this:
         # ['p', 'Team1', '1', 'goalie', '-50', '0', '0', '0', '0', '0']
-        # Todo include pointing direction? - Philip
         split_by_whitespaces = re.split('\\s+', cur_player)
 
         for s in split_by_whitespaces:
@@ -1285,7 +1284,6 @@ def _approx_position_lines(state: PlayerState, flags: [Flag]):
 
     if len(res) == 0:
         print("FAILED for player ", state.num, "Flags: ", len(flags), res)
-        # TODO Return average coordinate using normal trigonometry
         return _emergency_approximation(state, flags)
 
     result = Polygon(res[0]).centroid.coords
