@@ -1,4 +1,8 @@
-# RocoCup_Soccer_P6
+# RoboCup_Soccer_P6
+
+This is a Computer Science Bachelor project made by three students from Aalborg University.
+
+This project is made to combine RoboCup and strategy generation using UPPAAL.
 
 # System
 
@@ -6,11 +10,11 @@ The system running this program must be using Linux.
 
 # Specifications we used for testing
 
-phillip com ting
+philip com ting
 
 # Installations
 
-RoboCup must be installed to run this program.
+RoboCup must be installed to run this project.
 
 # At startup
 
