@@ -27,7 +27,7 @@ _GAME_NUMBER = 1
 POSSESSION_GAME_LENGTH = 6000
 
 
-# Main method
+# Main method, this file parses information from the log into stat files.
 def parse_logs():
     game = statistics.Game()
     server_log_name = get_newest_server_log()
@@ -240,7 +240,6 @@ def write_possession_file(game):
                           + str(game.possession_r_in_ticks) + "\n")
 
 
-
 def if_goalie_defence(on: bool, start_tick, end_tick):
     if on:
         global _GOALIE_DEFENCE_STAT
@@ -386,6 +385,7 @@ def calculate_stamina_avg(game: Game):
 
     return avg_stam_dict
 
+
 def calculate_stamina_pr_tick(game: Game, lowest: bool):
     stam_dict = {}
 
@@ -469,7 +469,6 @@ def highest_stamina_under(game: Game, side: str):
         return max(game.player_r_stamina_under)
 
 
-
 def calculate_stamina(game: Game):
     # for every tick in log file
     for stage in game.show_time:
@@ -506,7 +505,8 @@ def calculate_fieldprogress(game: Game):
         # if the abs value of either x or y goes up, then the ball has been possessed.
         if vel_x_change > max(abs(0.15 * last_stage.ball.delta_x), 0.1) \
                 or vel_y_change > max(abs(0.15 * last_stage.ball.delta_y), 0.1) or abs(angle_change) > 5:
-            print(tick, "Vel change : ", vel_x_change, vel_y_change, "delta x, y: ", stage.ball.delta_x, stage.ball.delta_y, "Direction change", angle_change)
+            print(tick, "Vel change : ", vel_x_change, vel_y_change, "delta x, y: ", stage.ball.delta_x,
+                  stage.ball.delta_y, "Direction change", angle_change)
             # if the last kicker kicked in last tick, then it is the last possessor, else it is the closest player
             if last_stage.r_kicked_this_tick:
                 team = 'r'
@@ -521,7 +521,8 @@ def calculate_fieldprogress(game: Game):
 
             # if it is opposing team, and there is a last ball, then calculate our possess dist, else 0.
             if team == "r":
-                print(tick, "Vel change : ", vel_x_change, vel_y_change, "delta x, y: ", stage.ball.delta_x, stage.ball.delta_y, "Direction change", angle_change)
+                print(tick, "Vel change : ", vel_x_change, vel_y_change, "delta x, y: ", stage.ball.delta_x,
+                      stage.ball.delta_y, "Direction change", angle_change)
                 break
 
         if float(stage.closest_player().distance_to_ball) < 0.4:
