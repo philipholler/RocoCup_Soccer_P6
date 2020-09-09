@@ -917,7 +917,7 @@ def append_look_towards_neck_only(state: PlayerState, coord, command_builder, bo
     if abs(angle_difference) > 0.9:
         target_neck_angle = smallest_angle_difference(from_angle=body_angle, to_angle=global_target_angle)
         # Adjust to be within range of neck turn
-        target_neck_angle = clamp(target_neck_angle, min=-90, max=90)
+        target_neck_angle = clamp(target_neck_angle, lower_bound=-90, upper_bound=90)
         new_total_angle = (body_angle + target_neck_angle) % 360
 
         # Calculate which fov to use based on what is required to see the ball

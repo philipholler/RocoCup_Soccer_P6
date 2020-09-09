@@ -84,8 +84,7 @@ def smallest_angle_difference(to_angle, from_angle):
     return (a + 180) % 360 - 180
 
 
-'''
-- Returns the position of an object.
+''' - Returns the position of an object.
 object_rel_angle is the relative angle to the observer (0 - 360)
 distance is the distance from the observer to the object
 my_x, my_y are the coordinates of the observer
@@ -97,12 +96,10 @@ Y= distance*sin(angle) +y0
 
 example: 
 My pos: x: -19,  y: -16 my_angle 0
-(player Team1 9) 14.9 -7 0 0) = x:-4, y:-17,5
-'''
+(player Team1 9) 14.9 -7 0 0) = x:-4, y:-17,5 '''
 
 
-def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float, my_y: float,
-                        my_global_angle: float):
+def get_object_position(object_rel_angle: float, dist_to_obj: float, my_x: float, my_y: float, my_global_angle: float):
     actual_angle = (my_global_angle + object_rel_angle) % 360
     x = dist_to_obj * math.cos(math.radians(actual_angle)) + my_x
     y = dist_to_obj * - math.sin(math.radians(actual_angle)) + my_y
@@ -123,11 +120,12 @@ def is_angle_in_range(angle, from_angle, to_angle):
 
 
 def get_xy_vector(direction, length):
+    # Converts a direction and magnitude to x and y coordinates
     radians = math.radians(direction)
     return Coordinate(length * math.cos(radians), length * math.sin(radians))
 
 
-# Note there is no standard definition for averaging angles
+# Note that there is no standard definition for averaging angles
 def find_mean_angle(angles, acceptable_variance=3.0):
     if len(angles) == 0:
         return None

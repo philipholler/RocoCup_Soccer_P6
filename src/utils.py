@@ -4,9 +4,12 @@ import numpy
 
 from constants import QUANTIZE_STEP_OBJECTS, QUANTIZE_STEP_LANDMARKS, EPSILON
 
+# When a key(category) is set to True, debugging information will be printed for anything related to that category
+# Often these messages are only printed for 'test players'. To mark a test player, see the is_test_player() function
+# in the player.py file
 DEBUG_DICT = {
-    "POSITIONAL": False,
     "ALL": False,
+    "POSITIONAL": False,
     "PARSING": False,
     "SCENARIOS": False,
     "INTERCEPTION": False,
@@ -34,10 +37,24 @@ DEBUG_DICT = {
 
 
 def debug_msg(msg: str, key: str):
-    if DEBUG_DICT["ALL"]:
+    if DEBUG_DICT["ALL"] or DEBUG_DICT[key]:
         print(msg)
-    elif DEBUG_DICT[key]:
-        print(msg)
+
+
+def clamp(value, lower_bound, upper_bound):
+    value = value if value > lower_bound else lower_bound
+    value = value if value < upper_bound else upper_bound
+    return value
+
+
+"""
+The following functions are used to inverse 
+the quantization that the robocup server applies to the
+sensory data. 
+The inverse quantization provides the possible 
+range of values that could have produced the given value.  
+For example values in the range 21-29 might always be quantized to the value 24.6
+"""
 
 
 def get_flag_quantize_range(distance):
@@ -73,12 +90,6 @@ def _create_flag_quantize_table(max_dist):
 
 def _quantize(val, q):
     return numpy.rint(val / q) * q
-
-
-def clamp(value, min, max):
-    value = value if value > min else min
-    value = value if value < max else max
-    return value
 
 
 inverse_quantization_table = _create_flag_quantize_table(140)

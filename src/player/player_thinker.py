@@ -25,18 +25,22 @@ class Thinker(threading.Thread):
         self.player_state: PlayerState = player.PlayerState()
         self.player_state.team_name = team_name
         self.player_state.player_type = player_type
+
         # Connection with the server
         self.player_conn: client_connection.Connection = None
-        # Non processed inputs from server
+
+        # Messages from the server that has not yet been processed
         self.input_queue = queue.Queue()
         self.is_positioned = False
 
     def start(self) -> None:
+        # Send init messages to the server
         super().start()
         if self.player_state.player_type == "goalie":
             init_string = "(init " + self.player_state.team_name + "(goalie)" + "(version 16))"
         else:
             init_string = "(init " + self.player_state.team_name + " (version 16))"
+
         self.player_conn.action_queue.put(init_string)
         init_msg: str = self.input_queue.get()
         parsing.parse_message_update_state(init_msg, self.player_state)
@@ -62,6 +66,8 @@ class Thinker(threading.Thread):
         self.player_state.current_objective = determine_objective(self.player_state)
         time_since_action = 0
         last_time = time.time()
+
+        # Enter loop until player client is terminated
         while not self._stop_event.is_set():
             while not self.input_queue.empty():
                 # Parse message and update player state / world view
@@ -74,24 +80,24 @@ class Thinker(threading.Thread):
                 if self.player_state.should_reset_to_start_position:
                     self.move_back_to_start_pos()
 
-            # If some result of a strategy generation has been returned to the result var
+            # Check if some strategy has been provided by UPPAAL
             if len(self.player_state.strategy_result_list) > 0:
                 parsing.parse_strat_player(self.player_state)
                 self.player_state.statistics.register_finished_strategy_generation()
 
-            # look for strat:
+            # Evaluate the current state of the game to see if any of the strategy models can be used:
             if not self.player_state.is_generating_strategy and strategy.has_applicable_strat_player(self.player_state):
                 self.player_state.is_generating_strategy = True
                 threading.Thread(target=generate_strategy, args=(self.player_state, )).start()
 
+            # Ensure that server action messages are sent at a fixed interval of 100ms
             current_time = time.time()
             time_since_action += current_time - last_time
             last_time = current_time
-            # Update current objective in accordance to the player's strategy
             if time_since_action >= 0.1:
-                if self.player_state.is_generating_strategy:  # Statistics
+                # Gathering statistics about the amount of ticks spent generating a strategy
+                if self.player_state.is_generating_strategy:
                     self.player_state.statistics.register_missed_tick()
-                
                 if self.player_state.now() == 5900:
                     statistics.print_to_file(self.player_state.statistics.missed_ticks_text(),
                                              "missed_ticks_" + str(self.player_state.num)
@@ -108,12 +114,12 @@ class Thinker(threading.Thread):
         if self.player_state.current_objective.should_recalculate(self.player_state):
             self.player_state.current_objective = determine_objective(self.player_state)
 
-        if self.player_state.is_test_player():
+        if self.player_state.is_test_player():  # Debugging
             debug_msg(str(self.player_state.now()) + " Mode : " + str(self.player_state.mode), "MODE")
 
         commands = self.player_state.current_objective.get_next_commands(self.player_state)
 
-        if self.player_state.is_test_player():
+        if self.player_state.is_test_player():  # Debugging
             debug_msg(str(self.player_state.now()) + " Sending commands : " + str(commands), "SENT_COMMANDS")
             debug_msg(str(self.player_state.now()) + "Position : {0} | Speed : {1} | BodyDir : {2} | NeckDir : {3} | "
                                                      "TurnInProgress : {4}".format(
@@ -121,7 +127,7 @@ class Thinker(threading.Thread):
                 self.player_state.body_angle.get_value(), self.player_state.body_state.neck_angle,
                 self.player_state.action_history.turn_in_progress), "STATUS")
 
-        if self.player_state.is_test_player():
+        if self.player_state.is_test_player():  # Debugging
             debug_msg("{0} Commands: {1}".format(self.player_state.world_view.sim_time, commands), "MESSAGES")
 
         for command in commands:
