@@ -7,6 +7,7 @@ from numpy import average, median
 from geometry import Coordinate, Vector2D
 
 
+# Class file for statistics
 class Game:
 
     def __init__(self):

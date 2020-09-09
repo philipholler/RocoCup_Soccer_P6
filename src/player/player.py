@@ -1,9 +1,9 @@
 import math
 
-import constants
+import configurations
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference, get_xy_vector, \
     Vector2D, inverse_y_axis
-from constants import BALL_DECAY, KICKABLE_MARGIN
+from configurations import BALL_DECAY, KICKABLE_MARGIN
 from player.world_objects import PrecariousData, Coordinate, Ball, ObservedPlayer
 from utils import debug_msg
 
@@ -24,7 +24,7 @@ class PlayerState:
     def __init__(self):
         self.mode = DEFAULT_MODE
         self._ball_seen_since_missing = True
-        self.power_rate = constants.DASH_POWER_RATE
+        self.power_rate = configurations.DASH_POWER_RATE
         self.team_name = ""
         self.num = -1
         self.player_type = None
@@ -242,15 +242,15 @@ class PlayerState:
         def distance_in_n_ticks(speed, ticks):
             if ticks == 0:
                 return 0
-            return speed + distance_in_n_ticks(speed * constants.PLAYER_SPEED_DECAY, ticks - 1)
+            return speed + distance_in_n_ticks(speed * configurations.PLAYER_SPEED_DECAY, ticks - 1)
 
         projected_speed = 0
         ticks = 0
         while distance > distance_in_n_ticks(projected_speed, 3):
             ticks += 1
-            projected_speed += constants.DASH_POWER_RATE * 100
+            projected_speed += configurations.DASH_POWER_RATE * 100
             distance -= projected_speed
-            projected_speed *= constants.PLAYER_SPEED_DECAY
+            projected_speed *= configurations.PLAYER_SPEED_DECAY
         return ticks + 3
 
     def update_body_angle(self, new_angle, time):

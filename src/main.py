@@ -4,10 +4,10 @@ import random
 import time
 from pathlib import Path
 
-import constants
+import configurations
 from coaches.trainer import scenarios
 from coaches.world_objects_coach import WorldViewCoach
-from constants import TEAM_2_NAME, TEAM_1_NAME
+from configurations import TEAM_2_NAME, TEAM_1_NAME
 from fake_monitor.fake_monitor_thread import FakeMonitorClient
 from soccer_sim import SoccerSim
 from utils import DEBUG_DICT
@@ -15,7 +15,7 @@ from utils import DEBUG_DICT
 finished_successfully = False
 soccersim: SoccerSim
 
-
+# Used to shut down all threads properly
 def shut_down_gracefully() -> None:
     if finished_successfully:
         pass
@@ -26,23 +26,27 @@ def shut_down_gracefully() -> None:
 
 
 # Network settings
+# These are default values used by robocup for local hosts
 UDP_IP = "127.0.0.1"
 UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001, 6002, 6000
 
 # Add teams and players here
 team_names = [TEAM_1_NAME, TEAM_2_NAME]
-num_players = 6
+num_players = 11
 
 # Enable monitor
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
-MORE_SCENARIOS_TRAINER_MODE = True
-constants.USING_PASS_CHAIN_STRAT = True
+# This is needed, since he is the only run able to restart a game
+MORE_SCENARIOS_TRAINER_MODE = False
+configurations.USING_PASS_CHAIN_STRAT = False
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
 # Run more games sequentially to test game performance
+# The fake monitor is implemented to spoof the soccer-sim and allow for runs without graphics, but still
+# receiving the periodic status from the server
 MORE_GAMES_WITH_FAKE_MONITOR_MODE = False
 NUM_GAMES = 100
 
@@ -50,12 +54,12 @@ NUM_GAMES = 100
 DEBUG_DICT["ALL"] = False
 
 # Enable coaches
-COACHES_ENABLED = True
+COACHES_ENABLED = False
 
 # Enable trainer for a single run
 TRAINER_SINGLE_RUN_ENABLED = False
 
-# Logparser stuffs
+# Logparser dir information. This is where the logparser saves files.
 stat_dir = Path(__file__).parent / "Statistics"
 if not stat_dir.exists():
     os.makedirs(stat_dir)
@@ -68,7 +72,7 @@ try:
         random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
-            if constants.USING_PASS_CHAIN_STRAT:
+            if configurations.USING_PASS_CHAIN_STRAT:
                 generate_success = False
                 while not generate_success:
                     try:

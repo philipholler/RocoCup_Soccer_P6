@@ -6,7 +6,7 @@ from time import time
 from shapely.geometry import Polygon
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
-from constants import WARNING_PREFIX, QUANTIZE_STEP_LANDMARKS, DRIBBLE_OR_PASS_STRAT_PREFIX
+from configurations import WARNING_PREFIX, QUANTIZE_STEP_LANDMARKS, DRIBBLE_OR_PASS_STRAT_PREFIX
 from geometry import calculate_smallest_origin_angle_between, rotate_coordinate, get_object_position, \
     calculate_full_origin_angle_radians, smallest_angle_difference, find_mean_angle
 from player import player, world_objects

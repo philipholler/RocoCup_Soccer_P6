@@ -8,7 +8,7 @@ Use commands likes:
 import random
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach, BallOnlineCoach
-from constants import TEAM_2_NAME, TEAM_1_NAME
+from configurations import TEAM_2_NAME, TEAM_1_NAME
 from geometry import Coordinate
 from uppaal.strategy import generate_strategy
 

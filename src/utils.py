@@ -2,7 +2,7 @@ from math import log, exp, ceil
 
 import numpy
 
-from constants import QUANTIZE_STEP_OBJECTS, QUANTIZE_STEP_LANDMARKS, EPSILON
+from configurations import QUANTIZE_STEP_OBJECTS, QUANTIZE_STEP_LANDMARKS, EPSILON
 
 # When a key(category) is set to True, debugging information will be printed for anything related to that category
 # Often these messages are only printed for 'test players'. To mark a test player, see the is_test_player() function
@@ -32,7 +32,7 @@ DEBUG_DICT = {
     "STAMINA_STRAT": False,
     "FREE_POSITION": False,
     "DRIBBLE_PASS_MODEL": False,
-    "PASS_CHAIN": True
+    "PASS_CHAIN": False
 }
 
 

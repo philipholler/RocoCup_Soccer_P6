@@ -27,6 +27,8 @@ QUANTIZE_STEP_LINES = 0.01
 EPSILON = 1.0e-10
 
 # -----------------  Uppaal Strategies --------------------- #
+# Make team use strategies by adding the team name to these lists
+# For example DRIBBLE_OR_PASS_TEAMS = [TEAM_1_NAME] would make team one use possession model.
 DRIBBLE_OR_PASS_TEAMS = []
 STAMINA_MODEL_TEAMS = []
 GOALIE_MODEL_TEAMS = []
@@ -35,4 +37,4 @@ DRIBBLE_OR_PASS_STRAT_PREFIX = "DRIBBLE_PASS:"
 DRIBBLE_INDICATOR = "DRIBBLE_FORWARD"
 PASS_INDICATOR = "PASS_TO:"
 
-USING_PASS_CHAIN_STRAT = True
+USING_PASS_CHAIN_STRAT = False
