@@ -1,7 +1,7 @@
 import math
 import geometry
 
-from constants import KICK_POWER_RATE, BALL_DECAY, \
+from configurations import KICK_POWER_RATE, BALL_DECAY, \
     KICKABLE_MARGIN, FOV_NARROW, FOV_NORMAL, FOV_WIDE, PLAYER_SPEED_DECAY, PLAYER_MAX_SPEED, DASH_POWER_RATE, \
     WARNING_PREFIX, CATCHABLE_MARGIN
 from geometry import calculate_full_origin_angle_radians, is_angle_in_range, smallest_angle_difference

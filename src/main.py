@@ -4,10 +4,10 @@ import random
 import time
 from pathlib import Path
 
-import constants
+import configurations
 from coaches.trainer import scenarios
 from coaches.world_objects_coach import WorldViewCoach
-from constants import TEAM_2_NAME, TEAM_1_NAME
+from configurations import TEAM_2_NAME, TEAM_1_NAME
 from fake_monitor.fake_monitor_thread import FakeMonitorClient
 from soccer_sim import SoccerSim
 from utils import DEBUG_DICT
@@ -31,16 +31,16 @@ UDP_IP = "127.0.0.1"
 UDP_PORT_PLAYER, UDP_PORT_TRAINER, UDP_PORT_COACH, UDP_PORT_MONITOR = 6000, 6001, 6002, 6000
 
 # Add teams and players here
-team_names = [TEAM_1_NAME]
-num_players = 6
+team_names = [TEAM_1_NAME, TEAM_2_NAME]
+num_players = 11
 
 # Enable monitor
 monitor_enabled = True
 
 # Enable for more runs. Trainer is always enabled for multiple runs
 # This is needed, since he is the only run able to restart a game
-MORE_SCENARIOS_TRAINER_MODE = True
-constants.USING_PASS_CHAIN_STRAT = True
+MORE_SCENARIOS_TRAINER_MODE = False
+configurations.USING_PASS_CHAIN_STRAT = False
 NUM_SIMULATIONS = 100
 TICKS_PER_RUN = 100
 
@@ -54,7 +54,7 @@ NUM_GAMES = 100
 DEBUG_DICT["ALL"] = False
 
 # Enable coaches
-COACHES_ENABLED = True
+COACHES_ENABLED = False
 
 # Enable trainer for a single run
 TRAINER_SINGLE_RUN_ENABLED = False
@@ -72,7 +72,7 @@ try:
         random.seed(123456237890)
         for sim in range(NUM_SIMULATIONS):
             # Generate passing strat
-            if constants.USING_PASS_CHAIN_STRAT:
+            if configurations.USING_PASS_CHAIN_STRAT:
                 generate_success = False
                 while not generate_success:
                     try:

@@ -5,7 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from coaches.world_objects_coach import WorldViewCoach, PlayerViewCoach
-from constants import DRIBBLE_OR_PASS_STRAT_PREFIX, DRIBBLE_INDICATOR, PASS_INDICATOR, GOALIE_MODEL_TEAMS, \
+from configurations import DRIBBLE_OR_PASS_STRAT_PREFIX, DRIBBLE_INDICATOR, PASS_INDICATOR, GOALIE_MODEL_TEAMS, \
     STAMINA_MODEL_TEAMS, DRIBBLE_OR_PASS_TEAMS
 from geometry import Coordinate
 from uppaal import goalie_strategy

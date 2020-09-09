@@ -3,11 +3,11 @@ import random
 import re
 from random import choice
 
-import constants
+import configurations
 
-import constants
-from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS
-from constants import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS, DRIBBLE_INDICATOR, PASS_INDICATOR
+import configurations
+from configurations import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS
+from configurations import KICKABLE_MARGIN, CATCHABLE_MARGIN, MINIMUM_TEAMMATES_FOR_PASS, DRIBBLE_INDICATOR, PASS_INDICATOR
 from geometry import calculate_full_origin_angle_radians
 from player import actions
 from player.actions import Command, _calculate_relative_angle
@@ -207,7 +207,7 @@ def determine_objective_goalie_default(state: PlayerState):
             return _rush_to_ball_objective(state)
 
     # If position not alligned with ball y-position -> Adjust y-position
-    if state.position.is_value_known() and state.world_view.ball.is_value_known() and not constants.USING_PASS_CHAIN_STRAT:
+    if state.position.is_value_known() and state.world_view.ball.is_value_known() and not configurations.USING_PASS_CHAIN_STRAT:
         debug_msg(str(state.now()) + " | Position not optimal -> adjust position", "GOALIE")
         return _position_optimally_objective_goalie(state)
 
@@ -293,7 +293,7 @@ def determine_objective_field_default(state: PlayerState):
             return _rush_to_ball_objective(state)
 
     # If ball not incoming -> Position optimally while looking at ball
-    if not state.ball_incoming() and not constants.USING_PASS_CHAIN_STRAT:
+    if not state.ball_incoming() and not configurations.USING_PASS_CHAIN_STRAT:
         if state.is_test_player():
             debug_msg(str(state.now()) + " Position optimally!", "ACTIONS")
         return _position_optimally_objective(state)
@@ -463,7 +463,7 @@ def _jog_to_ball_objective(state):
 
 
 def _optimal_goalie_pos(state: PlayerState):
-    if state.team_name in constants.GOALIE_MODEL_TEAMS:
+    if state.team_name in configurations.GOALIE_MODEL_TEAMS:
         if state.goalie_position_strategy is not None:
             optimal_coord = Coordinate(state.goalie_position_strategy.pos_x, state.goalie_position_strategy.pos_y)
             state.goalie_position_strategy = None

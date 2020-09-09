@@ -3,7 +3,7 @@ import re
 import threading
 import queue
 
-from constants import GOALIE_MODEL_TEAMS
+from configurations import GOALIE_MODEL_TEAMS
 from player import player
 import client_connection
 from player.player import PlayerState

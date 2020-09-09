@@ -3,7 +3,7 @@ from collections import deque
 from itertools import islice
 from math import sqrt, atan, degrees, exp
 
-from constants import BALL_DECAY, KICKABLE_MARGIN
+from configurations import BALL_DECAY, KICKABLE_MARGIN
 from geometry import is_angle_in_range, find_mean_angle, Coordinate, \
     calculate_full_origin_angle_radians, get_xy_vector, Vector2D, smallest_angle_difference, \
     inverse_y_axis, calculate_absolute_velocity
